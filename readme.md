@@ -1,7 +1,7 @@
 # Todo+
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/fabiospampinato/vscode-todo-plus/master/resources/logo/logo.png" width="128" alt="Logo">
+  <img src="https://raw.githubusercontent.com/vycdev/vscode-todo-plus-two/master/resources/logo/logo.png" width="128" alt="Logo">
 </p>
 
 Manage todo lists with ease. Powerful, easy to use and customizable. [View the demo](#demo).
@@ -29,10 +29,10 @@ Manage todo lists with ease. Powerful, easy to use and customizable. [View the d
 
 ## Install
 
-Follow the instructions in the [Marketplace](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-todo-plus), or run the following in the command palette:
+Follow the instructions in the [Marketplace](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two), or run the following in the command palette:
 
 ```shell
-ext install fabiospampinato.vscode-todo-plus
+ext install vycdev.vscode-todo-plus-two
 ```
 
 ## Usage
@@ -187,7 +187,7 @@ The following tokens can be used in `todo.statistics.project.text`, `todo.statis
 
 ## Demo
 
-### [Example todo file](https://github.com/fabiospampinato/vscode-todo-plus/blob/master/resources/readme.todo)
+### [Example todo file](https://github.com/vycdev/vscode-todo-plus-two/blob/master/resources/readme.todo)
 
 ![Example todo file](resources/demo/syntax.png)
 
@@ -226,6 +226,8 @@ alias todo="ag --color-line-number '1;36' --color-path '1;36' --ignore-case --pr
 ```
 
 ## Related
+
+- **[TODO+](https://github.com/fabiospampinato/vscode-todo-plus)**: Previous version of this extension. 
 
 - **[Highlight](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-highlight)**: I recommend using this extension for highlighting your embedded todos.
 

@@ -1,3 +1,7 @@
+### Version 5.0.0-prerelease
+- Preparing for version 5.0.0 and publishing to marketplace
+- Changed icon and package settings
+
 ### Version 4.19.1
 - Fixed slow update of statistics decorations (fixes #210) (#367) (thanks to @squidfunk and @marvinhagemeister)
 - Minor code style tweaks
