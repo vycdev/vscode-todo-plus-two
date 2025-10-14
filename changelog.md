@@ -1,6 +1,7 @@
 ### Version 5.0.0
 - Changed icon and package settings
-- Updated docs and references 
+- Updated docs and references
+- Added CONTRIBUTING.md 
 
 ### Version 4.19.1
 - Fixed slow update of statistics decorations (fixes #210) (#367) (thanks to @squidfunk and @marvinhagemeister)
