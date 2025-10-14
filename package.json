@@ -1013,7 +1013,7 @@
     "test": "node ./node_modules/vscode/bin/test"
   },
   "bugs": {
-    "url": "https://github.com/fabiospampinato/vscode-todo-plus/issues"
+    "url": "https://github.com/vycdev/vscode-todo-plus-two/issues"
   },
   "author": {
     "name": "Fabio Spampinato",
@@ -1021,7 +1021,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/fabiospampinato/vscode-todo-plus.git"
+    "url": "https://github.com/vycdev/vscode-todo-plus-two.git"
   },
   "engines": {
     "vscode": "^1.25.0"

@@ -241,7 +241,7 @@ alias todo="ag --color-line-number '1;36' --color-path '1;36' --ignore-case --pr
 
 ## Contributing
 
-If you found a problem, or have a feature request, please open an [issue](https://github.com/fabiospampinato/vscode-todo-plus/issues) about it.
+If you found a problem, or have a feature request, please open an [issue](https://github.com/vycdev/vscode-todo-plus-two/issues) about it.
 
 If you want to make a pull request you can debug the extension using [Debug Launcher](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-debug-launcher).
 
