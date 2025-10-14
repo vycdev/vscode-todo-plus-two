@@ -1,12 +1,12 @@
 {
-  "name": "vscode-todo-plus",
-  "displayName": "Todo+",
+  "name": "vscode-todo-plus-two",
+  "displayName": "Todo+2",
   "description": "Manage todo lists with ease. Powerful, easy to use and customizable.",
   "icon": "resources/logo/logo-128x128.png",
-  "version": "4.19.1",
+  "version": "5.0.0",
   "license": "MIT",
   "main": "out/extension.js",
-  "publisher": "fabiospampinato",
+  "publisher": "vycdev",
   "activationEvents": [
     "*"
   ],
@@ -600,7 +600,10 @@
         },
         "todo.embedded.view.sort": {
           "type": "string",
-          "enum": ["line", "label"],
+          "enum": [
+            "line",
+            "label"
+          ],
           "description": "Sort todos either by label or by source line number",
           "default": "line"
         },
