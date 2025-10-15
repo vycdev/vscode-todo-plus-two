@@ -4,6 +4,7 @@
 - Updated docs and references
 - Added CONTRIBUTING.md
 - Improve code quality by formatting everything using prettier
+- Replace `rm -rf` with `rimraf` for windows compatibility 
 
 ### Version 4.19.1
 

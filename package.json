@@ -1005,7 +1005,7 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "rm -rf out && webpack --mode production",
+        "vscode:prepublish": "rimraf out && webpack --mode production",
         "publish": "vsce publish && npm publish",
         "compile": "webpack --mode development",
         "compile:watch": "webpack --mode development --watch",
@@ -1064,6 +1064,7 @@
     },
     "devDependencies": {
         "prettier": "^3.6.2",
+        "rimraf": "^6.0.1",
         "ts-loader": "^5.2.1",
         "typescript": "^2.8.0",
         "vscode": "^1.1.21",
