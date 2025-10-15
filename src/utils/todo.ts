@@ -1,38 +1,37 @@
 /* IMPORT */
 
-import * as _ from "lodash";
-import * as path from "path";
-import * as vscode from "vscode";
-import Config from "../config";
-import File from "./file";
+import * as _ from 'lodash';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import Config from '../config';
+import File from './file';
 
 /* TODO */
 
 const Todo = {
-  getFiles(folderPath) {
-    const config = Config.get(),
-      { extensions } = vscode.extensions.getExtension(
-        "vycdev.vscode-todo-plus-two"
-      ).packageJSON.contributes.languages[0],
-      files = _.uniq([config.file.name, ...extensions]);
+    getFiles(folderPath) {
+        const config = Config.get(),
+            { extensions } = vscode.extensions.getExtension('vycdev.vscode-todo-plus-two')
+                .packageJSON.contributes.languages[0],
+            files = _.uniq([config.file.name, ...extensions]);
 
-    return files.map((file) => path.join(folderPath, file));
-  },
+        return files.map((file) => path.join(folderPath, file));
+    },
 
-  get(folderPath) {
-    const files = Todo.getFiles(folderPath);
+    get(folderPath) {
+        const files = Todo.getFiles(folderPath);
 
-    for (let file of files) {
-      const content = File.readSync(file);
+        for (let file of files) {
+            const content = File.readSync(file);
 
-      if (_.isUndefined(content)) continue;
+            if (_.isUndefined(content)) continue;
 
-      return {
-        path: file,
-        content,
-      };
-    }
-  },
+            return {
+                path: file,
+                content,
+            };
+        }
+    },
 };
 
 /* EXPORT */

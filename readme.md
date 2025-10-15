@@ -11,9 +11,9 @@ Manage todo lists with ease. Powerful, easy to use and customizable. [View the d
 - **Easy to use**: you're just a few shortcuts away from becoming a master
 - **Portable**: being a plain text format you can read and edit it using any editor
 - **Custom symbols**: you can replace the default symbols with any of the supported ones
-  - **Box**: `-` `❍` `❑` `■` `⬜` `□` `☐` `▪` `▫` `–` `—` `≡` `→` `›` `[]` `[ ]`
-  - **Done**: `✔` `✓` `☑` `+` `[x]` `[X]` `[+]`
-  - **Cancelled**: `✘` `x` `X` `[-]`
+    - **Box**: `-` `❍` `❑` `■` `⬜` `□` `☐` `▪` `▫` `–` `—` `≡` `→` `›` `[]` `[ ]`
+    - **Done**: `✔` `✓` `☑` `+` `[x]` `[X]` `[+]`
+    - **Cancelled**: `✘` `x` `X` `[-]`
 - **Custom colors**: all colors can be customized
 - **Custom special tags**: special tags' names and their colors can be customized
 - **Archive**: you can move finished todos to a special "Archive" section with a shortcut
@@ -40,28 +40,28 @@ ext install vycdev.vscode-todo-plus-two
 It adds 11 commands to the command palette:
 
 ```js
-'Todo: Open' // Open or create your project's todo file
-'Todo: Open Embedded' // Open embedded todos
-'Todo: Toggle Box' // Toggle todo's box symbol
-'Todo: Toggle Done' // Toggle todo's done symbol
-'Todo: Toggle Cancelled' // Toggle todo's cancelled symbol
-'Todo: Toggle Start' // Toggle a todo as started
-'Todo: Toggle Timer' // Toggle the timer
-'Todo: Archive' // Archive finished todos
-'Todo: Embedded View - Filter' // Filter the embedded todos view
-'Todo: Embedded View - Clear Filter' // Clear the filter in the embedded todos view
-'Todo: Embedded View - Toggle View All Files' // Toggle between viewing all files or only the current one
+'Todo: Open'; // Open or create your project's todo file
+'Todo: Open Embedded'; // Open embedded todos
+'Todo: Toggle Box'; // Toggle todo's box symbol
+'Todo: Toggle Done'; // Toggle todo's done symbol
+'Todo: Toggle Cancelled'; // Toggle todo's cancelled symbol
+'Todo: Toggle Start'; // Toggle a todo as started
+'Todo: Toggle Timer'; // Toggle the timer
+'Todo: Archive'; // Archive finished todos
+'Todo: Embedded View - Filter'; // Filter the embedded todos view
+'Todo: Embedded View - Clear Filter'; // Clear the filter in the embedded todos view
+'Todo: Embedded View - Toggle View All Files'; // Toggle between viewing all files or only the current one
 ```
 
 It adds 6 shortcuts when editing a `Todo` file:
 
 ```js
-'Cmd/Ctrl+Enter' // Triggers `Todo: Toggle Box`
-'Alt+Enter' // Triggers `Todo: Toggle Box`
-'Alt+D' // Triggers `Todo: Toggle Done`
-'Alt+C' // Triggers `Todo: Toggle Cancelled`
-'Alt+S' // Triggers `Todo: Toggle Start`
-'Cmd/Ctrl+Shift+A' // Triggers  `Todo: Archive`
+'Cmd/Ctrl+Enter'; // Triggers `Todo: Toggle Box`
+'Alt+Enter'; // Triggers `Todo: Toggle Box`
+'Alt+D'; // Triggers `Todo: Toggle Done`
+'Alt+C'; // Triggers `Todo: Toggle Cancelled`
+'Alt+S'; // Triggers `Todo: Toggle Start`
+'Cmd/Ctrl+Shift+A'; // Triggers  `Todo: Archive`
 ```
 
 ## Settings
@@ -166,24 +166,24 @@ This extension supports various providers for searching for embedded todos, it'l
 
 The following tokens can be used in `todo.statistics.project.text`, `todo.statistics.statusbar.text` and `todo.statistics.statusbar.tooltip`, they will be replaced with the value they represent.
 
-| Token                        | Value                                          |
-|------------------------------|------------------------------------------------|
-| `[comments]`                 | Number of comments                             |
-| `[projects]`                 | Number of projects                             |
-| `[tags]`                     | Number of tags                                 |
-| `[pending]`                  | Number of pending todos                        |
-| `[done]`                     | Number of done todos                           |
-| `[cancelled]`                | Number of cancelled todos                      |
-| `[finished]`                 | Number of finished todos                       |
-| `[all]`                      | Number of todos                                |
-| `[percentage]`               | Percentage of finished todos                   |
-| `[est]`                      | Estimated time left                            |
-| `[est-total]`                | Total estimated time                           |
-| `[est-finished]`             | Estimated time of finished todos               |
-| `[est-finished-percentage]`  | Percentage of estimated time in finished todos |
-| `[lasted]`                   | Time the task lasted                           |
-| `[wasted]`                   | Time wasted on task                            |
-| `[elapsed]`                  | Sum of `[lasted]` and `[wasted]`               |
+| Token                       | Value                                          |
+| --------------------------- | ---------------------------------------------- |
+| `[comments]`                | Number of comments                             |
+| `[projects]`                | Number of projects                             |
+| `[tags]`                    | Number of tags                                 |
+| `[pending]`                 | Number of pending todos                        |
+| `[done]`                    | Number of done todos                           |
+| `[cancelled]`               | Number of cancelled todos                      |
+| `[finished]`                | Number of finished todos                       |
+| `[all]`                     | Number of todos                                |
+| `[percentage]`              | Percentage of finished todos                   |
+| `[est]`                     | Estimated time left                            |
+| `[est-total]`               | Total estimated time                           |
+| `[est-finished]`            | Estimated time of finished todos               |
+| `[est-finished-percentage]` | Percentage of estimated time in finished todos |
+| `[lasted]`                  | Time the task lasted                           |
+| `[wasted]`                  | Time wasted on task                            |
+| `[elapsed]`                 | Sum of `[lasted]` and `[wasted]`               |
 
 ## Demo
 
@@ -227,7 +227,7 @@ alias todo="ag --color-line-number '1;36' --color-path '1;36' --ignore-case --pr
 
 ## Related
 
-- **[TODO+](https://github.com/fabiospampinato/vscode-todo-plus)**: Previous version of this extension. 
+- **[TODO+](https://github.com/fabiospampinato/vscode-todo-plus)**: Previous version of this extension.
 
 - **[Highlight](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-highlight)**: I recommend using this extension for highlighting your embedded todos.
 
