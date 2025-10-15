@@ -1,4 +1,4 @@
-# Todo+
+# Todo+2
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/vycdev/vscode-todo-plus-two/master/resources/logo/logo.png" width="128" alt="Logo">
