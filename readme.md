@@ -229,22 +229,10 @@ alias todo="ag --color-line-number '1;36' --color-path '1;36' --ignore-case --pr
 
 - **[TODO+](https://github.com/fabiospampinato/vscode-todo-plus)**: Previous version of this extension.
 
-- **[Highlight](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-highlight)**: I recommend using this extension for highlighting your embedded todos.
-
-- **[Markdown Todo](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-markdown-todo#overview)**: Manage todo lists inside markdown files with ease.
-
-- **[Projects+ Todo+](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-projects-plus-todo-plus)**: Bird's-eye view over your projects, view all your todo files aggregated into one.
-
-- **[Noty](https://github.com/fabiospampinato/noty)**: Autosaving sticky note with support for multiple notes, find/replace, programmers shortcuts and more. It implements a subset of the functionalities provided by this extension.
-
-- **[Notable](https://github.com/fabiospampinato/notable)**: The markdown-based note-taking app that doesn't suck.
-
 ## Contributing
 
 If you found a problem, or have a feature request, please open an [issue](https://github.com/vycdev/vscode-todo-plus-two/issues) about it.
 
-If you want to make a pull request you can debug the extension using [Debug Launcher](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-debug-launcher).
-
 ## License
 
-MIT © Fabio Spampinato
+MIT © vycdev
