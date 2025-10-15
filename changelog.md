@@ -3,6 +3,7 @@
 - Changed icon and package settings
 - Updated docs and references
 - Added CONTRIBUTING.md
+- Improve code quality by formatting everything using prettier
 
 ### Version 4.19.1
 

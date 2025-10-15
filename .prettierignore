@@ -9,3 +9,5 @@ build
 *.map
 *.vsix
 "**/vendor/**"
+
+resources
