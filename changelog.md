@@ -5,6 +5,7 @@
 - Added CONTRIBUTING.md
 - Improve code quality by formatting everything using prettier
 - Replace `rm -rf` with `rimraf` for windows compatibility 
+- Added `launch.json` and `tasks.json` for easier debugging in vscode
 
 ### Version 4.19.1
 
