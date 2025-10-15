@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Extension (Clean, Watch)",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "preLaunchTask": "npm: compile:watch",
+            "presentation": {
+                "reveal": "silent",
+                "focus": false,
+                "panel": "dedicated"
+            },
+            "postDebugTask": "terminate build",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--user-data-dir=${workspaceFolder}/.vscode-dev/user-data",
+                "--extensions-dir=${workspaceFolder}/.vscode-dev/extensions",
+            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
+        },
+    ],
+}
