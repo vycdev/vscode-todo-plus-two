@@ -1010,13 +1010,15 @@
     "compile": "webpack --mode development",
     "compile:watch": "webpack --mode development --watch",
     "postinstall": "node ./node_modules/vscode/bin/install",
-    "test": "node ./node_modules/vscode/bin/test"
+    "test": "node ./node_modules/vscode/bin/test",
+    "format": "prettier --write \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md,css,scss,html,svg}\""
   },
   "bugs": {
     "url": "https://github.com/vycdev/vscode-todo-plus-two/issues"
   },
   "author": {
-    "name": "Fabio Spampinato",
+    "name": "",
     "email": "spampinabio@gmail.com"
   },
   "repository": {
@@ -1061,6 +1063,7 @@
     "vscode-beggar": "^1.0.0"
   },
   "devDependencies": {
+    "prettier": "^3.6.2",
     "ts-loader": "^5.2.1",
     "typescript": "^2.8.0",
     "vscode": "^1.1.21",
