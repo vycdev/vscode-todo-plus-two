@@ -7,6 +7,7 @@
 - Replace `rm -rf` with `rimraf` for windows compatibility 
 - Added `launch.json` and `tasks.json` for easier debugging in vscode
 - Removed support for other symbols other than ☐ ✔ ✘
+- Add support for markdown style tasks (`- [ ]` and `- [x]` only) 
 
 ### Version 4.19.1
 
