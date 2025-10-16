@@ -2,6 +2,8 @@
 
 A lightweight, plain-text todo manager for Visual Studio Code. Powerful, customizable and easy to use. [View the demo](#demo).
 
+This extension is a continuation of the original Todo+ extension by [Fabio Spampinato](https://github.com/fabiospampinato/vscode-todo-plus).
+
 <p style="clear: both"></p>
 
 ## Features
