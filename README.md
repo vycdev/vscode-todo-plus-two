@@ -1,10 +1,8 @@
-# Todo+2
+# <img src="https://raw.githubusercontent.com/vycdev/vscode-todo-plus-two/master/resources/logo/logo.png" width="96" alt="Todo+2 logo" align="left" style="margin-right:16px"> Todo+2
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/vycdev/vscode-todo-plus-two/master/resources/logo/logo.png" width="128" alt="Logo">
-</p>
+A lightweight, plain-text todo manager for Visual Studio Code. Powerful, customizable and easy to use. [View the demo](#demo).
 
-Manage todo lists with ease. Powerful, easy to use and customizable. [View the demo](#demo).
+<p style="clear: both"></p>
 
 ## Features
 
