@@ -1,10 +1,7 @@
 # <img src="https://raw.githubusercontent.com/vycdev/vscode-todo-plus-two/master/resources/logo/logo.png" width="96" alt="Todo+2 logo" align="left" style="margin-right:16px"> Todo+2
 
 A lightweight, plain-text todo manager for Visual Studio Code. Powerful, customizable and easy to use. [View the demo](#demo).
-
 This extension is a continuation of the original Todo+ extension by [Fabio Spampinato](https://github.com/fabiospampinato/vscode-todo-plus).
-
-<p style="clear: both"></p>
 
 ## Features
 
