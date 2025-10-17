@@ -8,15 +8,15 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Easy to use**: you're just a few shortcuts away from becoming a master
 - **Portable**: being a plain text format you can read and edit it using any editor
 - **Custom symbols**: you can replace the default symbols with any of the supported ones
-    - **Box**: `-` `❍` `❑` `■` `⬜` `□` `☐` `▪` `▫` `–` `—` `≡` `→` `›` `[]` `[ ]`
-    - **Done**: `✔` `✓` `☑` `+` `[x]` `[X]` `[+]`
-    - **Cancelled**: `✘` `x` `X` `[-]`
+- **Custom symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes.
+  - **Box**: `☐` or Markdown `- [ ]`
+  - **Done**: `✔` or Markdown `- [x]`
+  - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
 - **Custom colors**: all colors can be customized
 - **Custom special tags**: special tags' names and their colors can be customized
 - **Archive**: you can move finished todos to a special "Archive" section with a shortcut
 - **Formatting**: you can format text in a markdown-like fashion, we support: **bold**, _italic_, ~~strikethrough~~ and `code`
 - **Go To Symbol**: you can easily move between projects by using the `Go to Symbol in File...` command
-- **[TaskPaper](https://www.taskpaper.com) compatible**: just set `todo.symbols.box`, `todo.symbols.done` and `todo.symbols.cancelled` to `-`
 - **Timekeeping**: you can mark todos as started and track elapsed time until completion
 - **Timer**: a timer can be displayed in the statusbar for started todos
 - **Time estimates**: you can estimate the time it will take to complete a todo by adding a tag to it that looks like this: `@est(3 hours)`, `@est(2h30m)` or `@2h30m`. Then you can use the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens in statistics
