@@ -7,8 +7,8 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 
 - **Easy to use**: you're just a few shortcuts away from becoming a master
 - **Portable**: being a plain text format you can read and edit it using any editor
-- **Custom symbols**: you can replace the default symbols with any of the supported ones
-- **Custom symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes.
+- **Custom symbols**: you can replace the default symbols with any symbol you want
+- **Custom symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes by default.
   - **Box**: `☐` or Markdown `- [ ]`
   - **Done**: `✔` or Markdown `- [x]`
   - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)

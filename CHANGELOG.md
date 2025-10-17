@@ -8,6 +8,7 @@
 - Added `launch.json` and `tasks.json` for easier debugging in vscode
 - Removed support for other symbols other than ☐ ✔ ✘
 - Add support for markdown style tasks (`- [ ]` and `- [x]` only) 
+- `todo.symbols` is no longer limited to supported symbols, any symbol can be used 
 
 ### Version 4.19.1
 
