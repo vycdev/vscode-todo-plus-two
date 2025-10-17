@@ -226,6 +226,8 @@ alias todo="ag --color-line-number '1;36' --color-path '1;36' --ignore-case --pr
 
 If you found a problem, or have a feature request, please open an [issue](https://github.com/vycdev/vscode-todo-plus-two/issues) about it.
 
+You can find more about contributing here: [CONTRUBUTING.md](/CONTRIBUTING.md)
+
 ## License
 
 MIT © vycdev
