@@ -42,7 +42,7 @@ const Consts = {
         const esc = (s: any) => _.escapeRegExp(String(s || ''));
 
         // Markdown checkbox forms (require leading dash + space): '- [ ]' and '- [x]'
-        const mdBox = '-\\s+\\[\\s?\\]';
+        const mdBox = '-\\s+\\[ \\]';
         const mdDone = '-\\s+\\[[xX]\\]';
 
         // Build per-role pattern lists and dedupe
