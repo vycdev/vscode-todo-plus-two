@@ -277,6 +277,7 @@ const Statistics = {
                     items.todosDone,
                     items.todosCancelled,
                     items.tags,
+                    items.comments,
                 ],
                 lines = groups.reduce((arr1, arr2) => mergeSorted(arr1, arr2));
 
