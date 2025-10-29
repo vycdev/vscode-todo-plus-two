@@ -185,9 +185,62 @@ const Statistics = {
                 cancelled: items.todosCancelled.length,
             });
 
-            items.tags.forEach((tag) =>
-                Statistics.timeTags.add(tag.text, tokens, Statistics.tokens.disabled.global)
-            );
+            // We need to add time-based tags (est/lasted/etc.) only for tags that belong
+            // to pending todos — the same behavior used by project-level computation.
+            // To determine whether a tag belongs to a pending todo we merge all relevant
+            // item lists in line-number order and walk them sequentially, tracking
+            // whether the current context is a pending todo (wasPending).
+
+            function mergeSorted(arr1, arr2) {
+                // Merge two arrays sorted by lineNumber into a single sorted array
+                const merged = new Array(arr1.length + arr2.length);
+
+                let i = arr1.length - 1,
+                    j = arr2.length - 1,
+                    k = merged.length;
+
+                while (k) {
+                    merged[--k] =
+                        j < 0 || (i >= 0 && arr1[i].lineNumber > arr2[j].lineNumber)
+                            ? arr1[i--]
+                            : arr2[j--];
+                }
+
+                return merged;
+            }
+
+            const groups = [
+                    items.projects || [],
+                    items.todosBox || [],
+                    items.todosDone || [],
+                    items.todosCancelled || [],
+                    items.tags || [],
+                ],
+                lines = groups.reduce((a, b) => mergeSorted(a, b), []);
+
+            let wasPending = false;
+
+            for (let i = 0, l = lines.length; i < l; i++) {
+                const nextItem: any = lines[i];
+
+                if (nextItem instanceof Tag) {
+                    // tag count already accounted for in tokens.tags
+                    Statistics.timeTags.add(
+                        nextItem.text,
+                        tokens,
+                        Statistics.tokens.disabled.global,
+                        !wasPending
+                    );
+                } else {
+                    // Update wasPending state: only TodoBox should set it to true
+                    // finished/cancelled todos (and other items) set it to false
+                    if (nextItem instanceof TodoBox) {
+                        wasPending = true;
+                    } else if (nextItem instanceof TodoDone || nextItem instanceof TodoCancelled) {
+                        wasPending = false;
+                    }
+                }
+            }
 
             Statistics.tokens.global = tokens;
         },
