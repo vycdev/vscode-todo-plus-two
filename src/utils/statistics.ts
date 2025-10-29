@@ -384,12 +384,30 @@ const Statistics = {
         render(template: string, tokens = Statistics.getTokens()) {
             if (!tokens) return;
 
+            // Tokens that represent formatted time. Their getters return an
+            // empty string when no seconds are present. Substitute a sensible
+            // default so templates don't end up with invisible gaps.
+            const timeTokens = new Set([
+                'est',
+                'est-total',
+                'est-finished',
+                'lasted',
+                'wasted',
+                'elapsed',
+            ]);
+
             for (let token of Tokens.supported) {
                 const re = Statistics.template.getTokenRe(token);
 
                 if (!re.test(template)) continue;
 
-                template = template.replace(re, tokens[token]);
+                let value: any = tokens[token];
+
+                // If the token is one of the time tokens and its value is an
+                // empty string, replace it with a visible default ("0").
+                if (timeTokens.has(token) && value === '') value = '0s';
+
+                template = template.replace(re, value);
             }
 
             return template;
