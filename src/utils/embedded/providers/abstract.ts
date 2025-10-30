@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import Config from '../../../config';
 import EmbeddedView from '../../../views/embedded';
 import Folder from '../../folder';
+import Consts from '../../../consts';
 
 /* ABSTRACT */
 
@@ -138,6 +139,8 @@ class Abstract {
             activeFilePath = vscode.window.activeTextEditor
                 ? vscode.window.activeTextEditor.document.uri.fsPath
                 : '';
+
+        // Note: Comment visibility is controlled in the Files view only. Embedded items are always TODO-like.
 
         filePaths.forEach((filePath) => {
             if (onlyActiveFile && path.normalize(filePath) !== path.normalize(activeFilePath))

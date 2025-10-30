@@ -3,6 +3,8 @@
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Utils from '../utils';
+import Consts from '../consts';
+import Config from '../config';
 import File from './items/file';
 import Item from './items/item';
 import Group from './items/group';
@@ -58,6 +60,17 @@ class Files extends View {
                     isGroup = true;
                     return false;
                 });
+
+                // Respect comment visibility setting for Todo files
+                const showComments = !!Config.getKey('embedded.showComments');
+                const isCommentLine = !!(
+                    Consts &&
+                    Consts.regexes &&
+                    data.line &&
+                    data.line.text &&
+                    data.line.text.match(Consts.regexes.comment)
+                );
+                if (!showComments && isCommentLine) return;
 
                 const label = _.trimStart(data.line.text),
                     item = isGroup ? new Group(data, label) : new Todo(data, label);
