@@ -9,6 +9,9 @@
 - Removed support for other symbols other than ☐ ✔ ✘
 - Add support for markdown style tasks (`- [ ]` and `- [x]` only) 
 - `todo.symbols` is no longer limited to supported symbols, any symbol can be used 
+- Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/36
+- Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/37
+- Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/78
 
 ### Version 4.19.1
 
