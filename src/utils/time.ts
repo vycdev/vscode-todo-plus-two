@@ -106,7 +106,12 @@ const Time = {
             toDate = new Date(to);
         } else {
             to = to.replace(/ and /gi, ' ');
-            to = to.replace(/(\d)(ms|s|m|h|d|w|y)(\d)/gi, '$1$2 $3');
+            // Normalize compact durations like "1h5m21s" into a tokenized form that `to-time` can parse reliably.
+            // Insert a space after any time unit (ms|s|m|h|d|w|y) when followed immediately by a digit.
+            // This handles cases such as "1h5m21s" -> "1h 5m 21s" and also "90m30s" -> "90m 30s".
+            to = to.replace(/(ms|[smhdwy])(?=\d)/gi, '$1 ');
+            // Collapse any duplicate spacing introduced by normalization
+            to = to.replace(/\s+/g, ' ').trim();
 
             if (/^\s*\d+\s*$/.test(to)) return 0;
 

@@ -16,6 +16,8 @@
 - Introduced `todo.embedded.showComments` defaulting to `false` to reduce clutter in the sidebar. https://github.com/vycdev/vscode-todo-plus-two/issues/97 
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/50
 - Embedded: per-file refresh + non-empty-file caching to speed single-file edits. This will further improve performance in big projects. https://github.com/vycdev/vscode-todo-plus-two/issues/99
+- Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/45
+
 
 ### Version 4.19.1
 
