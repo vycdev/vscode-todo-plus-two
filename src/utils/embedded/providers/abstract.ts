@@ -35,10 +35,26 @@ class Abstract {
         if (!this.filesData || !_.isEqual(this.rootPaths, rootPaths)) {
             this.rootPaths = rootPaths;
             this.unwatchPaths();
-            await this.initFilesData(rootPaths);
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Window,
+                    title: 'Todo: Scanning embedded todos…',
+                },
+                async (progress) => {
+                    await this.initFilesData(rootPaths, progress);
+                }
+            );
             this.watchPaths();
         } else {
-            await this.updateFilesData();
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Window,
+                    title: 'Todo: Updating embedded todos…',
+                },
+                async (progress) => {
+                    await this.updateFilesData(progress);
+                }
+            );
         }
 
         return this.getTodos(groupByRoot, groupByType, groupByFile, filter, onlyActiveFile);
@@ -104,11 +120,14 @@ class Abstract {
         return !!this.getIncluded([filePath]).length;
     }
 
-    async initFilesData(rootPaths) {
+    async initFilesData(
+        rootPaths,
+        progress?: vscode.Progress<{ message?: string; increment?: number }>
+    ) {
         this.filesData = {};
     }
 
-    async updateFilesData() {}
+    async updateFilesData(progress?: vscode.Progress<{ message?: string; increment?: number }>) {}
 
     getTodos(groupByRoot, groupByType, groupByFile, filter, onlyActiveFile) {
         if (_.isEmpty(this.filesData)) return;

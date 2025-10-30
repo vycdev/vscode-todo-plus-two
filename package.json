@@ -573,6 +573,11 @@
                         "--ignore-case"
                     ]
                 },
+                "todo.embedded.batchSize": {
+                    "type": "number",
+                    "description": "Batch size when scanning embedded todos (applies to JavaScript provider).",
+                    "default": 50
+                },
                 "todo.embedded.file.wholeLine": {
                     "type": "boolean",
                     "description": "Show the whole line",
@@ -631,6 +636,11 @@
                     "type": "boolean",
                     "description": "Show icons next to todos and types",
                     "default": true
+                },
+                "todo.file.batchSize": {
+                    "type": "number",
+                    "description": "Batch size when loading todo files metadata and refreshing.",
+                    "default": 50
                 }
             }
         },

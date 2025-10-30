@@ -119,23 +119,34 @@ class Files {
 
         this.filesData = {};
 
-        await Promise.all(
-            filePaths.map(async (filePath: string) => {
-                this.filesData[filePath] = await this.getFileData(filePath);
-            })
-        );
+        const BATCH_SIZE = Math.max(1, Number(Config.get().file.batchSize) || 50);
+        for (let i = 0; i < filePaths.length; i += BATCH_SIZE) {
+            const batch = filePaths.slice(i, i + BATCH_SIZE);
+            await Promise.all(
+                batch.map(async (filePath: string) => {
+                    this.filesData[filePath] = await this.getFileData(filePath);
+                })
+            );
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
     }
 
     async updateFilesData() {
         if (_.isEmpty(this.filesData)) return;
 
-        await Promise.all(
-            _.map(this.filesData, async (val, filePath) => {
-                if (val) return;
+        const pending = Object.keys(this.filesData).filter((filePath) => !this.filesData[filePath]);
+        if (!pending.length) return;
 
-                this.filesData[filePath] = await this.getFileData(filePath);
-            })
-        );
+        const BATCH_SIZE = Math.max(1, Number(Config.get().file.batchSize) || 50);
+        for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+            const batch = pending.slice(i, i + BATCH_SIZE);
+            await Promise.all(
+                batch.map(async (filePath: string) => {
+                    this.filesData[filePath] = await this.getFileData(filePath);
+                })
+            );
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
     }
 
     async getFileData(filePath) {

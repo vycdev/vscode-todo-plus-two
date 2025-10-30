@@ -15,10 +15,22 @@ const Embedded = {
     async initProvider() {
         if (Embedded.provider) return;
 
-        const { javascript, ag, rg } = Embedded.providers,
-            provider = Config.get().embedded.provider,
-            // Provider = provider ? await Embedded.providers[provider]() || javascript () : await ag () || await rg () || javascript (); //FIXME: Trying to spawn "ag" or "rg" causes execa to never return, why is that?
-            Provider = javascript();
+        const { javascript, ag, rg } = Embedded.providers;
+        const cfg = Config.get();
+        const preferred = cfg.embedded.provider; // "javascript" | "ag" | "rg" | ""
+
+        let Provider;
+
+        if (preferred) {
+            // Honor explicit preference, but fall back gracefully
+            const pick = await (Embedded.providers[preferred]
+                ? Embedded.providers[preferred]()
+                : undefined);
+            Provider = pick || javascript();
+        } else {
+            // Auto-detect fast providers, then fall back to JS
+            Provider = (await ag()) || (await rg()) || javascript();
+        }
 
         Embedded.provider = new Provider();
     },
