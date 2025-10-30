@@ -105,16 +105,20 @@ class AG extends Abstract {
         this.filesData = {};
 
         this.ackmate2data(ackmate);
+
+        // Update non-empty set to only include files that actually have todos
+        this.nonEmptyFiles = new Set(Object.keys(this.filesData));
     }
 
     async updateFilesData() {
-        const filePaths = Object.keys(this.filesData).filter(
-                (filePath) => !this.filesData[filePath]
-            ),
-            ackmate = await this.getAckmate(filePaths);
+        const pending = Object.keys(this.filesData).filter((filePath) => !this.filesData[filePath]);
+        if (!pending.length) return;
+
+        const ackmate = await this.getAckmate(pending);
 
         this.ackmate2data(ackmate);
 
+        // Prune files that still have no results
         this.filesData = _.transform(
             this.filesData,
             (acc, val, key) => {
@@ -123,6 +127,15 @@ class AG extends Abstract {
             },
             {}
         );
+
+        // Update non-empty set based on the pending files processed
+        for (const fp of pending) {
+            if (this.filesData[fp] && this.filesData[fp].length) {
+                this.nonEmptyFiles.add(fp);
+            } else {
+                this.nonEmptyFiles.delete(fp);
+            }
+        }
     }
 }
 

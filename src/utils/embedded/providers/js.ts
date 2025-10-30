@@ -62,7 +62,14 @@ class JS extends Abstract {
             filePaths,
             BATCH_SIZE,
             async (filePath: string) => {
-                this.filesData[filePath] = await this.getFileData(filePath);
+                const data = await this.getFileData(filePath);
+                if (data && data.length) {
+                    this.filesData[filePath] = data;
+                    this.nonEmptyFiles.add(filePath);
+                } else {
+                    delete this.filesData[filePath];
+                    this.nonEmptyFiles.delete(filePath);
+                }
             },
             progress,
             filePaths.length,
@@ -82,7 +89,14 @@ class JS extends Abstract {
             pending,
             BATCH_SIZE,
             async (filePath: string) => {
-                this.filesData[filePath] = await this.getFileData(filePath);
+                const data = await this.getFileData(filePath);
+                if (data && data.length) {
+                    this.filesData[filePath] = data;
+                    this.nonEmptyFiles.add(filePath);
+                } else {
+                    delete this.filesData[filePath];
+                    this.nonEmptyFiles.delete(filePath);
+                }
             },
             progress,
             pending.length,
@@ -91,8 +105,11 @@ class JS extends Abstract {
     }
 
     async getFileData(filePath) {
-        const data = [],
-            content = await File.read(filePath);
+        const data = [];
+        const openDoc = vscode.workspace.textDocuments.find(
+            (d) => d.uri && d.uri.fsPath === filePath
+        );
+        const content = openDoc ? openDoc.getText() : await File.read(filePath);
 
         if (!content) return data;
 

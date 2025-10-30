@@ -16,6 +16,7 @@ class Abstract {
     exclude = undefined;
     rootPaths = undefined;
     filesData = undefined; // { [filePath]: todo[] | undefined }
+    nonEmptyFiles: Set<string> = new Set(); // Tracks only files with at least one embedded todo
     watcher: vscode.FileSystemWatcher = undefined;
 
     async get(
@@ -36,6 +37,7 @@ class Abstract {
         if (!this.filesData || !_.isEqual(this.rootPaths, rootPaths)) {
             this.rootPaths = rootPaths;
             this.unwatchPaths();
+            this.nonEmptyFiles = new Set();
             await vscode.window.withProgress(
                 {
                     location: vscode.ProgressLocation.Window,
@@ -68,7 +70,7 @@ class Abstract {
 
         /* HANDLERS */
 
-        const refresh = _.debounce(() => EmbeddedView.refresh(), 250);
+        const refreshAll = _.debounce(() => EmbeddedView.refresh(), 250);
 
         const add = (event) => {
             if (!this.filesData) return;
@@ -76,7 +78,7 @@ class Abstract {
             if (this.filesData.hasOwnProperty(filePath)) return;
             if (!this.isIncluded(filePath)) return;
             this.filesData[filePath] = undefined;
-            refresh();
+            refreshAll();
         };
 
         const change = (event) => {
@@ -84,14 +86,20 @@ class Abstract {
             const filePath = pathNormalizer(event.fsPath);
             if (!this.isIncluded(filePath)) return;
             this.filesData[filePath] = undefined;
-            refresh();
+            // Targeted refresh: update only the file node if it's visible; this avoids a full tree rebuild
+            if (typeof EmbeddedView.refreshFile === 'function') {
+                EmbeddedView.refreshFile(filePath);
+            } else {
+                refreshAll();
+            }
         };
 
         const unlink = (event) => {
             if (!this.filesData) return;
             const filePath = pathNormalizer(event.fsPath);
             delete this.filesData[filePath];
-            refresh();
+            this.nonEmptyFiles.delete(filePath);
+            refreshAll();
         };
 
         /* WATCHING */
@@ -135,7 +143,7 @@ class Abstract {
 
         const todos = {}, // { [ROOT] { [TYPE] => { [FILEPATH] => [DATA] } } }
             filterRe = filter ? new RegExp(_.escapeRegExp(filter), 'i') : false,
-            filePaths = Object.keys(this.filesData),
+            filePaths = Array.from(this.nonEmptyFiles),
             activeFilePath = vscode.window.activeTextEditor
                 ? vscode.window.activeTextEditor.document.uri.fsPath
                 : '';

@@ -21,6 +21,7 @@ class Embedded extends View {
     expanded = true;
     filter: string | false = false;
     filePathRe = /^(?!~).*(?:\\|\/)/;
+    private fileItems: Map<string, Item> = new Map();
 
     constructor() {
         super();
@@ -61,6 +62,9 @@ class Embedded extends View {
             return [];
         }
 
+        // If we're rebuilding from root, clear the fileItems map; it will be repopulated as nodes are created
+        if (!item) this.fileItems.clear();
+
         let obj = item ? item.obj : await this.getEmbedded();
 
         while (obj && '' in obj) obj = obj['']; // Collapsing unnecessary groups
@@ -91,8 +95,11 @@ class Embedded extends View {
 
                 if (this.filePathRe.test(key)) {
                     const uri = Utils.view.getURI(val[0]);
-
-                    return new File(val, uri);
+                    const fileItem = new File(val, uri);
+                    // Store mapping to allow per-file refresh; accept both slash variants on Windows
+                    this.fileItems.set(key, fileItem);
+                    this.fileItems.set(key.replace(/\\/g, '/'), fileItem);
+                    return fileItem;
                 } else {
                     return new Group(val, key, this.config.embedded.view.icons);
                 }
@@ -104,6 +111,44 @@ class Embedded extends View {
         this.clear = !!clear;
 
         super.refresh();
+    }
+
+    async refreshFile(filePath: string) {
+        try {
+            await Utils.embedded.initProvider();
+
+            // Ensure file data is up to date if it's pending
+            const provider = Utils.embedded.provider as any;
+            if (provider && provider.filesData && provider.filesData[filePath] === undefined) {
+                await provider.updateFilesData();
+            }
+
+            // Try both slash variants for mapping
+            const keysToTry = [filePath, filePath.replace(/\\/g, '/')];
+            let item: Item | undefined;
+            for (const k of keysToTry) {
+                item = this.fileItems.get(k);
+                if (item) break;
+            }
+
+            if (item) {
+                // Update the node's backing data from the provider so children reflect new content
+                const fresh =
+                    provider && provider.filesData ? provider.filesData[filePath] : undefined;
+                if (fresh && fresh.length) {
+                    item.obj = fresh;
+                    this.onDidChangeTreeDataEvent.fire(item);
+                } else {
+                    // File no longer has todos; fall back to a full refresh to drop the node
+                    this.refresh();
+                }
+            } else {
+                // No mapping (node may not be visible or grouping differs); full refresh
+                this.refresh();
+            }
+        } catch (e) {
+            this.refresh();
+        }
     }
 }
 
