@@ -14,6 +14,18 @@ import Abstract from './abstract';
 class AG extends Abstract {
     static bin = 'ag';
 
+    async getFilePaths(rootPaths) {
+        const globby = require('globby'); // Lazy import for performance
+
+        return _.flatten(
+            await Promise.all(
+                rootPaths.map((cwd) =>
+                    globby(this.include, { cwd, ignore: this.exclude, dot: true, absolute: true })
+                )
+            )
+        );
+    }
+
     execa(filePaths) {
         const config = Config.get();
 
@@ -85,7 +97,10 @@ class AG extends Abstract {
     }
 
     async initFilesData(rootPaths) {
-        const ackmate = this.filterAckmate(await this.getAckmate(rootPaths));
+        // Limit the initial external search to the include globs to avoid scanning the whole workspace.
+        // This mirrors the JS provider behavior and massively reduces unnecessary IO when includes are narrow (e.g. only **/*.md).
+        const filePaths = await this.getFilePaths(rootPaths);
+        const ackmate = this.filterAckmate(await this.getAckmate(filePaths));
 
         this.filesData = {};
 
