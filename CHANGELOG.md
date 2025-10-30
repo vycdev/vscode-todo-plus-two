@@ -12,7 +12,7 @@
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/36
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/37
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/78
-- Performance improvements including two new settings `todo.embedded.batchSize` and `todo.file.batchSize`
+- Performance improvements including two new settings `todo.embedded.batchSize` and `todo.file.batchSize`. https://github.com/vycdev/vscode-todo-plus-two/issues/75
 
 ### Version 4.19.1
 
