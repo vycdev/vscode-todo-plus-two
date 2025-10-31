@@ -512,6 +512,11 @@
             "**/*"
           ]
         },
+        "todo.followSymlinks": {
+          "type": "boolean",
+          "description": "Follow symbolic links when enumerating files (can cause cycles). Disable to avoid infinite loops.",
+          "default": false
+        },
         "todo.embedded.showComments": {
           "type": "boolean",
           "description": "Show comment-only lines in the Embedded (side) view",

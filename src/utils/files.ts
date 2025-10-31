@@ -2,6 +2,8 @@
 
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as pify from 'pify';
 import Config from '../config';
 import FilesView from '../views/files';
 import Folder from './folder';
@@ -105,13 +107,39 @@ class Files {
     async getFilePaths(rootPaths): Promise<string[]> {
         const globby = require('globby'); // Lazy import for performance
 
-        return _.flatten(
+        const follow = !!Config.getKey('followSymlinks');
+
+        const raw = _.flatten(
             await Promise.all(
                 rootPaths.map((cwd) =>
-                    globby(this.include, { cwd, ignore: this.exclude, dot: true, absolute: true })
+                    globby(this.include, {
+                        cwd,
+                        ignore: this.exclude,
+                        dot: true,
+                        absolute: true,
+                        followSymbolicLinks: follow,
+                    })
                 )
             )
         ) as string[]; //TSC
+
+        // Deduplicate by realpath to avoid cycles and duplicate targets (defensive)
+        const seen = new Set<string>();
+        const result: string[] = [];
+        for (const fp of raw) {
+            let rp: string;
+            try {
+                rp = await (pify(fs.realpath) as any)(fp);
+            } catch (e) {
+                rp = fp;
+            }
+            if (!seen.has(rp)) {
+                seen.add(rp);
+                result.push(fp);
+            }
+        }
+
+        return result;
     }
 
     async initFilesData(rootPaths) {

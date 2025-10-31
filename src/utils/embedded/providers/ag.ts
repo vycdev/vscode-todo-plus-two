@@ -17,13 +17,41 @@ class AG extends Abstract {
     async getFilePaths(rootPaths) {
         const globby = require('globby'); // Lazy import for performance
 
-        return _.flatten(
+        const follow = !!Config.getKey('followSymlinks');
+
+        const raw = _.flatten(
             await Promise.all(
                 rootPaths.map((cwd) =>
-                    globby(this.include, { cwd, ignore: this.exclude, dot: true, absolute: true })
+                    globby(this.include, {
+                        cwd,
+                        ignore: this.exclude,
+                        dot: true,
+                        absolute: true,
+                        followSymbolicLinks: follow,
+                    })
                 )
             )
         );
+
+        // Deduplicate by realpath (defensive)
+        const fs = require('fs');
+        const pify = require('pify');
+        const seen = new Set();
+        const result = [];
+        for (const fp of raw) {
+            let rp;
+            try {
+                rp = await pify(fs.realpath)(fp);
+            } catch (e) {
+                rp = fp;
+            }
+            if (!seen.has(rp)) {
+                seen.add(rp);
+                result.push(fp);
+            }
+        }
+
+        return result;
     }
 
     execa(filePaths) {
