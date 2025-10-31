@@ -80,7 +80,7 @@ class Embedded extends View {
                 );
             });
 
-            if (this.config.embedded.view.sortBy === 'label') {
+            if (this.config.embedded.view.sort === 'label') {
                 todos.sort((a, b) => {
                     return a.label.toString().localeCompare(b.label.toString());
                 });
