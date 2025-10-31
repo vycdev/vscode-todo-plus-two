@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import * as vscode from 'vscode';
@@ -6,28 +5,24 @@ import * as vscode from 'vscode';
 /* COMMAND */
 
 const Command = {
+    proxiesHashes: [], // Array of hashes (`${command}${arguments}`) of proxy commands
 
-  proxiesHashes: [], // Array of hashes (`${command}${arguments}`) of proxy commands
+    get(command, args) {
+        if (!args) return command;
 
-  get ( command, args ) {
+        const hash = `${command}${JSON.stringify(args)}`,
+            exists = !!Command.proxiesHashes.find((h) => h === hash);
 
-    if ( !args ) return command;
+        if (exists) return hash;
 
-    const hash = `${command}${JSON.stringify ( args )}`,
-          exists = !!Command.proxiesHashes.find ( h => h === hash );
+        vscode.commands.registerCommand(hash, () => {
+            vscode.commands.executeCommand(command, ...args);
+        });
 
-    if ( exists ) return hash;
+        Command.proxiesHashes.push(hash);
 
-    vscode.commands.registerCommand ( hash, () => {
-      vscode.commands.executeCommand ( command, ...args );
-    });
-
-    Command.proxiesHashes.push ( hash );
-
-    return hash;
-
-  }
-
+        return hash;
+    },
 };
 
 /* EXPORT */

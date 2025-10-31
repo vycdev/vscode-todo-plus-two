@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import * as vscode from 'vscode';
@@ -15,69 +14,61 @@ import ViewFiles from './views/files';
 
 /* ACTIVATE */
 
-const activate = function ( context: vscode.ExtensionContext ) {
+const activate = function (context: vscode.ExtensionContext) {
+    const config = Config.get();
 
-  beggar ({
-    id: 'vscode-todo-plus',
-    title: '𝗧𝗼𝗱𝗼+ - 𝗙𝘂𝗻𝗱𝗿𝗮𝗶𝘀𝗶𝗻𝗴 𝗔𝗻𝗻𝗼𝘂𝗻𝗰𝗲𝗺𝗲𝗻𝘁: We are collecting some money to allow for further development, if you find this extension useful please please please consider donating to it and be part of something amazing!',
-    url: 'https://buy.stripe.com/4gweWHcsh71lbN6dQQ',
-    actions: {
-      yes: {
-        webhook: `https://telemetry.notable.app/track?events=%5B%7B%22event%22%3A%22vscode-beggar%22%2C%22extension%22%3A%22vscode-todo-plus%22%2C%22result%22%3A1%2C%22timestamp%22%3A${Date.now ()}%7D%5D`
-      },
-      no: {
-        webhook: `https://telemetry.notable.app/track?events=%5B%7B%22event%22%3A%22vscode-beggar%22%2C%22extension%22%3A%22vscode-todo-plus%22%2C%22result%22%3A0%2C%22timestamp%22%3A${Date.now ()}%7D%5D`
-      },
-      cancel: {
-        webhook: `https://telemetry.notable.app/track?events=%5B%7B%22event%22%3A%22vscode-beggar%22%2C%22extension%22%3A%22vscode-todo-plus%22%2C%22result%22%3A2%2C%22timestamp%22%3A${Date.now ()}%7D%5D`
-      }
-    }
-  });
+    Config.check(config);
 
-  const config = Config.get ();
+    ViewEmbedded.expanded = config.embedded.view.expanded;
 
-  Config.check ( config );
+    vscode.commands.executeCommand('setContext', 'todo-embedded-expanded', ViewEmbedded.expanded);
+    vscode.commands.executeCommand('setContext', 'todo-embedded-filtered', !!ViewEmbedded.filter);
 
-  ViewEmbedded.expanded = config.embedded.view.expanded;
+    ViewEmbedded.all = true;
 
-  vscode.commands.executeCommand ( 'setContext', 'todo-embedded-expanded', ViewEmbedded.expanded );
-  vscode.commands.executeCommand ( 'setContext', 'todo-embedded-filtered', !!ViewEmbedded.filter );
+    vscode.commands.executeCommand('setContext', 'todo-embedded-all', !!ViewEmbedded.all);
 
-  ViewEmbedded.all = true;
+    ViewFiles.expanded = config.file.view.expanded;
 
-  vscode.commands.executeCommand ( 'setContext', 'todo-embedded-all', !!ViewEmbedded.all );
+    vscode.commands.executeCommand('setContext', 'todo-files-expanded', ViewFiles.expanded);
+    vscode.commands.executeCommand('setContext', 'todo-files-open-button', true);
 
-  ViewFiles.expanded = config.file.view.expanded;
+    Utils.context = context;
+    Utils.folder.initRootsRe();
+    Utils.init.language();
+    Utils.init.views();
+    Utils.statistics.tokens.updateDisabledAll();
 
-  vscode.commands.executeCommand ( 'setContext', 'todo-files-expanded', ViewFiles.expanded );
-  vscode.commands.executeCommand ( 'setContext', 'todo-files-open-button', true );
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider(
+            Consts.languageId,
+            new CompletionProvider(),
+            ...CompletionProvider.triggerCharacters
+        ),
+        vscode.languages.registerDocumentSymbolProvider(Consts.languageId, new SymbolsProvider()),
+        vscode.window.onDidChangeActiveTextEditor(() => DocumentDecorator.update()),
+        vscode.workspace.onDidChangeConfiguration(Consts.update),
+        vscode.workspace.onDidChangeConfiguration(
+            () =>
+                delete Utils.files.filesData &&
+                Utils.embedded.provider &&
+                delete Utils.embedded.provider.filesData
+        ),
+        vscode.workspace.onDidChangeConfiguration(() => DocumentDecorator.update()),
+        vscode.workspace.onDidChangeConfiguration(Utils.statistics.tokens.updateDisabledAll),
+        vscode.workspace.onDidChangeTextDocument(ChangesDecorator.onChanges),
+        vscode.workspace.onDidChangeWorkspaceFolders(
+            () => Utils.embedded.provider && Utils.embedded.provider.unwatchPaths()
+        ),
+        vscode.workspace.onDidChangeWorkspaceFolders(Utils.files.unwatchPaths),
+        vscode.workspace.onDidChangeWorkspaceFolders(Utils.folder.initRootsRe)
+    );
 
-  Utils.context = context;
-  Utils.folder.initRootsRe ();
-  Utils.init.language ();
-  Utils.init.views ();
-  Utils.statistics.tokens.updateDisabledAll ();
+    DocumentDecorator.update();
 
-  context.subscriptions.push (
-    vscode.languages.registerCompletionItemProvider ( Consts.languageId, new CompletionProvider (), ...CompletionProvider.triggerCharacters ),
-    vscode.languages.registerDocumentSymbolProvider ( Consts.languageId, new SymbolsProvider () ),
-    vscode.window.onDidChangeActiveTextEditor ( () => DocumentDecorator.update () ),
-    vscode.workspace.onDidChangeConfiguration ( Consts.update ),
-    vscode.workspace.onDidChangeConfiguration ( () => delete Utils.files.filesData && Utils.embedded.provider && delete Utils.embedded.provider.filesData ),
-    vscode.workspace.onDidChangeConfiguration ( () => DocumentDecorator.update () ),
-    vscode.workspace.onDidChangeConfiguration ( Utils.statistics.tokens.updateDisabledAll ),
-    vscode.workspace.onDidChangeTextDocument ( ChangesDecorator.onChanges ),
-    vscode.workspace.onDidChangeWorkspaceFolders ( () => Utils.embedded.provider && Utils.embedded.provider.unwatchPaths () ),
-    vscode.workspace.onDidChangeWorkspaceFolders ( Utils.files.unwatchPaths ),
-    vscode.workspace.onDidChangeWorkspaceFolders ( Utils.folder.initRootsRe )
-  );
-
-  DocumentDecorator.update ();
-
-  return Utils.init.commands ( context );
-
+    return Utils.init.commands(context);
 };
 
 /* EXPORT */
 
-export {activate};
+export { activate };

@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import Consts from '../../consts';
@@ -8,13 +7,9 @@ import TodoFinished from './todo';
 /* TODO CANCELLED */
 
 class TodoCancelled extends TodoFinished {
-
-  static is ( str: string ) {
-
-    return Item.is ( str, Consts.regexes.todoCancelled );
-
-  }
-
+    static is(str: string) {
+        return Item.is(str, Consts.regexes.todoCancelled);
+    }
 }
 
 /* EXPORT */

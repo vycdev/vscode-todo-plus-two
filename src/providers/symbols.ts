@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import * as _ from 'lodash';
@@ -10,59 +9,61 @@ import Document from '../todo/document';
 /* SYMBOLS */
 
 class Symbols implements vscode.DocumentSymbolProvider {
+    provideDocumentSymbols(textDocument: vscode.TextDocument) {
+        const doc = new Document(textDocument),
+            projects = doc.getProjects(),
+            projectsDatas = [],
+            symbols = [];
 
-  provideDocumentSymbols ( textDocument: vscode.TextDocument ) {
+        projects.forEach((project) => {
+            /* SYMBOL */
 
-    const doc = new Document ( textDocument ),
-          projects = doc.getProjects (),
-          projectsDatas = [],
-          symbols = [];
+            const parts = project.line.text.match(Consts.regexes.projectParts),
+                level = Utils.ast.getLevel(textDocument, parts[1]),
+                name = _.trim(parts[2]),
+                selectionRange = project.range,
+                startLine = selectionRange.start.line,
+                startCharacter = selectionRange.start.character;
 
-    projects.forEach ( project => {
+            let endLine = startLine;
 
-      /* SYMBOL */
+            Utils.ast.walkDown(
+                doc.textDocument,
+                startLine,
+                true,
+                false,
+                ({ startLevel, level, line }) => {
+                    if (level <= startLevel) return false;
+                    endLine = line.lineNumber;
+                }
+            );
 
-      const parts = project.line.text.match ( Consts.regexes.projectParts ),
-            level = Utils.ast.getLevel ( textDocument, parts[1] ),
-            name = _.trim ( parts[2] ),
-            selectionRange = project.range,
-            startLine = selectionRange.start.line,
-            startCharacter = selectionRange.start.character;
+            const endCharacter = doc.textDocument.lineAt(endLine).range.end.character,
+                fullRange = new vscode.Range(startLine, startCharacter, endLine, endCharacter),
+                symbol = new vscode.DocumentSymbol(
+                    name,
+                    undefined,
+                    vscode.SymbolKind.Field,
+                    fullRange,
+                    selectionRange
+                );
 
-      let endLine = startLine;
+            projectsDatas.push({ level, name, symbol });
 
-      Utils.ast.walkDown ( doc.textDocument, startLine, true, false, ({ startLevel, level, line }) => {
-        if ( level <= startLevel ) return false;
-        endLine = line.lineNumber;
-      });
+            /* PARENT */
 
-      const endCharacter = doc.textDocument.lineAt ( endLine ).range.end.character,
-            fullRange = new vscode.Range ( startLine, startCharacter, endLine, endCharacter ),
-            symbol = new vscode.DocumentSymbol ( name, undefined, vscode.SymbolKind.Field, fullRange, selectionRange );
+            const parentData = _.findLast(projectsDatas, (data) => data.level < level) || {},
+                { symbol: parentSymbol } = parentData;
 
-      projectsDatas.push ({ level, name, symbol });
+            if (parentSymbol) {
+                parentSymbol.children.push(symbol);
+            } else {
+                symbols.push(symbol);
+            }
+        });
 
-      /* PARENT */
-
-      const parentData = _.findLast ( projectsDatas, data => data.level < level ) || {},
-            { symbol: parentSymbol } = parentData;
-
-      if ( parentSymbol ) {
-
-        parentSymbol.children.push ( symbol );
-
-      } else {
-
-        symbols.push ( symbol );
-
-      }
-
-    });
-
-    return symbols;
-
-  }
-
+        return symbols;
+    }
 }
 
 /* EXPORT */

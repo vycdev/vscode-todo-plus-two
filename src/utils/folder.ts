@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import * as _ from 'lodash';
@@ -10,89 +9,77 @@ import * as vscode from 'vscode';
 /* FOLDER */
 
 const Folder = {
+    getAllRootPaths() {
+        const { workspaceFolders } = vscode.workspace;
 
-  getAllRootPaths () {
+        if (!workspaceFolders) return [];
 
-    const {workspaceFolders} = vscode.workspace;
+        return workspaceFolders.map((folder) => folder.uri.fsPath);
+    },
 
-    if ( !workspaceFolders ) return [];
+    getRootPath(basePath?) {
+        const { workspaceFolders } = vscode.workspace;
 
-    return workspaceFolders.map ( folder => folder.uri.fsPath );
+        if (!workspaceFolders) return;
 
-  },
+        const firstRootPath = workspaceFolders[0].uri.fsPath;
 
-  getRootPath ( basePath? ) {
+        if (!basePath || !absolute(basePath)) return firstRootPath;
 
-    const {workspaceFolders} = vscode.workspace;
+        const rootPaths = workspaceFolders.map((folder) => folder.uri.fsPath),
+            sortedRootPaths = _.sortBy(rootPaths, [(path) => path.length]).reverse(); // In order to get the closest root
 
-    if ( !workspaceFolders ) return;
+        return sortedRootPaths.find((rootPath) => basePath.startsWith(rootPath));
+    },
 
-    const firstRootPath = workspaceFolders[0].uri.fsPath;
+    async getWrapperPathOf(rootPath, cwdPath, findPath) {
+        const foundPath = await findUp(findPath, { cwd: cwdPath });
 
-    if ( !basePath || !absolute ( basePath ) ) return firstRootPath;
+        if (foundPath) {
+            const wrapperPath = path.dirname(foundPath);
 
-    const rootPaths = workspaceFolders.map ( folder => folder.uri.fsPath ),
-          sortedRootPaths = _.sortBy ( rootPaths, [path => path.length] ).reverse (); // In order to get the closest root
+            if (wrapperPath.startsWith(rootPath)) {
+                return wrapperPath;
+            }
+        }
+    },
 
-    return sortedRootPaths.find ( rootPath => basePath.startsWith ( rootPath ) );
+    rootsRe: undefined,
 
-  },
+    initRootsRe() {
+        const roots = Folder.getAllRootPaths().sort().reverse(),
+            rootsRe = new RegExp(
+                `^(${roots.map((root) => _.escapeRegExp(root).replace(/\\\\/g, '(?:\\\\|/)')).join('|')})(.*)$`
+            );
 
-  async getWrapperPathOf ( rootPath, cwdPath, findPath ) {
+        Folder.rootsRe = rootsRe;
+    },
 
-    const foundPath = await findUp ( findPath, { cwd: cwdPath } );
+    parsePath(filePath): any {
+        //TSC
 
-    if ( foundPath ) {
+        if (!Folder.rootsRe) return {};
 
-      const wrapperPath = path.dirname ( foundPath );
+        const match = Folder.rootsRe.exec(filePath);
 
-      if ( wrapperPath.startsWith ( rootPath ) ) {
+        if (match) {
+            // Interal path
 
-        return wrapperPath;
+            return {
+                root: path.basename(match[1]),
+                rootPath: match[1],
+                relativePath: match[2],
+            };
+        } else {
+            // External path
 
-      }
-
-    }
-
-  },
-
-  rootsRe: undefined,
-
-  initRootsRe () {
-
-    const roots = Folder.getAllRootPaths ().sort ().reverse (),
-          rootsRe = new RegExp ( `^(${roots.map ( root => _.escapeRegExp ( root ).replace ( /\\\\/g, '(?:\\\\|/)' ) ).join ( '|' )})(.*)$` );
-
-    Folder.rootsRe = rootsRe;
-
-  },
-
-  parsePath ( filePath ): any { //TSC
-
-    if ( !Folder.rootsRe ) return {};
-
-    const match = Folder.rootsRe.exec ( filePath );
-
-    if ( match ) { // Interal path
-
-      return {
-        root: path.basename ( match[1] ),
-        rootPath: match[1],
-        relativePath: match[2]
-      };
-
-    } else { // External path
-
-      return {
-        root: path.basename ( path.dirname ( filePath ) ),
-        rootPath: path.dirname ( filePath ),
-        relativePath: path.basename ( filePath )
-      };
-
-    }
-
-  }
-
+            return {
+                root: path.basename(path.dirname(filePath)),
+                rootPath: path.dirname(filePath),
+                relativePath: path.basename(filePath),
+            };
+        }
+    },
 };
 
 /* EXPORT */

@@ -1,25 +1,22 @@
-# Todo+
+# <img src="resources/logo/logo.png" width="96" alt="Todo+2 logo" align="left" style="margin-right:16px"> Todo+2
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/fabiospampinato/vscode-todo-plus/master/resources/logo/logo.png" width="128" alt="Logo">
-</p>
-
-Manage todo lists with ease. Powerful, easy to use and customizable. [View the demo](#demo).
+A lightweight, plain-text todo manager for Visual Studio Code. Powerful, customizable and easy to use. [View the demo](#demo).
+This extension is a continuation of the original Todo+ extension by [Fabio Spampinato](https://github.com/fabiospampinato/vscode-todo-plus) and will break compatibility with some of the features. Old issues have been imported from the original repository and will be addressed. 
 
 ## Features
 
 - **Easy to use**: you're just a few shortcuts away from becoming a master
 - **Portable**: being a plain text format you can read and edit it using any editor
-- **Custom symbols**: you can replace the default symbols with any of the supported ones
-  - **Box**: `-` `❍` `❑` `■` `⬜` `□` `☐` `▪` `▫` `–` `—` `≡` `→` `›` `[]` `[ ]`
-  - **Done**: `✔` `✓` `☑` `+` `[x]` `[X]` `[+]`
-  - **Cancelled**: `✘` `x` `X` `[-]`
+- **Custom symbols**: you can replace the default symbols with any symbol you want
+- **Custom symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes by default.
+  - **Box**: `☐` or Markdown `- [ ]`
+  - **Done**: `✔` or Markdown `- [x]`
+  - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
 - **Custom colors**: all colors can be customized
 - **Custom special tags**: special tags' names and their colors can be customized
 - **Archive**: you can move finished todos to a special "Archive" section with a shortcut
 - **Formatting**: you can format text in a markdown-like fashion, we support: **bold**, _italic_, ~~strikethrough~~ and `code`
 - **Go To Symbol**: you can easily move between projects by using the `Go to Symbol in File...` command
-- **[TaskPaper](https://www.taskpaper.com) compatible**: just set `todo.symbols.box`, `todo.symbols.done` and `todo.symbols.cancelled` to `-`
 - **Timekeeping**: you can mark todos as started and track elapsed time until completion
 - **Timer**: a timer can be displayed in the statusbar for started todos
 - **Time estimates**: you can estimate the time it will take to complete a todo by adding a tag to it that looks like this: `@est(3 hours)`, `@est(2h30m)` or `@2h30m`. Then you can use the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens in statistics
@@ -29,10 +26,10 @@ Manage todo lists with ease. Powerful, easy to use and customizable. [View the d
 
 ## Install
 
-Follow the instructions in the [Marketplace](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-todo-plus), or run the following in the command palette:
+Follow the instructions in the [Marketplace](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two), or run the following in the command palette:
 
 ```shell
-ext install fabiospampinato.vscode-todo-plus
+ext install vycdev.vscode-todo-plus-two
 ```
 
 ## Usage
@@ -40,28 +37,28 @@ ext install fabiospampinato.vscode-todo-plus
 It adds 11 commands to the command palette:
 
 ```js
-'Todo: Open' // Open or create your project's todo file
-'Todo: Open Embedded' // Open embedded todos
-'Todo: Toggle Box' // Toggle todo's box symbol
-'Todo: Toggle Done' // Toggle todo's done symbol
-'Todo: Toggle Cancelled' // Toggle todo's cancelled symbol
-'Todo: Toggle Start' // Toggle a todo as started
-'Todo: Toggle Timer' // Toggle the timer
-'Todo: Archive' // Archive finished todos
-'Todo: Embedded View - Filter' // Filter the embedded todos view
-'Todo: Embedded View - Clear Filter' // Clear the filter in the embedded todos view
-'Todo: Embedded View - Toggle View All Files' // Toggle between viewing all files or only the current one
+'Todo: Open'; // Open or create your project's todo file
+'Todo: Open Embedded'; // Open embedded todos
+'Todo: Toggle Box'; // Toggle todo's box symbol
+'Todo: Toggle Done'; // Toggle todo's done symbol
+'Todo: Toggle Cancelled'; // Toggle todo's cancelled symbol
+'Todo: Toggle Start'; // Toggle a todo as started
+'Todo: Toggle Timer'; // Toggle the timer
+'Todo: Archive'; // Archive finished todos
+'Todo: Embedded View - Filter'; // Filter the embedded todos view
+'Todo: Embedded View - Clear Filter'; // Clear the filter in the embedded todos view
+'Todo: Embedded View - Toggle View All Files'; // Toggle between viewing all files or only the current one
 ```
 
 It adds 6 shortcuts when editing a `Todo` file:
 
 ```js
-'Cmd/Ctrl+Enter' // Triggers `Todo: Toggle Box`
-'Alt+Enter' // Triggers `Todo: Toggle Box`
-'Alt+D' // Triggers `Todo: Toggle Done`
-'Alt+C' // Triggers `Todo: Toggle Cancelled`
-'Alt+S' // Triggers `Todo: Toggle Start`
-'Cmd/Ctrl+Shift+A' // Triggers  `Todo: Archive`
+'Cmd/Ctrl+Enter'; // Triggers `Todo: Toggle Box`
+'Alt+Enter'; // Triggers `Todo: Toggle Box`
+'Alt+D'; // Triggers `Todo: Toggle Done`
+'Alt+C'; // Triggers `Todo: Toggle Cancelled`
+'Alt+S'; // Triggers `Todo: Toggle Start`
+'Cmd/Ctrl+Shift+A'; // Triggers  `Todo: Archive`
 ```
 
 ## Settings
@@ -166,28 +163,28 @@ This extension supports various providers for searching for embedded todos, it'l
 
 The following tokens can be used in `todo.statistics.project.text`, `todo.statistics.statusbar.text` and `todo.statistics.statusbar.tooltip`, they will be replaced with the value they represent.
 
-| Token                        | Value                                          |
-|------------------------------|------------------------------------------------|
-| `[comments]`                 | Number of comments                             |
-| `[projects]`                 | Number of projects                             |
-| `[tags]`                     | Number of tags                                 |
-| `[pending]`                  | Number of pending todos                        |
-| `[done]`                     | Number of done todos                           |
-| `[cancelled]`                | Number of cancelled todos                      |
-| `[finished]`                 | Number of finished todos                       |
-| `[all]`                      | Number of todos                                |
-| `[percentage]`               | Percentage of finished todos                   |
-| `[est]`                      | Estimated time left                            |
-| `[est-total]`                | Total estimated time                           |
-| `[est-finished]`             | Estimated time of finished todos               |
-| `[est-finished-percentage]`  | Percentage of estimated time in finished todos |
-| `[lasted]`                   | Time the task lasted                           |
-| `[wasted]`                   | Time wasted on task                            |
-| `[elapsed]`                  | Sum of `[lasted]` and `[wasted]`               |
+| Token                       | Value                                          |
+| --------------------------- | ---------------------------------------------- |
+| `[comments]`                | Number of comments                             |
+| `[projects]`                | Number of projects                             |
+| `[tags]`                    | Number of tags                                 |
+| `[pending]`                 | Number of pending todos                        |
+| `[done]`                    | Number of done todos                           |
+| `[cancelled]`               | Number of cancelled todos                      |
+| `[finished]`                | Number of finished todos                       |
+| `[all]`                     | Number of todos                                |
+| `[percentage]`              | Percentage of finished todos                   |
+| `[est]`                     | Estimated time left                            |
+| `[est-total]`               | Total estimated time                           |
+| `[est-finished]`            | Estimated time of finished todos               |
+| `[est-finished-percentage]` | Percentage of estimated time in finished todos |
+| `[lasted]`                  | Time the task lasted                           |
+| `[wasted]`                  | Time wasted on task                            |
+| `[elapsed]`                 | Sum of `[lasted]` and `[wasted]`               |
 
 ## Demo
 
-### [Example todo file](https://github.com/fabiospampinato/vscode-todo-plus/blob/master/resources/readme.todo)
+### [Example todo file](https://github.com/vycdev/vscode-todo-plus-two/blob/master/resources/readme.todo)
 
 ![Example todo file](resources/demo/syntax.png)
 
@@ -225,24 +222,12 @@ The following tokens can be used in `todo.statistics.project.text`, `todo.statis
 alias todo="ag --color-line-number '1;36' --color-path '1;36' --ignore-case --print-long-lines --silent '(?:<!-- *)?(?:#|//|/\*+|<!--|--) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\([^(]+\))?:?(?!\w)(?: *-->| *\*/|(?= *(?:[^:]//|/\*+|<!--|@|--))|((?: +[^\n@]*?)(?= *(?:[^:]//|/\*+|<!--|@|--))|(?: +[^@\n]+)?))'"
 ```
 
-## Related
-
-- **[Highlight](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-highlight)**: I recommend using this extension for highlighting your embedded todos.
-
-- **[Markdown Todo](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-markdown-todo#overview)**: Manage todo lists inside markdown files with ease.
-
-- **[Projects+ Todo+](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-projects-plus-todo-plus)**: Bird's-eye view over your projects, view all your todo files aggregated into one.
-
-- **[Noty](https://github.com/fabiospampinato/noty)**: Autosaving sticky note with support for multiple notes, find/replace, programmers shortcuts and more. It implements a subset of the functionalities provided by this extension.
-
-- **[Notable](https://github.com/fabiospampinato/notable)**: The markdown-based note-taking app that doesn't suck.
-
 ## Contributing
 
-If you found a problem, or have a feature request, please open an [issue](https://github.com/fabiospampinato/vscode-todo-plus/issues) about it.
+If you found a problem, or have a feature request, please open an [issue](https://github.com/vycdev/vscode-todo-plus-two/issues) about it.
 
-If you want to make a pull request you can debug the extension using [Debug Launcher](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-debug-launcher).
+You can find more about contributing here: [CONTRUBUTING.md](/CONTRIBUTING.md)
 
 ## License
 
-MIT © Fabio Spampinato
+MIT © vycdev

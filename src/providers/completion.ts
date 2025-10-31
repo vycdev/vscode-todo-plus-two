@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import * as _ from 'lodash';
@@ -9,52 +8,46 @@ import Document from '../todo/document';
 /* COMPLETION */
 
 class Completion implements vscode.CompletionItemProvider {
+    static triggerCharacters = [Consts.symbols.tag];
 
-  static triggerCharacters = [Consts.symbols.tag];
+    provideCompletionItems(textDocument: vscode.TextDocument, pos: vscode.Position) {
+        const character = textDocument.lineAt(pos.line).text[pos.character - 1];
 
-  provideCompletionItems ( textDocument: vscode.TextDocument, pos: vscode.Position ) {
+        if (
+            !character ||
+            !_.trim(character).length ||
+            _.includes(Completion.triggerCharacters, character)
+        ) {
+            /* SPECIAL */
 
-    const character = textDocument.lineAt ( pos.line ).text[pos.character - 1];
+            const tagsSpecial = Consts.tags.names.map((tag) => {
+                const text = `@${tag}`,
+                    item = new vscode.CompletionItem(text);
 
-    if ( !character || !_.trim ( character ).length || _.includes ( Completion.triggerCharacters, character ) ) {
+                item.insertText = `${text} `;
 
-      /* SPECIAL */
+                return item;
+            });
 
-      const tagsSpecial = Consts.tags.names.map ( tag => {
+            /* SMART */
 
-        const text = `@${tag}`,
-              item = new vscode.CompletionItem ( text );
+            const doc = new Document(textDocument),
+                tags = _.uniq(doc.getTags().map((tag) => tag.text)),
+                tagsFiltered = tags.filter((tag) => Consts.regexes.tagNormal.test(tag));
 
-        item.insertText = `${text} `;
+            const tagsSmart = tagsFiltered.map((text) => {
+                const item = new vscode.CompletionItem(text);
 
-        return item;
+                item.insertText = `${text} `;
 
-      });
+                return item;
+            });
 
-      /* SMART */
+            return tagsSpecial.concat(tagsSmart);
+        }
 
-      const doc = new Document ( textDocument  ),
-            tags = _.uniq ( doc.getTags ().map ( tag => tag.text ) ),
-            tagsFiltered = tags.filter ( tag => Consts.regexes.tagNormal.test ( tag ) );
-
-      const tagsSmart = tagsFiltered.map ( text => {
-
-        const item = new vscode.CompletionItem ( text );
-
-        item.insertText = `${text} `;
-
-        return item;
-
-      });
-
-      return tagsSpecial.concat ( tagsSmart );
-
+        return null; // Word-based suggestions
     }
-
-    return null; // Word-based suggestions
-
-  }
-
 }
 
 /* EXPORT */

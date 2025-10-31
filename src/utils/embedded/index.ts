@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import * as execa from 'execa';
@@ -13,88 +12,80 @@ import RG from './providers/rg';
 /* EMBEDDED */
 
 const Embedded = {
+    async initProvider() {
+        if (Embedded.provider) return;
 
-  async initProvider () {
+        const { javascript, ag, rg } = Embedded.providers;
+        const cfg = Config.get();
+        const preferred = cfg.embedded.provider; // "javascript" | "ag" | "rg" | ""
 
-    if ( Embedded.provider ) return;
+        let Provider;
 
-    const {javascript, ag, rg} = Embedded.providers,
-          provider = Config.get ().embedded.provider,
-          // Provider = provider ? await Embedded.providers[provider]() || javascript () : await ag () || await rg () || javascript (); //FIXME: Trying to spawn "ag" or "rg" causes execa to never return, why is that?
-          Provider = javascript ();
+        if (preferred) {
+            // Honor explicit preference, but fall back gracefully
+            const pick = await (Embedded.providers[preferred]
+                ? Embedded.providers[preferred]()
+                : undefined);
+            Provider = pick || javascript();
+        } else {
+            // Auto-detect fast providers, then fall back to JS
+            Provider = (await ag()) || (await rg()) || javascript();
+        }
 
-    Embedded.provider = new Provider ();
-
-  },
-
-  provider: undefined as JS | AG | RG,
-
-  providers: {
-
-    javascript () {
-
-      return JS;
-
+        Embedded.provider = new Provider();
     },
 
-    async ag () {
+    provider: undefined as JS | AG | RG,
 
-      try {
+    providers: {
+        javascript() {
+            return JS;
+        },
 
-        await execa ( 'ag', ['--version'] );
+        async ag() {
+            try {
+                await execa('ag', ['--version']);
 
-        return AG;
+                return AG;
+            } catch (e) {}
+        },
 
-      } catch ( e ) {}
+        async rg() {
+            const config = Config.get(),
+                lookaroundRe = /\(\?<?(!|=)/;
 
+            if (lookaroundRe.test(config.embedded.providers.rg.regex)) {
+                vscode.window.showErrorMessage(
+                    'ripgrep doesn\'t support lookaheads and lookbehinds, you have to update your "todo.embedded.providers.rg.regex" setting if you want to use ripgrep'
+                );
+
+                return;
+            }
+
+            try {
+                await execa('rg', ['--version']);
+
+                return RG;
+            } catch (e) {}
+
+            const name = /^win/.test(process.platform) ? 'rg.exe' : 'rg',
+                basePath = path.dirname(__dirname),
+                filePaths = [
+                    path.join(basePath, `node_modules.asar.unpacked/vscode-ripgrep/bin/${name}`),
+                    path.join(basePath, `node_modules/vscode-ripgrep/bin/${name}`),
+                ];
+
+            for (let filePath of filePaths) {
+                try {
+                    fs.accessSync(filePath);
+
+                    RG.bin = filePath;
+
+                    return RG;
+                } catch (e) {}
+            }
+        },
     },
-
-    async rg () {
-
-      const config = Config.get (),
-            lookaroundRe = /\(\?<?(!|=)/;
-
-      if ( lookaroundRe.test ( config.embedded.providers.rg.regex ) ) {
-
-        vscode.window.showErrorMessage ( 'ripgrep doesn\'t support lookaheads and lookbehinds, you have to update your "todo.embedded.providers.rg.regex" setting if you want to use ripgrep' );
-
-        return;
-
-      }
-
-      try {
-
-        await execa ( 'rg', ['--version'] );
-
-        return RG;
-
-      } catch ( e ) {}
-
-      const name = /^win/.test ( process.platform ) ? 'rg.exe' : 'rg',
-            basePath = path.dirname ( __dirname ),
-            filePaths = [
-              path.join ( basePath, `node_modules.asar.unpacked/vscode-ripgrep/bin/${name}` ),
-              path.join ( basePath, `node_modules/vscode-ripgrep/bin/${name}` )
-            ];
-
-      for ( let filePath of filePaths ) {
-
-        try {
-
-          fs.accessSync ( filePath );
-
-          RG.bin = filePath;
-
-          return RG;
-
-        } catch ( e ) {}
-
-      }
-
-    }
-
-  }
-
 };
 
 /* EXPORT */

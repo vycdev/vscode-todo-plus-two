@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import Embedded from './embedded';

@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import * as _ from 'lodash';
@@ -13,109 +12,159 @@ import Abstract from './abstract';
 /* AG */ // The Silver Searcher //URL: https://github.com/ggreer/the_silver_searcher
 
 class AG extends Abstract {
+    static bin = 'ag';
 
-  static bin = 'ag';
+    async getFilePaths(rootPaths) {
+        const globby = require('globby'); // Lazy import for performance
 
-  execa ( filePaths ) {
+        const follow = !!Config.getKey('followSymlinks');
 
-    const config = Config.get ();
+        const raw = _.flatten(
+            await Promise.all(
+                rootPaths.map((cwd) =>
+                    globby(this.include, {
+                        cwd,
+                        ignore: this.exclude,
+                        dot: true,
+                        absolute: true,
+                        followSymbolicLinks: follow,
+                    })
+                )
+            )
+        );
 
-    return execa ( AG.bin, ['--ackmate', '--nobreak', '--nocolor', '--heading', '--print-long-lines', '--silent', ...config.embedded.providers.ag.args, config.embedded.providers.ag.regex, ...filePaths] );
+        // Deduplicate by realpath (defensive)
+        const fs = require('fs');
+        const pify = require('pify');
+        const seen = new Set();
+        const result = [];
+        for (const fp of raw) {
+            let rp;
+            try {
+                rp = await pify(fs.realpath)(fp);
+            } catch (e) {
+                rp = fp;
+            }
+            if (!seen.has(rp)) {
+                seen.add(rp);
+                result.push(fp);
+            }
+        }
 
-  }
-
-  async getAckmate ( filePaths ) {
-
-    filePaths = _.castArray ( filePaths );
-
-    if ( !filePaths.length ) return [];
-
-    try {
-
-      const {stdout} = await this.execa ( filePaths );
-
-      return Ackmate.parse ( stdout );
-
-    } catch ( e ) {
-
-      console.log ( e );
-
-      return [];
-
+        return result;
     }
 
-  }
+    execa(filePaths) {
+        const config = Config.get();
 
-  filterAckmate ( ackmate ) {
+        return execa(AG.bin, [
+            '--ackmate',
+            '--nobreak',
+            '--nocolor',
+            '--heading',
+            '--print-long-lines',
+            '--silent',
+            ...config.embedded.providers.ag.args,
+            config.embedded.providers.ag.regex,
+            ...filePaths,
+        ]);
+    }
 
-    const filePaths = _.uniq ( ackmate.map ( obj => obj.filePath ) ),
-          includedFilePaths = this.getIncluded ( filePaths );
+    async getAckmate(filePaths) {
+        filePaths = _.castArray(filePaths);
 
-    return ackmate.filter ( obj => includedFilePaths.includes ( obj.filePath ) );
+        if (!filePaths.length) return [];
 
-  }
+        try {
+            const { stdout } = await this.execa(filePaths);
 
-  ackmate2data ( ackmate ) {
+            return Ackmate.parse(stdout);
+        } catch (e) {
+            console.log(e);
 
-    ackmate.forEach ( ({ filePath, line: rawLine, lineNr }) => {
+            return [];
+        }
+    }
 
-      const line = _.trimStart ( rawLine ),
-            matches = stringMatches ( line, Consts.regexes.todoEmbedded )
+    filterAckmate(ackmate) {
+        const filePaths = _.uniq(ackmate.map((obj) => obj.filePath)),
+            includedFilePaths = this.getIncluded(filePaths);
 
-      if ( !matches.length ) return;
+        return ackmate.filter((obj) => includedFilePaths.includes(obj.filePath));
+    }
 
-      const parsedPath = Folder.parsePath ( filePath );
+    ackmate2data(ackmate) {
+        ackmate.forEach(({ filePath, line: rawLine, lineNr }) => {
+            const line = _.trimStart(rawLine),
+                matches = stringMatches(line, Consts.regexes.todoEmbedded);
 
-      matches.forEach ( match => {
+            if (!matches.length) return;
 
-        const data = {
-          todo: match[0],
-          type: match[1].toUpperCase (),
-          message: match[2],
-          code: line.slice ( 0, line.indexOf ( match[0] ) ),
-          rawLine,
-          line,
-          lineNr,
-          filePath,
-          root: parsedPath.root,
-          rootPath: parsedPath.rootPath,
-          relativePath: parsedPath.relativePath
-        };
+            const parsedPath = Folder.parsePath(filePath);
 
-        if ( !this.filesData[filePath] ) this.filesData[filePath] = [];
+            matches.forEach((match) => {
+                const data = {
+                    todo: match[0],
+                    type: match[1].toUpperCase(),
+                    message: match[2],
+                    code: line.slice(0, line.indexOf(match[0])),
+                    rawLine,
+                    line,
+                    lineNr,
+                    filePath,
+                    root: parsedPath.root,
+                    rootPath: parsedPath.rootPath,
+                    relativePath: parsedPath.relativePath,
+                };
 
-        this.filesData[filePath].push ( data );
+                if (!this.filesData[filePath]) this.filesData[filePath] = [];
 
-      });
+                this.filesData[filePath].push(data);
+            });
+        });
+    }
 
-    });
+    async initFilesData(rootPaths) {
+        // Limit the initial external search to the include globs to avoid scanning the whole workspace.
+        // This mirrors the JS provider behavior and massively reduces unnecessary IO when includes are narrow (e.g. only **/*.md).
+        const filePaths = await this.getFilePaths(rootPaths);
+        const ackmate = this.filterAckmate(await this.getAckmate(filePaths));
 
-  }
+        this.filesData = {};
 
-  async initFilesData ( rootPaths ) {
+        this.ackmate2data(ackmate);
 
-    const ackmate = this.filterAckmate ( await this.getAckmate ( rootPaths ) );
+        // Update non-empty set to only include files that actually have todos
+        this.nonEmptyFiles = new Set(Object.keys(this.filesData));
+    }
 
-    this.filesData = {};
+    async updateFilesData() {
+        const pending = Object.keys(this.filesData).filter((filePath) => !this.filesData[filePath]);
+        if (!pending.length) return;
 
-    this.ackmate2data ( ackmate );
+        const ackmate = await this.getAckmate(pending);
 
-  }
+        this.ackmate2data(ackmate);
 
-  async updateFilesData () {
+        // Prune files that still have no results
+        this.filesData = _.transform(
+            this.filesData,
+            (acc, val, key) => {
+                if (!val) return;
+                acc[key] = val;
+            },
+            {}
+        );
 
-    const filePaths = Object.keys ( this.filesData ).filter ( filePath => !this.filesData[filePath] ),
-          ackmate = await this.getAckmate ( filePaths );
-
-    this.ackmate2data ( ackmate );
-
-    this.filesData = _.transform ( this.filesData, ( acc, val, key ) => {
-      if ( !val ) return;
-      acc[key] = val;
-    }, {} );
-
-  }
-
+        // Update non-empty set based on the pending files processed
+        for (const fp of pending) {
+            if (this.filesData[fp] && this.filesData[fp].length) {
+                this.nonEmptyFiles.add(fp);
+            } else {
+                this.nonEmptyFiles.delete(fp);
+            }
+        }
+    }
 }
 
 /* EXPORT */

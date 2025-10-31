@@ -1,12 +1,12 @@
 {
-  "name": "vscode-todo-plus",
-  "displayName": "Todo+",
+  "name": "vscode-todo-plus-two",
+  "displayName": "Todo+2",
   "description": "Manage todo lists with ease. Powerful, easy to use and customizable.",
   "icon": "resources/logo/logo-128x128.png",
-  "version": "4.19.1",
+  "version": "5.0.0",
   "license": "MIT",
   "main": "out/extension.js",
-  "publisher": "fabiospampinato",
+  "publisher": "vycdev",
   "activationEvents": [
     "*"
   ],
@@ -512,6 +512,16 @@
             "**/*"
           ]
         },
+        "todo.followSymlinks": {
+          "type": "boolean",
+          "description": "Follow symbolic links when enumerating files (can cause cycles). Disable to avoid infinite loops.",
+          "default": false
+        },
+        "todo.embedded.showComments": {
+          "type": "boolean",
+          "description": "Show comment-only lines in the Embedded (side) view",
+          "default": false
+        },
         "todo.embedded.exclude": {
           "type": "array",
           "description": "Globs to use for excluding files",
@@ -573,6 +583,11 @@
             "--ignore-case"
           ]
         },
+        "todo.embedded.batchSize": {
+          "type": "number",
+          "description": "Batch size when scanning embedded todos (applies to JavaScript provider).",
+          "default": 50
+        },
         "todo.embedded.file.wholeLine": {
           "type": "boolean",
           "description": "Show the whole line",
@@ -600,7 +615,10 @@
         },
         "todo.embedded.view.sort": {
           "type": "string",
-          "enum": ["line", "label"],
+          "enum": [
+            "line",
+            "label"
+          ],
           "description": "Sort todos either by label or by source line number",
           "default": "line"
         },
@@ -628,6 +646,11 @@
           "type": "boolean",
           "description": "Show icons next to todos and types",
           "default": true
+        },
+        "todo.file.batchSize": {
+          "type": "number",
+          "description": "Batch size when loading todo files metadata and refreshing.",
+          "default": 50
         }
       }
     },
@@ -1002,23 +1025,25 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "rm -rf out && webpack --mode production",
+    "vscode:prepublish": "rimraf out && webpack --mode production",
     "publish": "vsce publish && npm publish",
     "compile": "webpack --mode development",
     "compile:watch": "webpack --mode development --watch",
     "postinstall": "node ./node_modules/vscode/bin/install",
-    "test": "node ./node_modules/vscode/bin/test"
+    "test": "node ./node_modules/vscode/bin/test",
+    "format": "prettier --write \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md,css,scss,html,svg}\""
   },
   "bugs": {
-    "url": "https://github.com/fabiospampinato/vscode-todo-plus/issues"
+    "url": "https://github.com/vycdev/vscode-todo-plus-two/issues"
   },
   "author": {
-    "name": "Fabio Spampinato",
-    "email": "spampinabio@gmail.com"
+    "name": "vycdev",
+    "email": "vycdev@gmail.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/fabiospampinato/vscode-todo-plus.git"
+    "url": "https://github.com/vycdev/vscode-todo-plus-two.git"
   },
   "engines": {
     "vscode": "^1.25.0"
@@ -1058,6 +1083,8 @@
     "vscode-beggar": "^1.0.0"
   },
   "devDependencies": {
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
     "ts-loader": "^5.2.1",
     "typescript": "^2.8.0",
     "vscode": "^1.1.21",

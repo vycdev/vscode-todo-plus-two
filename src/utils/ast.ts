@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import * as detectIndent from 'detect-indent';
@@ -8,124 +7,132 @@ import Consts from '../consts';
 /* AST */
 
 const AST = {
+    indentationRe: /^( +|\t+)/m,
 
-  indentationRe: /^( +|\t+)/m,
+    indentations: {}, // filePath => { indentation, lineCount, confident }
 
-  indentations: {}, // filePath => { indentation, lineCount, confident }
+    getIndentation(textDocument: vscode.TextDocument) {
+        const filePath = textDocument.fileName,
+            cached = AST.indentations[filePath];
 
-  getIndentation ( textDocument: vscode.TextDocument ) {
+        if (cached) {
+            if (cached.confident) return cached.indentation; // We are confident about this
 
-    const filePath = textDocument.fileName,
-          cached = AST.indentations[filePath];
+            if (cached.lineCount === textDocument.lineCount) return cached.indentation; // Probably nothing changed
+        }
 
-    if ( cached ) {
+        const text = textDocument.getText(),
+            match = AST.indentationRe.exec(text),
+            endIndex = Math.min(text.length, match ? match.index + 300 : 500), // We don't want to process huge documents
+            sample = text.slice(0, endIndex),
+            indentation = detectIndent(sample).indent || Consts.indentation;
 
-      if ( cached.confident ) return cached.indentation; // We are confident about this
+        AST.indentations[filePath] = {
+            indentation,
+            lineCount: textDocument.lineCount,
+            confident: !!match,
+        };
 
-      if ( cached.lineCount === textDocument.lineCount ) return cached.indentation; // Probably nothing changed
+        return indentation;
+    },
 
-    }
+    getLevel(textDocument: vscode.TextDocument, str) {
+        const indentation = AST.getIndentation(textDocument);
 
-    const text = textDocument.getText (),
-          match = AST.indentationRe.exec ( text ),
-          endIndex = Math.min ( text.length, match ? match.index + 300 : 500 ), // We don't want to process huge documents
-          sample = text.slice ( 0, endIndex ),
-          indentation = detectIndent ( sample ).indent || Consts.indentation;
+        let level = 0,
+            index = 0;
 
-    AST.indentations[filePath] = {
-      indentation,
-      lineCount: textDocument.lineCount,
-      confident: !!match
-    };
+        while (index < str.length) {
+            if (str.substr(index, indentation.length) !== indentation) break;
+            level++;
+            index += indentation.length;
+        }
 
-    return indentation;
+        return level;
+    },
 
-  },
+    /* WALK */
 
-  getLevel ( textDocument: vscode.TextDocument, str ) {
+    walk(
+        textDocument: vscode.TextDocument,
+        lineNr: number = 0,
+        direction: number = 1,
+        skipEmptyLines: boolean = true,
+        strictlyMonotonic: boolean = false,
+        callback: Function
+    ) {
+        // strictlyMonotonic: only go strictly up or down, don't process other elements at the same level
 
-    const indentation = AST.getIndentation ( textDocument );
+        const { lineCount } = textDocument;
 
-    let level = 0,
-        index = 0;
+        const startLine = lineNr >= 0 ? textDocument.lineAt(lineNr) : null,
+            startLevel = startLine ? AST.getLevel(textDocument, startLine.text) : -1;
 
-    while ( index < str.length ) {
-      if ( str.substr ( index, indentation.length ) !== indentation ) break;
-      level++;
-      index += indentation.length;
-    }
+        let prevLevel = startLevel,
+            nextLine = lineNr + direction;
 
-    return level;
+        while (nextLine >= 0 && nextLine < lineCount) {
+            const line = textDocument.lineAt(nextLine);
 
-  },
+            if (skipEmptyLines && (!line.text || Consts.regexes.empty.test(line.text))) {
+                nextLine += direction;
+                continue;
+            }
 
-  /* WALK */
+            const level = AST.getLevel(textDocument, line.text);
 
-  walk ( textDocument: vscode.TextDocument, lineNr: number = 0, direction: number = 1, skipEmptyLines: boolean = true, strictlyMonotonic: boolean = false, callback: Function ) {
+            if (direction > 0 && level < startLevel) break;
 
-    // strictlyMonotonic: only go strictly up or down, don't process other elements at the same level
+            if (
+                strictlyMonotonic &&
+                ((direction > 0 && level <= prevLevel) || (direction < 0 && level >= prevLevel))
+            ) {
+                nextLine += direction;
+                continue;
+            }
 
-    const {lineCount} = textDocument;
+            if (callback({ startLine, startLevel, line, level }) === false) break;
 
-    const startLine = lineNr >= 0 ? textDocument.lineAt ( lineNr ) : null,
-          startLevel = startLine ? AST.getLevel ( textDocument, startLine.text ) : -1;
+            prevLevel = level;
+            nextLine += direction;
+        }
+    },
 
-    let prevLevel = startLevel,
-        nextLine = lineNr + direction;
+    walkDown(
+        textDocument: vscode.TextDocument,
+        lineNr: number,
+        skipEmptyLines: boolean,
+        strictlyMonotonic: boolean,
+        callback: Function
+    ) {
+        return AST.walk(textDocument, lineNr, 1, skipEmptyLines, strictlyMonotonic, callback);
+    },
 
-    while ( nextLine >= 0 && nextLine < lineCount ) {
+    walkUp(
+        textDocument: vscode.TextDocument,
+        lineNr: number,
+        skipEmptyLines: boolean,
+        strictlyMonotonic: boolean,
+        callback: Function
+    ) {
+        return AST.walk(textDocument, lineNr, -1, skipEmptyLines, strictlyMonotonic, callback);
+    },
 
-      const line = textDocument.lineAt ( nextLine );
+    walkChildren(textDocument: vscode.TextDocument, lineNr: number, callback: Function) {
+        return AST.walkDown(
+            textDocument,
+            lineNr,
+            true,
+            false,
+            function ({ startLine, startLevel, line, level }) {
+                if (level <= startLevel) return false;
 
-      if ( skipEmptyLines && ( !line.text || Consts.regexes.empty.test ( line.text ) ) ) {
-        nextLine += direction;
-        continue;
-      }
+                if (level > startLevel + 1) return;
 
-      const level = AST.getLevel ( textDocument, line.text );
-
-      if ( direction > 0 && level < startLevel ) break;
-
-      if ( strictlyMonotonic && ( ( direction > 0 && level <= prevLevel ) || ( direction < 0 && level >= prevLevel ) ) ) {
-        nextLine += direction;
-        continue;
-      }
-
-      if ( callback ({ startLine, startLevel, line, level }) === false ) break;
-
-      prevLevel = level;
-      nextLine += direction;
-
-    }
-
-  },
-
-  walkDown ( textDocument: vscode.TextDocument, lineNr: number, skipEmptyLines: boolean, strictlyMonotonic: boolean, callback: Function ) {
-
-    return AST.walk ( textDocument, lineNr, 1, skipEmptyLines, strictlyMonotonic, callback );
-
-  },
-
-  walkUp ( textDocument: vscode.TextDocument, lineNr: number, skipEmptyLines: boolean, strictlyMonotonic: boolean, callback: Function ) {
-
-    return AST.walk ( textDocument, lineNr, -1, skipEmptyLines, strictlyMonotonic, callback );
-
-  },
-
-  walkChildren ( textDocument: vscode.TextDocument, lineNr: number, callback: Function ) {
-
-    return AST.walkDown ( textDocument, lineNr, true, false, function ({ startLine, startLevel, line, level }) {
-
-      if ( level <= startLevel ) return false;
-
-      if ( level > ( startLevel + 1 ) ) return;
-
-      callback.apply ( undefined, arguments );
-
-    });
-
-  }
-
+                callback.apply(undefined, arguments);
+            }
+        );
+    },
 };
 
 /* EXPORT */

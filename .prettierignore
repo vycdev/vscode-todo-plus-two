@@ -1,0 +1,13 @@
+node_modules
+out
+.vscode-test
+.vscode
+resources/**/demo
+dist
+build
+*.min.*
+*.map
+*.vsix
+"**/vendor/**"
+
+resources

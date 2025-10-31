@@ -1,0 +1,29 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "npm: compile:watch",
+            "type": "npm",
+            "script": "compile:watch",
+            "isBackground": true,
+            "group": "build",
+            "problemMatcher": {
+                "owner": "webpack",
+                "pattern": {
+                    "regexp": "^.*$",
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "webpack is watching the files",
+                    "endsPattern": "Built at: .*",
+                },
+            },
+        },
+        {
+            "label": "terminate build",
+            "command": "${command:workbench.action.tasks.terminate}",
+            "type": "process",
+            "problemMatcher": [],
+        },
+    ],
+}

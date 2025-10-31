@@ -1,4 +1,3 @@
-
 /* IMPORT */
 
 import Item from './item';
@@ -6,13 +5,9 @@ import Item from './item';
 /* LINE */
 
 class Line extends Item {
-
-  static is ( str: string ) {
-
-    return true;
-
-  }
-
+    static is(str: string) {
+        return true;
+    }
 }
 
 /* EXPORT */
