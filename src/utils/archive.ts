@@ -9,6 +9,9 @@ import Config from '../config';
 import Consts from '../consts';
 import AST from './ast';
 import Editor from './editor';
+import * as path from 'path';
+import File from './file';
+import Folder from './folder';
 
 /* ARCHIVE */
 
@@ -92,10 +95,58 @@ const Archive = {
         });
 
         if (insertLines.length) {
-            const archive = await Archive.get(doc, true),
-                insertText = `${Consts.indentation}${insertLines.join(`\n${Consts.indentation}`)}\n`;
+            const insertText = `${Consts.indentation}${insertLines.join(`\n${Consts.indentation}`)}\n`;
+            const insertTextUnindented = `${insertLines.map((l) => _.trimStart(l)).join('\n')}\n`;
 
-            edits.push(Editor.edits.makeInsert(insertText, archive.line.range.start.line + 1, 0));
+            const config = Config.get();
+
+            const archiveType = (Config.getKey('archive.type') as string) || 'InMultiSeparateFile';
+
+            if (archiveType === 'InMultiSeparateFile') {
+                // Per-original-file archives
+                const originalPath = doc.textDocument.uri.fsPath;
+                let basename = path.basename(originalPath);
+
+                // Avoid archive filename like ARCHIVE..todo when source filename is ".todo"
+                if (basename.startsWith('.')) basename = basename.slice(1);
+                const dir = path.dirname(originalPath);
+                const archiveName = `ARCHIVE.${basename}`;
+                const archivePath = path.join(dir, archiveName);
+
+                // Read existing content and append new archive lines
+                let content = File.readSync(archivePath) || '';
+                if (content.length && !content.endsWith('\n')) content += '\n';
+                    content += insertTextUnindented;
+
+                // Ensure directory exists and write file
+                await File.make(archivePath, content);
+            } else if (archiveType === 'InSeparateFile') {
+                // Put all archives in a single file at workspace root
+                // Put all archives in a single file at workspace root
+                const originalPath = doc.textDocument.uri.fsPath;
+                const rootPath = Folder.getRootPath(originalPath) || path.dirname(originalPath);
+                let archiveFileBase = config.file.name;
+
+                if (_.isString(archiveFileBase) && archiveFileBase.startsWith('.')) {
+                    archiveFileBase = archiveFileBase.slice(1);
+                }
+
+                const archiveFileName = `ARCHIVE.${archiveFileBase}`;
+                const archivePath = path.join(rootPath, archiveFileName);
+
+                let content = File.readSync(archivePath) || '';
+                if (content.length && !content.endsWith('\n')) content += '\n';
+                    content += insertTextUnindented;
+
+                await File.make(archivePath, content);
+            } else {
+                // default behaviour: insert to the same file under the Archive project
+                const archive = await Archive.get(doc, true);
+
+                edits.push(
+                    Editor.edits.makeInsert(insertText, archive.line.range.start.line + 1, 0)
+                );
+            }
         }
 
         Editor.edits.apply(doc.textEditor, edits);

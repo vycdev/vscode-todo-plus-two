@@ -1,3 +1,7 @@
+### Version 5.1.0
+
+- Added new `todo.archive.type` setting — controls where archived todos are stored: in the same file, in a single workspace-level archive file, or in per-file archive files (default: `InMultiSeparateFile`).
+
 ### Version 5.0.0
 
 - Changed icon and package settings
@@ -20,17 +24,7 @@
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/45
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/28
 
-### Version 4.19.1
-
-- Fixed slow update of statistics decorations (fixes #210) (#367) (thanks to @squidfunk and @marvinhagemeister)
-- Minor code style tweaks
-
-### Version 4.19.0
-
-- Added "todo.embedded.view.sortBy" setting
-
 ### Version 4.18.4
-
 - Ensuring ts-loader doesn’t prevent production builds to be made
 - Deleted repo-level github funding.yml
 - Added a dialog announcing the fundraising

@@ -339,6 +339,16 @@
           "description": "Sort lines by finished date",
           "default": false
         },
+        "todo.archive.type": {
+          "type": "string",
+          "enum": [
+            "InSameFile",
+            "InSeparateFile",
+            "InMultiSeparateFile"
+          ],
+          "description": "Where to store archived todos: InSameFile inserts them under the Archive section inside the same file; InSeparateFile stores all archives in a single archive file at the workspace root; InMultiSeparateFile creates an archive file per original todo file.",
+          "default": "InMultiSeparateFile"
+        },
         "todo.formatting.enabled": {
           "type": "boolean",
           "description": "Enable markdown-like formatting",

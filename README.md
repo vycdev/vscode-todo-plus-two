@@ -94,6 +94,7 @@ It adds 6 shortcuts when editing a `Todo` file:
   "todo.archive.project.enabled": true, // Enable the @project tag
   "todo.archive.project.separator": ".", // String used for joining multiple projects
   "todo.archive.sortByDate": false, // Sort lines by finished date
+  "todo.archive.type": "InMultiSeparateFile", // Where to store archives: InSameFile, InSeparateFile, or InMultiSeparateFile (default)
   "todo.formatting.enabled": true, // Enable markdown-like formatting
   "todo.timekeeping.created.enabled": false, // Enable the @created tag
   "todo.timekeeping.created.time": true, // Insert the time inside the @created tag
