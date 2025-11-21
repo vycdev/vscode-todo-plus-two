@@ -116,7 +116,7 @@ const Archive = {
                 // Read existing content and append new archive lines
                 let content = File.readSync(archivePath) || '';
                 if (content.length && !content.endsWith('\n')) content += '\n';
-                    content += insertTextUnindented;
+                content += insertTextUnindented;
 
                 // Ensure directory exists and write file
                 await File.make(archivePath, content);
@@ -136,7 +136,7 @@ const Archive = {
 
                 let content = File.readSync(archivePath) || '';
                 if (content.length && !content.endsWith('\n')) content += '\n';
-                    content += insertTextUnindented;
+                content += insertTextUnindented;
 
                 await File.make(archivePath, content);
             } else {
