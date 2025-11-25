@@ -70,7 +70,6 @@ It adds 6 shortcuts when editing a `Todo` file:
   "todo.file.include": ["**/TODO", ...], // Globs to use for including files
   "todo.file.exclude": ["**/.!(todo|todos|task|tasks)/**", ...], // Globs to use for excluding files
   "todo.file.view.expanded": true, // Start the tree in an expanded state
-  "todo.indentation": "  ", // String used for indentation
   "todo.symbols.box": "☐", // Box symbol
   "todo.symbols.done": "✔", // Done symbol
   "todo.symbols.cancelled": "✘", // Cancelled symbol

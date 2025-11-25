@@ -1,6 +1,10 @@
 ### Version 5.1.0
 
-- Added new `todo.archive.type` setting — controls where archived todos are stored: in the same file, in a single workspace-level archive file, or in per-file archive files (default: `InMultiSeparateFile`).
+- Added new `todo.archive.type` setting — controls where archived todos are stored: in the same file, in a single workspace-level archive file, or in 
+per-file archive files (default: `InMultiSeparateFile`).
+- Removed `todo.indentation` in favour of automatic detection based on vscode settings. 
+- Improved archiving by preserving projects structure and merging tasks into already existing archived projects, https://github.com/vycdev/vscode-todo-plus-two/issues/32
+- Added unit tests
 
 ### Version 5.0.0
 

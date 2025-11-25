@@ -8,6 +8,7 @@ import Document from '../todo/document';
 import Config from '../config';
 import Consts from '../consts';
 import AST from './ast';
+import Utils from './index';
 import Editor from './editor';
 import * as path from 'path';
 import File from './file';
@@ -34,6 +35,7 @@ const Archive = {
     },
 
     async run(doc: Document) {
+        Utils.log.debug(`Archive.run invoked for ${doc.textDocument.fileName}`);
         const archive = await Archive.get(doc),
             archivableRange = new vscode.Range(
                 0,
@@ -48,14 +50,19 @@ const Archive = {
 
         const data = {
             remove: [], // Lines to remove
-            insert: {}, // Map of `lineNumber => text` to insert
+            // Map of `lineNumber => { text, projects?: string[] }` to insert
+            insert: {},
         };
 
         for (let transformation of Archive.transformations.order) {
             Archive.transformations[transformation](archivableDoc, data);
         }
 
-        Archive.edit(doc, data);
+        Utils.log.debug(
+            `Archive.run: computed data: remove=${data.remove.length}, insert=${Object.keys(data.insert).length}`
+        );
+
+        await Archive.edit(doc, data);
     },
 
     async edit(doc: Document, data) {
@@ -77,28 +84,88 @@ const Archive = {
             return prevFinishedDate;
         }
 
-        const line2number = (line) => line.lineNumber,
-            line2date = Config.getKey('archive.sortByDate')
-                ? (line) => getFinishedDate(line.text)
-                : _.constant(-1),
-            natSort = (a, b) => a.lineNumber - b.lineNumber,
-            removeLines = _.uniqBy(data.remove, line2number) as any, //TSC
-            insertLines = _.orderBy(
-                _.map(data.insert, (text, lineNumber) => ({ text, lineNumber })).sort(natSort),
-                [line2date],
-                ['desc']
-            ).map((line) => line['text']), //TSC
-            edits = [];
+        const line2number = (line) => line.lineNumber;
+        const line2date = Config.getKey('archive.sortByDate')
+            ? (line) => getFinishedDate(line.obj ? line.obj.text : line.text)
+            : _.constant(-1);
+        const natSort = (a, b) => a.lineNumber - b.lineNumber;
+        const removeLines = _.uniqBy(data.remove, line2number) as any; //TSC
+        const insertItems = _.orderBy(
+            _.map(data.insert, (obj, lineNumber) => ({ obj, lineNumber: Number(lineNumber) })).sort(
+                natSort
+            ),
+            [line2date],
+            ['desc']
+        ); //TSC
+        // Fallback: if any insert item somehow missed project metadata, compute it again.
+        if (doc.textDocument) {
+            insertItems.forEach((item) => {
+                if (item.obj && item.obj.projects && item.obj.projects.length) return;
 
+                const projects = [] as string[];
+                AST.walkUp(doc.textDocument, item.lineNumber, true, true, ({ line }) => {
+                    if (!Project.is(line.text)) return;
+                    const parts = line.text.match(Consts.regexes.projectParts);
+                    if (parts) projects.push(parts[2]);
+                });
+
+                if (projects.length) {
+                    item.obj = item.obj || {};
+                    item.obj.projects = projects.reverse();
+                }
+            });
+        }
+        const insertLines = insertItems.map((line) => line.obj.text);
+        const edits = [];
+
+        Utils.log.debug(
+            `Archive.edit: removeLines=${removeLines.length} insertLines=${insertLines.length}`
+        );
         removeLines.forEach((line) => {
             edits.push(Editor.edits.makeDeleteLine(line.lineNumber));
         });
 
-        if (insertLines.length) {
-            const insertText = `${Consts.indentation}${insertLines.join(`\n${Consts.indentation}`)}\n`;
-            const insertTextUnindented = `${insertLines.map((l) => _.trimStart(l)).join('\n')}\n`;
+        const applyContentToArchiveEditor = async (archivePath: string, content: string) => {
+            const editorOpen = vscode.window.visibleTextEditors.find(
+                (te) => te.document.uri.fsPath === archivePath
+            );
 
+            if (editorOpen) {
+                const docLineCount = editorOpen.document.lineCount;
+                const lastLineIndex = docLineCount ? docLineCount - 1 : 0;
+                const lastLineLength = docLineCount
+                    ? editorOpen.document.lineAt(lastLineIndex).text.length
+                    : 0;
+                const range = new vscode.Range(0, 0, lastLineIndex, lastLineLength);
+                await Editor.edits.apply(editorOpen, [vscode.TextEdit.replace(range, content)]);
+
+                const DocumentDecorator = require('../todo/decorators/document').default;
+                DocumentDecorator.update(editorOpen, true);
+            } else {
+                await File.make(archivePath, content);
+            }
+        };
+
+        if (insertLines.length) {
+            Utils.log.debug(`Archive.edit: processing ${insertLines.length} insert items`);
             const config = Config.get();
+            // Create helperConfig and set indentation based on the document/editor.
+            const helperConfig = Object.assign({}, config);
+            try {
+                // Prefer the editor's indentation settings (tabSize/insertSpaces) when available
+                if (doc.textEditor && doc.textEditor.options) {
+                    const editorOptions = doc.textEditor.options as any;
+                    const insertSpaces = editorOptions.insertSpaces !== false;
+                    let tabSize = editorOptions.tabSize;
+                    if (tabSize === 'auto' || !_.isNumber(tabSize)) tabSize = 4; // sensible default
+                    helperConfig.indentation = insertSpaces ? ' '.repeat(tabSize) : '\t';
+                } else {
+                    const detectedIndent = AST.getIndentation(doc.textDocument);
+                    helperConfig.indentation = detectedIndent || helperConfig.indentation;
+                }
+            } catch (e) {
+                helperConfig.indentation = helperConfig.indentation || (Consts as any).indentation;
+            }
 
             const archiveType = (Config.getKey('archive.type') as string) || 'InMultiSeparateFile';
 
@@ -116,10 +183,16 @@ const Archive = {
                 // Read existing content and append new archive lines
                 let content = File.readSync(archivePath) || '';
                 if (content.length && !content.endsWith('\n')) content += '\n';
-                content += insertTextUnindented;
+                content = Archive.mergeInsertItemsIntoArchiveContent(
+                    content,
+                    insertItems,
+                    helperConfig
+                );
 
-                // Ensure directory exists and write file
-                await File.make(archivePath, content);
+                // Ensure the archive file is updated. If the file is open in the
+                // editor, update it via a TextEdit replace to avoid losing
+                // syntax highlighting/selection. Otherwise write to disk.
+                await applyContentToArchiveEditor(archivePath, content);
             } else if (archiveType === 'InSeparateFile') {
                 // Put all archives in a single file at workspace root
                 // Put all archives in a single file at workspace root
@@ -136,21 +209,96 @@ const Archive = {
 
                 let content = File.readSync(archivePath) || '';
                 if (content.length && !content.endsWith('\n')) content += '\n';
-                content += insertTextUnindented;
+                content = Archive.mergeInsertItemsIntoArchiveContent(
+                    content,
+                    insertItems,
+                    helperConfig
+                );
 
-                await File.make(archivePath, content);
+                await applyContentToArchiveEditor(archivePath, content);
             } else {
                 // default behaviour: insert to the same file under the Archive project
                 const archive = await Archive.get(doc, true);
 
-                edits.push(
-                    Editor.edits.makeInsert(insertText, archive.line.range.start.line + 1, 0)
+                // Compute proper indentation for same-file archive while preserving relative indentation
+                const archiveLevel = AST.getLevel(doc.textDocument, archive.line.text);
+                const levels = insertItems.map((i) => AST.getLevel(doc.textDocument, i.obj.text));
+                const minLevel = Math.min(...levels);
+
+                const indentUnit =
+                    (helperConfig as any).indentation || (Consts as any).indentation || '  ';
+                const finalLines = insertItems.map((i, idx) => {
+                    const rel = levels[idx] - minLevel;
+                    const indent = Array(archiveLevel + 1 + rel)
+                        .fill(indentUnit)
+                        .join('');
+                    return `${indent}${_.trimStart(i.obj.text)}`;
+                });
+
+                // Tell the helper how many indentation levels should exist at the Archive root.
+                helperConfig.rootIndentLevel = archiveLevel + 1;
+
+                // Use the previously prepared helperConfig at top of `insertLines` branch
+                const normalizedInsertItems = insertItems.map((it, idx) => ({
+                    obj: { ...(it.obj || it), text: finalLines[idx] },
+                    lineNumber: it.lineNumber,
+                }));
+
+                // Merge into the existing Archive section so we don't duplicate project headers
+                const startLine = archive.line.range.start.line + 1;
+                const lastLine = doc.textDocument.lineCount - 1;
+                const mergedContent = Archive.mergeInsertItemsIntoArchiveContent(
+                    doc.textDocument.getText(
+                        new vscode.Range(
+                            startLine,
+                            0,
+                            lastLine,
+                            doc.textDocument.lineAt(lastLine).text.length
+                        )
+                    ),
+                    normalizedInsertItems,
+                    helperConfig
                 );
+
+                if (startLine <= lastLine) {
+                    const range = new vscode.Range(
+                        startLine,
+                        0,
+                        lastLine,
+                        doc.textDocument.lineAt(lastLine).text.length
+                    );
+                    edits.push(vscode.TextEdit.replace(range, mergedContent));
+                    Utils.log.debug(
+                        `Archive.edit: replacing range ${range.start.line}-${range.end.line} with merged content size=${mergedContent.length}`
+                    );
+                } else {
+                    // No existing archive content, insert
+                    edits.push(Editor.edits.makeInsert(mergedContent, startLine, 0));
+                    Utils.log.debug(
+                        `Archive.edit: inserting merged content at ${startLine} size=${mergedContent.length}`
+                    );
+                }
             }
         }
 
-        Editor.edits.apply(doc.textEditor, edits);
+        // Apply edits to the document and wait for them to complete
+        if (!edits.length) {
+            Utils.log.debug('Archive.edit: no edits to apply');
+        } else {
+            Utils.log.debug(`Archive.edit: applying ${edits.length} edits`);
+            await Editor.edits.apply(doc.textEditor, edits);
+            Utils.log.debug('Archive.edit: edits applied');
+        }
+
+        // Refresh decorations & statusbars for the updated document
+        const DocumentDecorator = require('../todo/decorators/document').default; // Avoiding cyclic dependency
+        DocumentDecorator.update(doc.textEditor || doc.textDocument, true);
     },
+
+    /* HELPERS */
+    // Merge insert items into an archive file's content, attempting to place
+    // todos/comments under existing project headers when possible.
+    mergeInsertItemsIntoArchiveContent: require('./archive-helpers').default,
 
     transformations: {
         // Transformations to apply to the document
@@ -158,7 +306,8 @@ const Archive = {
         order: [
             'addTodosFinished',
             'addTodosComments',
-            'addProjectTag',
+            'addProjectHeaders',
+            // 'addProjectTag' removed: we avoid adding @project tags
             'removeEmptyProjects',
             'removeEmptyLines',
         ], // The order in which to apply the transformations
@@ -169,7 +318,8 @@ const Archive = {
 
             lines.forEach((line) => {
                 data.remove.push(line);
-                data.insert[line.lineNumber] = _.trimStart(line.text);
+                // Preserve original line text (including indentation)
+                data.insert[line.lineNumber] = { text: line.text };
             });
         },
 
@@ -181,36 +331,45 @@ const Archive = {
                     true,
                     false,
                     function ({ startLevel, line, level }) {
-                        if (startLevel === level || !Comment.is(line.text)) return false;
+                        // Include contiguous comments after the todo, at same or deeper indentation
+                        if (Comment.is(line.text) && level >= startLevel) {
+                            data.remove.push(line);
+                            data.insert[line.lineNumber] = { text: line.text }; // Preserve indentation
+                            return true; // Continue walking
+                        }
 
-                        data.remove.push(line);
-                        data.insert[line.lineNumber] =
-                            `${Consts.indentation}${_.trimStart(line.text)}`;
+                        // Stop if we reach any non-comment line (another todo, project, etc.)
+                        return false;
                     }
                 );
             });
         },
 
-        addProjectTag(doc: Document, data) {
-            if (!Config.getKey('archive.project.enabled')) return;
+        // addProjectTag removed: the archiving flow no longer adds @project tags. We rely on header-based
+        // merging and strip any @project(...) tokens during the merge process.
 
-            data.remove.forEach((line) => {
-                if (!Todo.is(line.text)) return;
+        addProjectHeaders(doc: Document, data) {
+            // For each to-be-archived insert, collect parent project header lines
+            Object.keys(data.insert).forEach((ln) => {
+                const lineNumber = parseInt(ln, 10);
 
-                const projects = [];
+                const projects = [] as string[];
 
-                AST.walkUp(doc.textDocument, line.lineNumber, true, true, function ({ line }) {
+                AST.walkUp(doc.textDocument, lineNumber, true, true, function ({ line }) {
                     if (!Project.is(line.text)) return;
 
                     const parts = line.text.match(Consts.regexes.projectParts);
 
-                    projects.push(parts[2]);
+                    if (parts) projects.push(parts[2]);
+
+                    // Don't add the project header line to the insert map —
+                    // keep headers separate from the body to avoid duplicates. The
+                    // merge helper will create project header chains when needed.
                 });
 
-                if (!projects.length) return;
-
-                data.insert[line.lineNumber] =
-                    `${data.insert[line.lineNumber]} ${Consts.symbols.tag}project(${projects.reverse().join(Config.getKey('archive.project.separator'))})`;
+                if (projects.length) {
+                    data.insert[lineNumber].projects = projects.reverse();
+                }
             });
         },
 
@@ -240,7 +399,37 @@ const Archive = {
 
                 if (!isEmpty) return;
 
+                // Add project lines to both remove and insert if the project will be removed
                 data.remove.push(...lines);
+                // For header-only projects, create a header-only insert entry (no text)
+                // so that the merge helper creates the project chain in the archive
+                // without duplicating project header lines.
+                const projectChain = [] as string[];
+                AST.walkUp(
+                    doc.textDocument,
+                    project.line.lineNumber,
+                    true,
+                    true,
+                    function ({ line }) {
+                        if (!Project.is(line.text)) return;
+
+                        const parts = line.text.match(Consts.regexes.projectParts);
+                        if (parts) projectChain.push(parts[2]);
+                    }
+                );
+
+                if (projectChain.length) {
+                    // Use the project root line number as key for insertion; text = '' means only header should be created
+                    data.insert[project.line.lineNumber] =
+                        data.insert[project.line.lineNumber] || {};
+                    data.insert[project.line.lineNumber].projects = projectChain.reverse();
+                    data.insert[project.line.lineNumber].text = '';
+                } else {
+                    // For some reason we couldn't compute a chain; fallback: insert header text to preserve behavior
+                    lines.forEach((line) => {
+                        data.insert[line.lineNumber] = { text: line.text };
+                    });
+                }
             });
         },
 

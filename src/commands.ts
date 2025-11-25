@@ -176,8 +176,14 @@ function archive() {
     const textEditor = vscode.window.activeTextEditor,
         doc = new Document(textEditor);
 
-    if (!doc.isSupported()) return;
+    Utils.log.debug(`archive command invoked. activeEditor=${!!textEditor}`);
+    if (!doc.isSupported()) {
+        Utils.log.debug('archive aborted: not a supported todo document');
+        // Helpful message for users when command does not run
+        return vscode.window.showInformationMessage('This command works only in Todo files');
+    }
 
+    Utils.log.debug(`archive on document: ${textEditor.document.fileName}`);
     Utils.archive.run(doc);
 }
 

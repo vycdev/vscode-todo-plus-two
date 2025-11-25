@@ -30,6 +30,30 @@ const Editor = {
             });
     },
 
+    /**
+     * Return the indentation string based on the active editor settings.
+     * Falls back to defaultIndent if no editor is active.
+     */
+    getIndentation(editor?: vscode.TextEditor, defaultIndent: string = '  ') {
+        const ed = editor || vscode.window.activeTextEditor;
+        if (!ed) return defaultIndent;
+
+        // options.insertSpaces can be boolean or undefined; tabSize may be number or 'auto' string
+        const options: any = ed.options as any;
+        const insertSpaces = options.insertSpaces !== false; // default true
+        let tabSize = options.tabSize;
+        if (typeof tabSize === 'string') {
+            const parsed = Number(tabSize);
+            tabSize = isNaN(parsed) ? undefined : parsed;
+        }
+
+        if (insertSpaces && _.isNumber(tabSize) && tabSize > 0) {
+            return ' '.repeat(tabSize);
+        }
+
+        return '\t';
+    },
+
     edits: {
         apply(textEditor: vscode.TextEditor, edits: vscode.TextEdit[]) {
             const uri = textEditor.document.uri,

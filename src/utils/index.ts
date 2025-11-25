@@ -16,6 +16,7 @@ import time from './time';
 import todo from './todo';
 import statistics from './statistics';
 import view from './view';
+import log from './log';
 
 /* UTILS */
 
@@ -24,6 +25,7 @@ const Utils = {
     ackmate,
     archive,
     ast,
+    log,
     command,
     editor,
     embedded,

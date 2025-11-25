@@ -3,6 +3,7 @@
 import * as detectIndent from 'detect-indent';
 import * as vscode from 'vscode';
 import Consts from '../consts';
+import Editor from './editor';
 
 /* AST */
 
@@ -24,8 +25,23 @@ const AST = {
         const text = textDocument.getText(),
             match = AST.indentationRe.exec(text),
             endIndex = Math.min(text.length, match ? match.index + 300 : 500), // We don't want to process huge documents
-            sample = text.slice(0, endIndex),
-            indentation = detectIndent(sample).indent || Consts.indentation;
+            sample = text.slice(0, endIndex);
+
+        // Prefer an editor's indentation settings for this document
+        const editor =
+            vscode.window.visibleTextEditors.find((te) => te.document === textDocument) ||
+            (vscode.window.activeTextEditor &&
+            vscode.window.activeTextEditor.document === textDocument
+                ? vscode.window.activeTextEditor
+                : undefined);
+
+        let indentation: string | undefined;
+        if (editor) {
+            indentation = Editor.getIndentation(editor, undefined as any);
+        }
+
+        // If the editor didn't provide a consistent indentation, fall back on detection
+        if (!indentation) indentation = detectIndent(sample).indent || '    ';
 
         AST.indentations[filePath] = {
             indentation,

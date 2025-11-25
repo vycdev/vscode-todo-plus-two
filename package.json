@@ -108,11 +108,6 @@
           "description": "Start the tree in an expanded state",
           "default": true
         },
-        "todo.indentation": {
-          "type": "string",
-          "description": "String used for indentation",
-          "default": "  "
-        },
         "todo.symbols.box": {
           "type": "string",
           "description": "Todo box string",
@@ -1040,7 +1035,7 @@
     "compile": "webpack --mode development",
     "compile:watch": "webpack --mode development --watch",
     "postinstall": "node ./node_modules/vscode/bin/install",
-    "test": "node ./node_modules/vscode/bin/test",
+    "test": "mocha -r ts-node/register \"test/**/*.spec.ts\" --exit",
     "format": "prettier --write \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
     "format:check": "prettier --check \"**/*.{ts,js,json,md,css,scss,html,svg}\""
   },
@@ -1093,9 +1088,14 @@
     "vscode-beggar": "^1.0.0"
   },
   "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "chai": "^6.2.1",
+    "mocha": "^11.7.5",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1",
     "ts-loader": "^5.2.1",
+    "ts-node": "^10.9.2",
     "typescript": "^2.8.0",
     "vscode": "^1.1.21",
     "webpack": "^4.20.2",

@@ -170,7 +170,6 @@ const Consts = {
 
         return {
             languageId: 'todo',
-            indentation: _.get(config, 'indentation'),
             timer: _.get(config, 'timer.statusbar.enabled'),
             symbols: {
                 project: ':',
