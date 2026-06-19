@@ -12,7 +12,16 @@ import StatusbarTimer from './statusbars/timer';
 import Utils from './utils';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
-import { DependencyTarget } from './utils/dependencies';
+import DependencyIndex from './utils/dependency_index';
+import {
+    DependencyReference,
+    DependencyTarget,
+    getDependencies,
+    getIds,
+    getUnresolvedIds,
+    isValidId,
+    normalizeId,
+} from './utils/dependencies';
 
 /* CALL TODOS METHOD */
 
@@ -21,6 +30,7 @@ const callTodosMethodOptions = {
     filter: _.identity,
     method: undefined,
     args: [],
+    blockOnOpenDependencies: false,
     errors: {
         invalid: 'Only todos can perform this action',
         filtered: 'This todo cannot perform this action',
@@ -49,10 +59,27 @@ async function callTodosMethod(options?) {
 
     if (!todos.length) return;
 
-    const todosFiltered = todos.filter(options.filter);
+    let todosFiltered = todos.filter(options.filter);
 
     if (todosFiltered.length !== todos.length)
         vscode.window.showErrorMessage(options.errors.filtered);
+
+    if (!todosFiltered.length) return;
+
+    if (options.blockOnOpenDependencies) {
+        const blocked = await getBlockedTodos(todosFiltered, textEditor.document);
+
+        if (blocked.length) {
+            const ids = _.uniq(_.flatten(blocked.map(({ ids }) => ids)));
+
+            todosFiltered = todosFiltered.filter(
+                (todo) => !blocked.some((blockedTodo) => blockedTodo.todo === todo)
+            );
+            vscode.window.showErrorMessage(
+                `Cannot finish task: unresolved dependencies (${ids.join(', ')})`
+            );
+        }
+    }
 
     if (!todosFiltered.length) return;
 
@@ -145,11 +172,11 @@ function toggleBox() {
 }
 
 function toggleDone() {
-    return callTodosMethod('toggleDone');
+    return callTodosMethod({ method: 'toggleDone', blockOnOpenDependencies: true });
 }
 
 function toggleCancelled() {
-    return callTodosMethod('toggleCancelled');
+    return callTodosMethod({ method: 'toggleCancelled', blockOnOpenDependencies: true });
 }
 
 function toggleStart() {
@@ -237,6 +264,170 @@ function openDependencyAtCursor() {
     return vscode.commands.executeCommand('editor.action.openLink');
 }
 
+async function addDependency() {
+    const textEditor = vscode.window.activeTextEditor,
+        doc = new Document(textEditor);
+
+    if (!doc.isSupported()) return;
+
+    const todo: any = doc.getTodoAt(textEditor.selection.active.line);
+
+    if (!todo) {
+        return vscode.window.showErrorMessage(
+            'Place the cursor on a todo before adding a dependency'
+        );
+    }
+
+    const index = await DependencyIndex.get(textEditor.document);
+    const ids = Object.keys(index.targets).sort();
+
+    if (!ids.length)
+        return vscode.window.showInformationMessage('No task IDs found in the workspace');
+
+    const selection = await vscode.window.showQuickPick(
+        ids.map((id) => ({
+            label: id,
+            description: `${index.targets[id].length} matching task${
+                index.targets[id].length === 1 ? '' : 's'
+            }`,
+        })),
+        { placeHolder: 'Choose a task ID to add as a dependency' }
+    );
+
+    if (!selection) return;
+
+    if (getDependencies(todo.text).some((dependency) => dependency.id === selection.label)) {
+        return vscode.window.showInformationMessage(
+            `This task already depends on ${selection.label}`
+        );
+    }
+
+    todo.addTag(`@depends(${selection.label})`);
+
+    await Utils.editor.edits.apply(textEditor, todo.makeEdit());
+}
+
+async function findDependents() {
+    const id = await getIdAtCursorOrPrompt('Find tasks that depend on this ID');
+
+    if (!id) return;
+
+    const textEditor = vscode.window.activeTextEditor;
+    const index = await DependencyIndex.get(textEditor && textEditor.document);
+    const dependents = index.dependencies[id] || [];
+
+    if (!dependents.length) return vscode.window.showInformationMessage(`No tasks depend on ${id}`);
+
+    const selection = await vscode.window.showQuickPick(makeDependencyItems(dependents), {
+        placeHolder: `${dependents.length} task${dependents.length === 1 ? '' : 's'} depend on ${id}`,
+    });
+
+    if (selection) return openDependencyTarget(selection.target);
+}
+
+async function renameDependencyId() {
+    const id = await getIdAtCursorOrPrompt('Task ID to rename');
+
+    if (!id) return;
+
+    const nextIdRaw = await vscode.window.showInputBox({
+        prompt: 'Rename the ID and all of its references',
+        value: id,
+    });
+
+    if (_.isUndefined(nextIdRaw)) return;
+
+    const nextId = normalizeId(nextIdRaw);
+
+    if (!isValidId(nextId)) {
+        return vscode.window.showErrorMessage(
+            'An ID cannot be empty or contain a closing parenthesis'
+        );
+    }
+
+    if (nextId === id) return;
+
+    const textEditor = vscode.window.activeTextEditor;
+    const index = await DependencyIndex.get(textEditor && textEditor.document);
+    const locations = (index.targets[id] || []).concat(index.dependencies[id] || []);
+
+    if (!locations.length)
+        return vscode.window.showInformationMessage(`No occurrences of ${id} found`);
+
+    const edit = new vscode.WorkspaceEdit();
+
+    locations.forEach((location) => {
+        edit.replace(
+            vscode.Uri.file(location.filePath),
+            new vscode.Range(
+                location.lineNumber,
+                location.start,
+                location.lineNumber,
+                location.end
+            ),
+            nextId
+        );
+    });
+
+    if (await vscode.workspace.applyEdit(edit)) {
+        return vscode.window.showInformationMessage(
+            `Renamed ${id} to ${nextId} in ${locations.length} place${
+                locations.length === 1 ? '' : 's'
+            }`
+        );
+    }
+}
+
+async function getBlockedTodos(todos: any[], document: vscode.TextDocument) {
+    const index = await DependencyIndex.get(document);
+
+    return todos
+        .filter((todo) => !todo.isFinished())
+        .map((todo) => {
+            const ids = getUnresolvedIds(
+                getDependencies(todo.text),
+                index.targets,
+                DependencyIndex.isFinished
+            );
+
+            return { todo, ids };
+        })
+        .filter(({ ids }) => ids.length);
+}
+
+async function getIdAtCursorOrPrompt(prompt: string) {
+    const textEditor = vscode.window.activeTextEditor;
+
+    if (Utils.editor.isSupported(textEditor)) {
+        const line = textEditor.document.lineAt(textEditor.selection.active.line).text;
+        const references: DependencyReference[] = getIds(line).concat(getDependencies(line));
+        const reference = references.find(
+            ({ tagStart, tagEnd }) =>
+                textEditor.selection.active.character >= tagStart &&
+                textEditor.selection.active.character <= tagEnd
+        );
+
+        if (reference) return reference.id;
+    }
+
+    const input = await vscode.window.showInputBox({ prompt });
+
+    return input && normalizeId(input);
+}
+
+function makeDependencyItems(targets: DependencyTarget[]) {
+    return targets.map((target) => {
+        const parsedPath = Utils.folder.parsePath(target.filePath),
+            relativePath = parsedPath.relativePath || target.filePath;
+
+        return {
+            label: _.trimStart(target.text),
+            description: `${relativePath}:${target.lineNumber + 1}`,
+            target,
+        };
+    });
+}
+
 /* VIEW FILE */
 
 function viewFilesOpen() {
@@ -318,6 +509,9 @@ export {
     viewRevealTodo,
     openDependency,
     openDependencyAtCursor,
+    addDependency,
+    findDependents,
+    renameDependencyId,
     viewFilesOpen,
     viewFilesCollapse,
     viewFilesExpand,

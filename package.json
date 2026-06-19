@@ -3,7 +3,7 @@
     "displayName": "Todo+2",
     "description": "Manage todo lists with ease. Powerful, easy to use and customizable.",
     "icon": "resources/logo/logo-128x128.png",
-    "version": "5.1.0",
+    "version": "5.2.0",
     "license": "MIT",
     "main": "out/extension.js",
     "publisher": "vycdev",
@@ -723,6 +723,18 @@
                 "title": "Todo: Open Dependency at Cursor"
             },
             {
+                "command": "todo.addDependency",
+                "title": "Todo: Add Dependency"
+            },
+            {
+                "command": "todo.findDependents",
+                "title": "Todo: Find Dependents"
+            },
+            {
+                "command": "todo.renameDependencyId",
+                "title": "Todo: Rename Task ID"
+            },
+            {
                 "command": "todo.embeddedFilter",
                 "title": "Todo: Embedded View - Filter"
             },
@@ -872,6 +884,11 @@
                 "command": "todo.openDependencyAtCursor",
                 "key": "f12",
                 "when": "editorTextFocus && editorLangId == todo"
+            },
+            {
+                "command": "todo.renameDependencyId",
+                "key": "f2",
+                "when": "editorTextFocus && editorLangId == todo"
             }
         ],
         "views": {
@@ -915,6 +932,18 @@
                 },
                 {
                     "command": "todo.archive",
+                    "when": "editorLangId == todo"
+                },
+                {
+                    "command": "todo.addDependency",
+                    "when": "editorLangId == todo"
+                },
+                {
+                    "command": "todo.findDependents",
+                    "when": "editorLangId == todo"
+                },
+                {
+                    "command": "todo.renameDependencyId",
                     "when": "editorLangId == todo"
                 },
                 {

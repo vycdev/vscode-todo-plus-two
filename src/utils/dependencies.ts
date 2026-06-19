@@ -20,7 +20,7 @@ function getReferences(text: string, tag: string): DependencyReference[] {
     let match: RegExpExecArray;
 
     while ((match = regex.exec(text))) {
-        const id = match[1].trim();
+        const id = normalizeId(match[1]);
 
         // Empty tags are harmless text, but cannot identify or reference a task.
         if (!id) continue;
@@ -39,6 +39,35 @@ function getReferences(text: string, tag: string): DependencyReference[] {
     return references;
 }
 
+function normalizeId(id: string) {
+    return id.trim();
+}
+
+function isValidId(id: string) {
+    return !!normalizeId(id) && !/[\r\n)]/.test(id);
+}
+
+function getUnresolvedIds(
+    dependencies: DependencyReference[],
+    targets: { [id: string]: DependencyTarget[] },
+    isFinished: (target: DependencyTarget) => boolean
+) {
+    const ids: string[] = [];
+
+    dependencies.forEach((dependency) => {
+        const matches = targets[dependency.id] || [];
+
+        if (
+            (!matches.length || matches.some((target) => !isFinished(target))) &&
+            !ids.includes(dependency.id)
+        ) {
+            ids.push(dependency.id);
+        }
+    });
+
+    return ids;
+}
+
 function getIds(text: string) {
     return getReferences(text, 'id');
 }
@@ -49,4 +78,4 @@ function getDependencies(text: string) {
 
 /* EXPORT */
 
-export { getIds, getDependencies };
+export { getIds, getDependencies, normalizeId, isValidId, getUnresolvedIds };

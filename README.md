@@ -20,7 +20,7 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Timekeeping**: you can mark todos as started and track elapsed time until completion
 - **Timer**: a timer can be displayed in the statusbar for started todos
 - **Time estimates**: you can estimate the time it will take to complete a todo by adding a tag to it that looks like this: `@est(3 hours)`, `@est(2h30m)` or `@2h30m`. Then you can use the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens in statistics
-- **Task dependencies**: give a task a manual `@id(release-api)` and reference it from any Todo file with `@depends(release-api)`. Ctrl/Cmd-click a dependency to open its task.
+- **Task dependencies**: give a task a manual `@id(release-api)` and reference it from any Todo file with `@depends(release-api)`. The extension validates links, helps insert and rename references, and blocks premature completion.
 - **Statistics**: statistics about your entire file and/or project-level statistics about your individual projects
 - **Embedded todos**: it's common to have `//TODO` or `//FIXME` comments in our code, this extension can find those as well
 - **Activity bar views**: you can view your todo file and your embedded todos from a custom activity bar section
@@ -35,7 +35,7 @@ ext install vycdev.vscode-todo-plus-two
 
 ## Usage
 
-It adds 11 commands to the command palette:
+It adds 14 commands to the command palette:
 
 ```js
 'Todo: Open'; // Open or create your project's todo file
@@ -46,6 +46,9 @@ It adds 11 commands to the command palette:
 'Todo: Toggle Start'; // Toggle a todo as started
 'Todo: Toggle Timer'; // Toggle the timer
 'Todo: Archive'; // Archive finished todos
+'Todo: Add Dependency'; // Search task IDs and add one to the selected todo
+'Todo: Find Dependents'; // Show todos that depend on an ID
+'Todo: Rename Task ID'; // Rename an ID and all matching references
 'Todo: Embedded View - Filter'; // Filter the embedded todos view
 'Todo: Embedded View - Clear Filter'; // Clear the filter in the embedded todos view
 'Todo: Embedded View - Toggle View All Files'; // Toggle between viewing all files or only the current one
@@ -74,7 +77,11 @@ Frontend:
   ☐ Integrate the API @depends(api/contract v2)
 ```
 
-The text inside the parentheses may contain spaces, punctuation, and Unicode. Leading and trailing whitespace is ignored; `)` and line breaks are not supported. `@id(...)` and `@depends(...)` have distinct colors, while VS Code supplies the normal link treatment for dependencies. Ctrl/Cmd-click a dependency, or press `F12` with the caret inside it, to open its task. A unique ID opens directly; if several tasks use the same ID, a picker presents every matching task. Both colors are configurable with `todo.colors.id` and `todo.colors.dependency`.
+The text inside the parentheses may contain spaces, punctuation, and Unicode. Leading and trailing whitespace is ignored; `)` and line breaks are not supported. `@id(...)` and `@depends(...)` have distinct colors, while VS Code supplies the normal link treatment for dependencies. Ctrl/Cmd-click a dependency, or press `F12` with the caret inside it, to open its task. A unique ID opens directly; if several tasks use the same ID, a picker presents every matching task.
+
+When you type `@depends(`, completion suggests known task IDs. `Todo: Add Dependency` provides the same search in a command, `Todo: Find Dependents` lists every task that references the ID under the cursor, and `Todo: Rename Task ID` (or `F2`) updates every matching `@id(...)` and `@depends(...)` safely across the workspace.
+
+Missing IDs receive a warning in the Problems panel. A task cannot be marked done or cancelled until every task with each referenced ID is finished; therefore, a duplicated ID deliberately requires _all_ of its matching tasks to be finished. Both colors are configurable with `todo.colors.id` and `todo.colors.dependency`.
 
 ## Settings
 
@@ -95,6 +102,8 @@ The text inside the parentheses may contain spaces, punctuation, and Unicode. Le
   "todo.colors.project": "#66d9ef", // Project color
   "todo.colors.projectStatistics": "#4694a3", // Project statistics color
   "todo.colors.tag": "#e6db74", // Tag color
+  "todo.colors.id": "#4fc1ff", // Task ID color
+  "todo.colors.dependency": "#c586c0", // Task dependency color
   "todo.colors.tags.background": ["#e54545", "#e59f45", "#e5d145", "#ae81ff"], // Special tags' background colors
   "todo.colors.tags.foreground": ["#000000", "#000000", "#000000", "#000000"], // Special tags' foreground colors
   "todo.colors.types": { "TODO": "#ffcc00", "FIXME": "#cc0000" ... }, // Object mapping todo types to their color

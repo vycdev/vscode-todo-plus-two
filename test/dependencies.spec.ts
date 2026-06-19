@@ -1,5 +1,25 @@
 import { expect } from 'chai';
-import { getDependencies, getIds } from '../src/utils/dependencies';
+import {
+    DependencyTarget,
+    getDependencies,
+    getIds,
+    getUnresolvedIds,
+    isValidId,
+    normalizeId,
+} from '../src/utils/dependencies';
+
+function target(id: string, text: string): DependencyTarget {
+    return {
+        id,
+        text,
+        filePath: 'TODO',
+        lineNumber: 0,
+        start: 0,
+        end: id.length,
+        tagStart: 0,
+        tagEnd: id.length,
+    };
+}
 
 describe('Task dependencies', () => {
     it('accepts readable IDs with spaces and punctuation', () => {
@@ -39,5 +59,23 @@ describe('Task dependencies', () => {
         const ids = getIds('☐ First @id(test) ☐ Second @id(test) ☐ Third @id(test)');
 
         expect(ids.map((reference) => reference.id)).to.deep.equal(['test', 'test', 'test']);
+    });
+
+    it('requires every task sharing an ID to be finished', () => {
+        const dependencies = getDependencies('☐ Deploy @depends(shared) @depends(missing)');
+        const targets = {
+            shared: [target('shared', 'done'), target('shared', 'open')],
+        };
+
+        expect(
+            getUnresolvedIds(dependencies, targets, (item) => item.text === 'done')
+        ).to.deep.equal(['shared', 'missing']);
+    });
+
+    it('validates and normalizes IDs before renaming', () => {
+        expect(normalizeId(' release/v2 ')).to.equal('release/v2');
+        expect(isValidId('release/v2')).to.equal(true);
+        expect(isValidId('')).to.equal(false);
+        expect(isValidId('release)')).to.equal(false);
     });
 });

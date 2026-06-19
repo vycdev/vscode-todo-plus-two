@@ -1,14 +1,8 @@
 /* IMPORT */
 
 import * as vscode from 'vscode';
-import Consts from '../consts';
-import Utils from '../utils';
-import {
-    DependencyReference,
-    DependencyTarget,
-    getDependencies,
-    getIds,
-} from '../utils/dependencies';
+import DependencyIndex from '../utils/dependency_index';
+import { DependencyReference, getDependencies } from '../utils/dependencies';
 
 /* DEPENDENCY LINKS */
 
@@ -18,28 +12,24 @@ class DependencyLinkProvider implements vscode.DocumentLinkProvider {
 
         if (!dependencies.length) return [];
 
-        const targets = await this.getTargets(
-            document,
-            dependencies.map((dependency) => dependency.id)
-        );
+        const index = await DependencyIndex.get(document);
 
         return dependencies
             .map((dependency) => {
-                const targetsForId = targets[dependency.id];
+                const targets = index.targets[dependency.id] || [];
 
-                if (!targetsForId.length) return;
+                if (!targets.length) return;
 
                 const range = new vscode.Range(
                     new vscode.Position(dependency.lineNumber, dependency.tagStart),
                     new vscode.Position(dependency.lineNumber, dependency.tagEnd)
                 );
-                const args = encodeURIComponent(JSON.stringify([targetsForId]));
-                const link = new vscode.DocumentLink(
+                const args = encodeURIComponent(JSON.stringify([targets]));
+
+                return new vscode.DocumentLink(
                     range,
                     vscode.Uri.parse(`command:todo.openDependency?${args}`)
                 );
-
-                return link;
             })
             .filter((link) => !!link) as vscode.DocumentLink[];
     }
@@ -54,51 +44,6 @@ class DependencyLinkProvider implements vscode.DocumentLinkProvider {
         }
 
         return dependencies;
-    }
-
-    private async getTargets(document: vscode.TextDocument, referencedIds: string[]) {
-        const ids = referencedIds.filter((id, index) => referencedIds.indexOf(id) === index);
-        const targets: { [id: string]: DependencyTarget[] } = {};
-
-        ids.forEach((id) => (targets[id] = []));
-
-        const documents = await this.getTodoDocuments(document);
-
-        documents.forEach((candidate) => {
-            for (let lineNumber = 0; lineNumber < candidate.lineCount; lineNumber++) {
-                const line = candidate.lineAt(lineNumber).text;
-
-                if (!Utils.regex.test(Consts.regexes.todo, line)) continue;
-
-                getIds(line).forEach((reference) => {
-                    if (!targets.hasOwnProperty(reference.id)) return;
-
-                    const target: DependencyTarget = {
-                        ...reference,
-                        filePath: candidate.uri.fsPath,
-                        lineNumber,
-                        text: line,
-                    };
-
-                    targets[reference.id].push(target);
-                });
-            }
-        });
-
-        return targets;
-    }
-
-    private async getTodoDocuments(document: vscode.TextDocument) {
-        const paths = await Utils.files.getFilePaths(Utils.folder.getAllRootPaths());
-        const documents = await Promise.all(
-            paths.map((filePath) => vscode.workspace.openTextDocument(filePath))
-        );
-
-        if (!documents.some((candidate) => candidate.uri.toString() === document.uri.toString())) {
-            documents.push(document);
-        }
-
-        return documents;
     }
 }
 

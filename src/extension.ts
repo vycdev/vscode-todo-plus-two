@@ -10,6 +10,7 @@ import SymbolsProvider from './providers/symbols';
 import DocumentDecorator from './todo/decorators/document';
 import ChangesDecorator from './todo/decorators/changes';
 import Utils from './utils';
+import DependencyIndex from './utils/dependency_index';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
 
@@ -36,6 +37,7 @@ const activate = function (context: vscode.ExtensionContext) {
 
     Utils.context = context;
     Utils.folder.initRootsRe();
+    DependencyIndex.initialize(context);
     Utils.init.language();
     Utils.init.views();
     Utils.statistics.tokens.updateDisabledAll();

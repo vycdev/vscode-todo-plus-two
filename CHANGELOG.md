@@ -1,3 +1,11 @@
+### Version 5.2.0
+
+- Added portable task links with manual `@id(...)` anchors and cross-file `@depends(...)` references. Ctrl/Cmd-click or press `F12` to open a referenced task.
+- Added a picker for dependencies whose ID matches multiple tasks.
+- Added configurable colors for task IDs and dependency links with `todo.colors.id` and `todo.colors.dependency`.
+- Added missing-ID warnings, dependency ID completion, dependency insertion/search, dependent lookup, and safe workspace-wide ID renaming.
+- Prevented finishing a task while any referenced task is unfinished or missing. Duplicate IDs are treated as dependencies on all matching tasks.
+
 ### Version 5.1.0
 
 - Added new `todo.archive.type` setting — controls where archived todos are stored: in the same file, in a single workspace-level archive file, or in
