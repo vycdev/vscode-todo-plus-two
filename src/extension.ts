@@ -5,6 +5,7 @@ import beggar from 'vscode-beggar';
 import Config from './config';
 import Consts from './consts';
 import CompletionProvider from './providers/completion';
+import DependencyLinkProvider from './providers/dependency_links';
 import SymbolsProvider from './providers/symbols';
 import DocumentDecorator from './todo/decorators/document';
 import ChangesDecorator from './todo/decorators/changes';
@@ -44,6 +45,10 @@ const activate = function (context: vscode.ExtensionContext) {
             Consts.languageId,
             new CompletionProvider(),
             ...CompletionProvider.triggerCharacters
+        ),
+        vscode.languages.registerDocumentLinkProvider(
+            Consts.languageId,
+            new DependencyLinkProvider()
         ),
         vscode.languages.registerDocumentSymbolProvider(Consts.languageId, new SymbolsProvider()),
         vscode.window.onDidChangeActiveTextEditor(() => DocumentDecorator.update()),

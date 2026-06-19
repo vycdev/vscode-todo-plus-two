@@ -35,15 +35,43 @@ const TAG = vscode.window.createTextEditorDecorationType({
     },
 });
 
+const ID = vscode.window.createTextEditorDecorationType({
+    color: Consts.colors.id,
+    fontWeight: 'bold',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    dark: {
+        color: Consts.colors.dark.id,
+    },
+    light: {
+        color: Consts.colors.light.id,
+    },
+});
+
+const DEPENDENCY = vscode.window.createTextEditorDecorationType({
+    color: Consts.colors.dependency,
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    dark: {
+        color: Consts.colors.dark.dependency,
+    },
+    light: {
+        color: Consts.colors.light.dependency,
+    },
+});
+
 /* TAG */
 
 class Tag extends Line {
-    TYPES = [...SPECIAL_TAGS, TAG];
+    TYPES = [...SPECIAL_TAGS, ID, DEPENDENCY, TAG];
 
     getItemRanges(tag: TagItem) {
         //FIXME: We are purposely not supporting tags inside code blocks, it's an uncommon case, we'll just be wasting some performance
         // this.TYPES.map ( ( type, index ) => tag.match[index + 1] && this.getRangeDifference ( tag.text, tag.range, [Consts.regexes.formattedCode] ) );
-        return this.TYPES.map((type, index) => tag.match[index + 1] && tag.range);
+        const special = SPECIAL_TAGS.map((type, index) => tag.match[index + 1] && tag.range),
+            id = tag.isId() && tag.range,
+            dependency = tag.isDependency() && tag.range,
+            normal = tag.isNormal() && !id && !dependency && tag.range;
+
+        return [...special, id, dependency, normal];
     }
 }
 

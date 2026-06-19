@@ -1,7 +1,7 @@
 # <img src="resources/logo/logo.png" width="96" alt="Todo+2 logo" align="left" style="margin-right:16px"> Todo+2
 
 A lightweight, plain-text todo manager for Visual Studio Code. Powerful, customizable and easy to use. [View the demo](#demo).
-This extension is a continuation of the original Todo+ extension by [Fabio Spampinato](https://github.com/fabiospampinato/vscode-todo-plus) and will break compatibility with some of the features. Old issues have been imported from the original repository and will be addressed. 
+This extension is a continuation of the original Todo+ extension by [Fabio Spampinato](https://github.com/fabiospampinato/vscode-todo-plus) and will break compatibility with some of the features. Old issues have been imported from the original repository and will be addressed.
 
 ## Features
 
@@ -9,9 +9,9 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Portable**: being a plain text format you can read and edit it using any editor
 - **Custom symbols**: you can replace the default symbols with any symbol you want
 - **Custom symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes by default.
-  - **Box**: `☐` or Markdown `- [ ]`
-  - **Done**: `✔` or Markdown `- [x]`
-  - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
+    - **Box**: `☐` or Markdown `- [ ]`
+    - **Done**: `✔` or Markdown `- [x]`
+    - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
 - **Custom colors**: all colors can be customized
 - **Custom special tags**: special tags' names and their colors can be customized
 - **Archive**: you can move finished todos to a special "Archive" section with a shortcut
@@ -20,6 +20,7 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Timekeeping**: you can mark todos as started and track elapsed time until completion
 - **Timer**: a timer can be displayed in the statusbar for started todos
 - **Time estimates**: you can estimate the time it will take to complete a todo by adding a tag to it that looks like this: `@est(3 hours)`, `@est(2h30m)` or `@2h30m`. Then you can use the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens in statistics
+- **Task dependencies**: give a task a manual `@id(release-api)` and reference it from any Todo file with `@depends(release-api)`. Ctrl/Cmd-click a dependency to open its task.
 - **Statistics**: statistics about your entire file and/or project-level statistics about your individual projects
 - **Embedded todos**: it's common to have `//TODO` or `//FIXME` comments in our code, this extension can find those as well
 - **Activity bar views**: you can view your todo file and your embedded todos from a custom activity bar section
@@ -60,6 +61,20 @@ It adds 6 shortcuts when editing a `Todo` file:
 'Alt+S'; // Triggers `Todo: Toggle Start`
 'Cmd/Ctrl+Shift+A'; // Triggers  `Todo: Archive`
 ```
+
+### Task dependencies
+
+Task identities are plain text, so they remain intact when you copy, move, or archive tasks. Add a non-empty `@id(...)` to a task and reference it with `@depends(...)` elsewhere in the workspace:
+
+```todo
+Backend:
+  ☐ Publish API contract @id(api/contract v2)
+
+Frontend:
+  ☐ Integrate the API @depends(api/contract v2)
+```
+
+The text inside the parentheses may contain spaces, punctuation, and Unicode. Leading and trailing whitespace is ignored; `)` and line breaks are not supported. `@id(...)` and `@depends(...)` have distinct colors, while VS Code supplies the normal link treatment for dependencies. Ctrl/Cmd-click a dependency, or press `F12` with the caret inside it, to open its task. A unique ID opens directly; if several tasks use the same ID, a picker presents every matching task. Both colors are configurable with `todo.colors.id` and `todo.colors.dependency`.
 
 ## Settings
 

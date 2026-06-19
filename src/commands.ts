@@ -12,6 +12,7 @@ import StatusbarTimer from './statusbars/timer';
 import Utils from './utils';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
+import { DependencyTarget } from './utils/dependencies';
 
 /* CALL TODOS METHOD */
 
@@ -204,6 +205,38 @@ function viewRevealTodo(todo: ItemTodo) {
     }
 }
 
+function openDependencyTarget(target: DependencyTarget) {
+    if (!target || !target.filePath) return;
+
+    return Utils.file.open(target.filePath, true, target.lineNumber, target.start, target.end);
+}
+
+async function openDependency(targets: DependencyTarget[]) {
+    if (!targets || !targets.length) return;
+
+    if (targets.length === 1) return openDependencyTarget(targets[0]);
+
+    const items = targets.map((target) => {
+        const parsedPath = Utils.folder.parsePath(target.filePath),
+            relativePath = parsedPath.relativePath || target.filePath;
+
+        return {
+            label: _.trimStart(target.text),
+            description: `${relativePath}:${target.lineNumber + 1}`,
+            target,
+        };
+    });
+    const selection = await vscode.window.showQuickPick(items, {
+        placeHolder: 'Multiple tasks use this ID. Choose one to open.',
+    });
+
+    if (selection) return openDependencyTarget(selection.target);
+}
+
+function openDependencyAtCursor() {
+    return vscode.commands.executeCommand('editor.action.openLink');
+}
+
 /* VIEW FILE */
 
 function viewFilesOpen() {
@@ -283,6 +316,8 @@ export {
     archive,
     viewOpenFile,
     viewRevealTodo,
+    openDependency,
+    openDependencyAtCursor,
     viewFilesOpen,
     viewFilesCollapse,
     viewFilesExpand,
