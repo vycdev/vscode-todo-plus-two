@@ -107,14 +107,17 @@ class Files {
     async getFilePaths(rootPaths): Promise<string[]> {
         const globby = require('globby'); // Lazy import for performance
 
-        const follow = !!Config.getKey('followSymlinks');
+        const config = Config.get(),
+            include = config.file.include || [],
+            exclude = config.file.exclude || [],
+            follow = !!Config.getKey('followSymlinks');
 
         const raw = _.flatten(
             await Promise.all(
                 rootPaths.map((cwd) =>
-                    globby(this.include, {
+                    globby(include, {
                         cwd,
-                        ignore: this.exclude,
+                        ignore: exclude,
                         dot: true,
                         absolute: true,
                         followSymbolicLinks: follow,

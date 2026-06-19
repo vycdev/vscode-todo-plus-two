@@ -1,8 +1,16 @@
+### Version 5.2.0
+
+- Added portable task links with manual `@id(...)` anchors and cross-file `@depends(...)` references. Ctrl/Cmd-click or press `F12` to open a referenced task.
+- Added a picker for dependencies whose ID matches multiple tasks.
+- Added configurable colors for task IDs and dependency links with `todo.colors.id` and `todo.colors.dependency`.
+- Added missing-ID warnings, dependency ID completion, dependency insertion/search, dependent lookup, and safe workspace-wide ID renaming.
+- Prevented finishing a task while any referenced task is unfinished or missing. Duplicate IDs are treated as dependencies on all matching tasks.
+
 ### Version 5.1.0
 
-- Added new `todo.archive.type` setting — controls where archived todos are stored: in the same file, in a single workspace-level archive file, or in 
-per-file archive files (default: `InMultiSeparateFile`).
-- Removed `todo.indentation` in favour of automatic detection based on vscode settings. 
+- Added new `todo.archive.type` setting — controls where archived todos are stored: in the same file, in a single workspace-level archive file, or in
+  per-file archive files (default: `InMultiSeparateFile`).
+- Removed `todo.indentation` in favour of automatic detection based on vscode settings.
 - Improved archiving by preserving projects structure and merging tasks into already existing archived projects, https://github.com/vycdev/vscode-todo-plus-two/issues/32
 - Added unit tests
 
@@ -12,16 +20,16 @@ per-file archive files (default: `InMultiSeparateFile`).
 - Updated docs and references
 - Added `CONTRIBUTING.md`
 - Improve code quality by formatting everything using prettier
-- Replace `rm -rf` with `rimraf` for windows compatibility 
+- Replace `rm -rf` with `rimraf` for windows compatibility
 - Added `launch.json` and `tasks.json` for easier debugging in vscode
 - Removed support for other symbols other than ☐ ✔ ✘
-- Add support for markdown style tasks (`- [ ]` and `- [x]` only) 
-- `todo.symbols` is no longer limited to supported symbols, any symbol can be used 
+- Add support for markdown style tasks (`- [ ]` and `- [x]` only)
+- `todo.symbols` is no longer limited to supported symbols, any symbol can be used
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/36
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/37
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/78
 - Performance improvements including two new settings `todo.embedded.batchSize` and `todo.file.batchSize`. https://github.com/vycdev/vscode-todo-plus-two/issues/75
-- Introduced `todo.embedded.showComments` defaulting to `false` to reduce clutter in the sidebar. https://github.com/vycdev/vscode-todo-plus-two/issues/97 
+- Introduced `todo.embedded.showComments` defaulting to `false` to reduce clutter in the sidebar. https://github.com/vycdev/vscode-todo-plus-two/issues/97
 - Added `todo.followSymlinks` (default: `false`) — when enabled the extension will follow symbolic links during file enumeration; results are deduplicated by realpath to avoid duplicate targets, but enabling this can increase traversal time and should be used only when you need symlinked files included. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/43
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/50
 - Embedded: per-file refresh + non-empty-file caching to speed single-file edits. This will further improve performance in big projects. https://github.com/vycdev/vscode-todo-plus-two/issues/99
@@ -29,6 +37,7 @@ per-file archive files (default: `InMultiSeparateFile`).
 - Fixed: https://github.com/vycdev/vscode-todo-plus-two/issues/28
 
 ### Version 4.18.4
+
 - Ensuring ts-loader doesn’t prevent production builds to be made
 - Deleted repo-level github funding.yml
 - Added a dialog announcing the fundraising

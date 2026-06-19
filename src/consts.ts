@@ -20,6 +20,8 @@ const Consts = {
                 project: _.get(config, `${root}.project`),
                 projectStatistics: _.get(config, `${root}.projectStatistics`),
                 tag: _.get(config, `${root}.tag`),
+                id: _.get(config, `${root}.id`),
+                dependency: _.get(config, `${root}.dependency`),
                 tags: {
                     background: _.get(config, `${root}.tags.background`, []),
                     foreground: _.get(config, `${root}.tags.foreground`, []),
@@ -160,6 +162,8 @@ const Consts = {
             tagFinished: /(?:^|[^a-zA-Z0-9])@(?:done|cancelled)(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
             tagElapsed: /(?:^|[^a-zA-Z0-9])@(?:lasted|wasted)(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
             tagEstimate: /(?:^|[^a-zA-Z0-9])@est\(([^)]*)\)|@(\d\S+)/,
+            tagId: /@id\([^\r\n)]*\)/,
+            tagDependency: /@depends\([^\r\n)]*\)/,
             formatted:
                 /(?:^|[^a-zA-Z0-9])(?:(`[^\n`]*`)|(\*[^\n*]+\*)|(_[^\n_]+_)|(~[^\n~]+~))(?![a-zA-Z])/gm,
             formattedCode: /(?:^|[^a-zA-Z0-9])(`[^\n`]*`)(?![a-zA-Z])/gm,
