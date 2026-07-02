@@ -15,6 +15,7 @@ import regex from './regex';
 import time from './time';
 import todo from './todo';
 import statistics from './statistics';
+import tags from './tags';
 import view from './view';
 import log from './log';
 
@@ -37,6 +38,7 @@ const Utils = {
     time,
     todo,
     statistics,
+    tags,
     view,
 };
 

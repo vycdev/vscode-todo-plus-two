@@ -319,7 +319,9 @@ const Archive = {
             lines.forEach((line) => {
                 data.remove.push(line);
                 // Preserve original line text (including indentation)
-                data.insert[line.lineNumber] = { text: line.text };
+                data.insert[line.lineNumber] = {
+                    text: Utils.tags.remove(line.text, Config.getKey('archive.remove.tags')),
+                };
             });
         },
 

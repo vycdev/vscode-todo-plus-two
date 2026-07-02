@@ -115,6 +115,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.archive.name": "Archive", // Name of the special "Archive" section
   "todo.archive.remove.emptyProjects": true, // Remove projects without todos
   "todo.archive.remove.emptyLines": 1, // Remove extra empty lines, keeping no more than `emptyLinesThreshold` consecutive empty lines
+  "todo.archive.remove.tags": ["today"], // Tags to remove from todos when archiving
   "todo.archive.project.enabled": true, // Enable the @project tag
   "todo.archive.project.separator": ".", // String used for joining multiple projects
   "todo.archive.sortByDate": false, // Sort lines by finished date
@@ -128,6 +129,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.timekeeping.finished.enabled": true, // Enable the @done/cancelled tag. It's always enabled if you explicitly start a todo or if you use only 1 symbol
   "todo.timekeeping.finished.time": true, // Insert the time inside the @done/cancelled tag
   "todo.timekeeping.finished.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @done/cancelled
+  "todo.timekeeping.finished.remove.tags": ["today"], // Tags to remove when a todo is marked done or cancelled
   "todo.timekeeping.elapsed.enabled": true, // Enable the @lasted/wasted tag
   "todo.timekeeping.elapsed.format": "short-compact", // Format used for displaying time diff inside @lasted/waster
   "todo.timekeeping.estimate.format": "short-compact", // Format used for the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens

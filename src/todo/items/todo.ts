@@ -97,6 +97,10 @@ class Todo extends Item {
         this.lineNextText = _.trimEnd(this.lineNextText.replace(tagRegex, ''));
     }
 
+    removeTags(tags: string[]) {
+        this.lineNextText = Utils.tags.remove(this.lineNextText, tags);
+    }
+
     replaceTag(tagRegex: RegExp, tag: string) {
         this.removeTag(tagRegex);
         this.addTag(tag);
@@ -160,6 +164,8 @@ class Todo extends Item {
         isPositive = _.isBoolean(isPositive) ? isPositive : this.isDone();
 
         const started = this.getTag(Consts.regexes.tagStarted);
+
+        this.removeTags(Config.getKey('timekeeping.finished.remove.tags'));
 
         if (
             started ||

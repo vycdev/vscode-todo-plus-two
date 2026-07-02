@@ -390,6 +390,16 @@
                     "description": "Remove extra empty lines, keeping no more than `emptyLinesThreshold` consecutive empty lines",
                     "default": 1
                 },
+                "todo.archive.remove.tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Tags to remove from todos when archiving",
+                    "default": [
+                        "today"
+                    ]
+                },
                 "todo.archive.project.enabled": {
                     "type": "boolean",
                     "description": "Enable the @project tag",
@@ -459,6 +469,16 @@
                     "type": "string",
                     "description": "Format used for displaying time inside @done/cancelled",
                     "default": "YY-MM-DD HH:mm"
+                },
+                "todo.timekeeping.finished.remove.tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Tags to remove when a todo is marked done or cancelled",
+                    "default": [
+                        "today"
+                    ]
                 },
                 "todo.timekeeping.elapsed.enabled": {
                     "type": "boolean",
