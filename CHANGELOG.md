@@ -5,6 +5,7 @@
 - Replaced eager startup activation with Todo language, view, and command activation events. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/41
 - Added strikethrough styling for done todos, enabled by default and configurable with `todo.decorations.done.strikethrough`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/54
 - Fixed default Todo file discovery globs so valid todo files are not hidden by an overly broad dot-directory exclude. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/3, https://github.com/vycdev/vscode-todo-plus-two/issues/11
+- Replaced Moment with the `moment-mini` package alias to reduce bundled date-library size. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/55
 
 ### Version 5.2.0
 
