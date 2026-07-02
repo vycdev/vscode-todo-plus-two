@@ -43,6 +43,27 @@ const activate = function (context: vscode.ExtensionContext) {
     Utils.init.views();
     Utils.statistics.tokens.updateDisabledAll();
 
+    const embeddedRefreshTimers = {};
+    const refreshEmbeddedDocument = (document: vscode.TextDocument) => {
+        if (document.uri.scheme !== 'file') return;
+
+        const key = document.uri.fsPath;
+
+        clearTimeout(embeddedRefreshTimers[key]);
+
+        embeddedRefreshTimers[key] = setTimeout(() => {
+            delete embeddedRefreshTimers[key];
+
+            const provider: any = Utils.embedded.provider;
+
+            if (!provider || typeof provider.updateDocumentData !== 'function') return;
+
+            const filePath = provider.updateDocumentData(document);
+
+            if (filePath) ViewEmbedded.refreshFile(filePath);
+        }, 250);
+    };
+
     context.subscriptions.push(
         vscode.languages.registerCompletionItemProvider(
             Consts.languageId,
@@ -65,6 +86,9 @@ const activate = function (context: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeConfiguration(() => DocumentDecorator.update()),
         vscode.workspace.onDidChangeConfiguration(Utils.statistics.tokens.updateDisabledAll),
         vscode.workspace.onDidChangeTextDocument(ChangesDecorator.onChanges),
+        vscode.workspace.onDidChangeTextDocument(({ document }) =>
+            refreshEmbeddedDocument(document)
+        ),
         vscode.workspace.onDidChangeWorkspaceFolders(
             () => Utils.embedded.provider && Utils.embedded.provider.unwatchPaths()
         ),

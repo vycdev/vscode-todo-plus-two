@@ -4,6 +4,7 @@ import * as _ from 'lodash';
 import * as querystring from 'querystring';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import stringMatches from 'string-matches';
 import Config from '../../../config';
 import EmbeddedView from '../../../views/embedded';
 import Folder from '../../folder';
@@ -127,6 +128,80 @@ class Abstract {
 
     isIncluded(filePath) {
         return !!this.getIncluded([filePath]).length;
+    }
+
+    getCachedFilePath(filePath: string) {
+        if (!this.filesData) return filePath;
+
+        const normalized = path.normalize(filePath);
+
+        return (
+            Object.keys(this.filesData).find((key) => path.normalize(key) === normalized) ||
+            filePath
+        );
+    }
+
+    parseContent(filePath: string, content: string) {
+        const data = [];
+
+        if (!content) return data;
+
+        let parsedPath;
+
+        content.split(/\r?\n/).forEach((rawLine, lineNr) => {
+            const line = _.trimStart(rawLine),
+                matches = stringMatches(line, Consts.regexes.todoEmbedded);
+
+            if (!matches.length) return;
+
+            if (!parsedPath) {
+                parsedPath = Folder.parsePath(filePath);
+            }
+
+            matches.forEach((match) => {
+                data.push({
+                    todo: match[0],
+                    type: match[1].toUpperCase(),
+                    message: match[2],
+                    code: line.slice(0, line.indexOf(match[0])),
+                    rawLine,
+                    line,
+                    lineNr,
+                    filePath,
+                    root: parsedPath.root,
+                    rootPath: parsedPath.rootPath,
+                    relativePath: parsedPath.relativePath,
+                });
+            });
+        });
+
+        return data;
+    }
+
+    updateDocumentData(textDocument: vscode.TextDocument) {
+        if (!this.filesData || textDocument.uri.scheme !== 'file') return;
+
+        const filePath = textDocument.uri.fsPath.replace(/\\/g, '/');
+
+        if (!this.isIncluded(filePath)) return;
+
+        const cachedFilePath = this.getCachedFilePath(filePath),
+            hadData =
+                this.filesData.hasOwnProperty(cachedFilePath) ||
+                this.nonEmptyFiles.has(cachedFilePath),
+            data = this.parseContent(cachedFilePath, textDocument.getText());
+
+        if (!data.length && !hadData) return;
+
+        if (data.length) {
+            this.filesData[cachedFilePath] = data;
+            this.nonEmptyFiles.add(cachedFilePath);
+        } else {
+            delete this.filesData[cachedFilePath];
+            this.nonEmptyFiles.delete(cachedFilePath);
+        }
+
+        return cachedFilePath;
     }
 
     async initFilesData(

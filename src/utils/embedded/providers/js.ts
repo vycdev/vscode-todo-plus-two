@@ -2,11 +2,8 @@
 
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
-import stringMatches from 'string-matches';
-import Consts from '../../../consts';
 import Config from '../../../config';
 import File from '../../file';
-import Folder from '../../folder';
 import Abstract from './abstract';
 
 /* JS */
@@ -133,50 +130,18 @@ class JS extends Abstract {
     }
 
     async getFileData(filePath) {
-        const data = [];
         const openDoc = vscode.workspace.textDocuments.find(
             (d) => d.uri && d.uri.fsPath === filePath
         );
         const content = openDoc ? openDoc.getText() : await File.read(filePath);
 
-        if (!content) return data;
+        if (!content) return [];
 
         // Quick pre-check: skip expensive line-by-line matching when the file
         // clearly contains no todo-like markers.
-        if (!JS.QUICK_TODO_RE.test(content)) return data;
+        if (!JS.QUICK_TODO_RE.test(content)) return [];
 
-        const lines = content.split(/\r?\n/);
-
-        let parsedPath;
-
-        lines.forEach((rawLine, lineNr) => {
-            const line = _.trimStart(rawLine),
-                matches = stringMatches(line, Consts.regexes.todoEmbedded);
-
-            if (!matches.length) return;
-
-            if (!parsedPath) {
-                parsedPath = Folder.parsePath(filePath);
-            }
-
-            matches.forEach((match) => {
-                data.push({
-                    todo: match[0],
-                    type: match[1].toUpperCase(),
-                    message: match[2],
-                    code: line.slice(0, line.indexOf(match[0])),
-                    rawLine,
-                    line,
-                    lineNr,
-                    filePath,
-                    root: parsedPath.root,
-                    rootPath: parsedPath.rootPath,
-                    relativePath: parsedPath.relativePath,
-                });
-            });
-        });
-
-        return data;
+        return this.parseContent(filePath, content);
     }
 }
 

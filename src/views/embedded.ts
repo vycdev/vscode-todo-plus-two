@@ -119,12 +119,26 @@ class Embedded extends View {
 
             // Ensure file data is up to date if it's pending
             const provider = Utils.embedded.provider as any;
-            if (provider && provider.filesData && provider.filesData[filePath] === undefined) {
+            const cachedFilePath =
+                provider && typeof provider.getCachedFilePath === 'function'
+                    ? provider.getCachedFilePath(filePath)
+                    : filePath;
+
+            if (
+                provider &&
+                provider.filesData &&
+                provider.filesData[cachedFilePath] === undefined
+            ) {
                 await provider.updateFilesData();
             }
 
             // Try both slash variants for mapping
-            const keysToTry = [filePath, filePath.replace(/\\/g, '/')];
+            const keysToTry = [
+                cachedFilePath,
+                cachedFilePath.replace(/\\/g, '/'),
+                filePath,
+                filePath.replace(/\\/g, '/'),
+            ];
             let item: Item | undefined;
             for (const k of keysToTry) {
                 item = this.fileItems.get(k);
@@ -134,7 +148,7 @@ class Embedded extends View {
             if (item) {
                 // Update the node's backing data from the provider so children reflect new content
                 const fresh =
-                    provider && provider.filesData ? provider.filesData[filePath] : undefined;
+                    provider && provider.filesData ? provider.filesData[cachedFilePath] : undefined;
                 if (fresh && fresh.length) {
                     item.obj = fresh;
                     this.onDidChangeTreeDataEvent.fire(item);
