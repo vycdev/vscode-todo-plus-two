@@ -2,18 +2,26 @@
 
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
+import Config from '../config';
 import Consts from '../consts';
 import Document from '../todo/document';
 import DependencyIndex from '../utils/dependency_index';
+import Timestamps from '../utils/timestamps';
 
 /* COMPLETION */
 
+const TAG_TRIGGER_CHARACTERS = [Consts.symbols.tag, '('];
+const TIMESTAMP_TRIGGER_CHARACTERS = 'creatednowCREATEDNOW'.split('');
+
 class Completion implements vscode.CompletionItemProvider {
-    static triggerCharacters = [Consts.symbols.tag, '('];
+    static triggerCharacters = _.uniq(
+        TAG_TRIGGER_CHARACTERS.concat(TIMESTAMP_TRIGGER_CHARACTERS)
+    );
 
     async provideCompletionItems(textDocument: vscode.TextDocument, pos: vscode.Position) {
         const line = textDocument.lineAt(pos.line).text;
         const character = line[pos.character - 1];
+        const tagPrefix = Timestamps.getPrefix(line, pos.character);
         const dependency = line.substring(0, pos.character).match(/@depends\(([^)]*)$/);
 
         if (dependency) return Completion.getDependencyIds(textDocument, pos, dependency[1]);
@@ -21,15 +29,37 @@ class Completion implements vscode.CompletionItemProvider {
         if (
             !character ||
             !_.trim(character).length ||
-            _.includes(Completion.triggerCharacters, character)
+            _.includes(TAG_TRIGGER_CHARACTERS, character) ||
+            tagPrefix
         ) {
+            const range = tagPrefix
+                ? new vscode.Range(pos.line, tagPrefix.start, pos.line, tagPrefix.end)
+                : undefined;
+
+            /* TIMESTAMPS */
+
+            const timestampFormat = Config.getKey('timekeeping.created.format');
+            const timestampTags = Timestamps.aliases.map((text) => {
+                const item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Value);
+
+                item.detail =
+                    text === '@now' ? 'Insert current timestamp' : 'Insert @created timestamp';
+                item.filterText = text;
+                item.insertText = Timestamps.expand(text, timestampFormat);
+                if (range) item.range = range;
+
+                return item;
+            });
+
             /* SPECIAL */
 
             const tagsSpecial = Consts.tags.names.map((tag) => {
                 const text = `@${tag}`,
                     item = new vscode.CompletionItem(text);
 
+                item.filterText = text;
                 item.insertText = `${text} `;
+                if (range) item.range = range;
 
                 return item;
             });
@@ -43,7 +73,9 @@ class Completion implements vscode.CompletionItemProvider {
             const tagsSmart = tagsFiltered.map((text) => {
                 const item = new vscode.CompletionItem(text);
 
+                item.filterText = text;
                 item.insertText = `${text} `;
+                if (range) item.range = range;
 
                 return item;
             });
@@ -51,15 +83,33 @@ class Completion implements vscode.CompletionItemProvider {
             const dependencyTags = ['@id()', '@depends()'].map((text) => {
                 const item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Reference);
 
+                item.filterText = text;
                 item.insertText = text;
+                if (range) item.range = range;
 
                 return item;
             });
 
-            return dependencyTags.concat(tagsSpecial, tagsSmart);
+            return Completion.filterByPrefix(
+                timestampTags.concat(dependencyTags, tagsSpecial, tagsSmart),
+                tagPrefix && tagPrefix.text
+            );
         }
 
         return null; // Word-based suggestions
+    }
+
+    private static filterByPrefix(items: vscode.CompletionItem[], prefix?: string) {
+        if (!prefix || prefix === Consts.symbols.tag) return items;
+
+        const prefixLower = prefix.toLowerCase();
+
+        return items.filter(
+            (item) =>
+                String(item.filterText || item.label)
+                    .toLowerCase()
+                    .indexOf(prefixLower) === 0
+        );
     }
 
     private static async getDependencyIds(
