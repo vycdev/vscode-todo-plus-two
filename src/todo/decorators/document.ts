@@ -10,6 +10,7 @@ import Comment from './comment';
 import Formatted from './formatted';
 import Project from './project';
 import Tag from './tag';
+import TodoDue from './todo_due';
 import TodoDone from './todo_done';
 import TodoCancelled from './todo_cancelled';
 import TodoStarted from './todo_started';
@@ -163,6 +164,7 @@ const Document = {
             formatted: Config.getKey('formatting.enabled') ? doc.getFormatted() : [],
             projects: doc.getProjects(),
             tags: doc.getTags(),
+            tagsDue: doc.getTagsDue(),
             todosBox: doc.getTodosBox(),
             todosStarted: doc.getTodosBoxStarted(),
             todosDone: doc.getTodosDone(),
@@ -175,6 +177,7 @@ const Document = {
             new Comment().getDecorations(items.comments),
             new Formatted().getDecorations(items.formatted),
             new Tag().getDecorations(items.tags),
+            new TodoDue().getDecorations(items.tagsDue),
             new Project().getDecorations(items.projects),
             new TodoStarted().getDecorations(items.todosStarted),
             new TodoDone().getDecorations(items.todosDone),

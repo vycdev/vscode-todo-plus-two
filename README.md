@@ -108,6 +108,10 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.colors.tag": "#e6db74", // Tag color
   "todo.colors.id": "#4fc1ff", // Task ID color
   "todo.colors.dependency": "#c586c0", // Task dependency color
+  "todo.colors.due.overdue": "#ae81ff", // Overdue @due tag color
+  "todo.colors.due.today": "#f92672", // @due tag color for tasks due today
+  "todo.colors.due.soon": "#e5d145", // @due tag color for tasks due soon
+  "todo.colors.due.later": "#a6e22e", // @due tag color for future tasks
   "todo.colors.tags.background": ["#e54545", "#e59f45", "#e5d145", "#ae81ff"], // Special tags' background colors
   "todo.colors.tags.foreground": ["#000000", "#000000", "#000000", "#000000"], // Special tags' foreground colors
   "todo.colors.types": { "TODO": "#ffcc00", "FIXME": "#cc0000" ... }, // Object mapping todo types to their color
@@ -116,6 +120,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.colors.light": { /* "done": "black", ... */ }, // Colors for light themes
   "todo.tags.names": ["critical", "high", "low", "today"], // Special tags' names
   "todo.tags.namesInference": true, // Infer commonly used tags' names
+  "todo.due.soonDays": 7, // Number of days ahead that @due tags are considered due soon
   "todo.archive.name": "Archive", // Name of the special "Archive" section
   "todo.archive.remove.emptyProjects": true, // Remove projects without todos
   "todo.archive.remove.emptyLines": 1, // Remove extra empty lines, keeping no more than `emptyLinesThreshold` consecutive empty lines

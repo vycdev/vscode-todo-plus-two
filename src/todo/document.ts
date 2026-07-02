@@ -130,6 +130,10 @@ class Document {
         return this.getItems(Tag, Consts.regexes.tagSpecialNormal);
     }
 
+    getTagsDue() {
+        return this.getItems(Tag, Consts.regexes.tagDue);
+    }
+
     getTodos() {
         return this.getItems(Todo, Consts.regexes.todo);
     }

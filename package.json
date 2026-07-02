@@ -224,6 +224,26 @@
                     "description": "Task dependency color",
                     "default": "#c586c0"
                 },
+                "todo.colors.due.overdue": {
+                    "type": "string",
+                    "description": "Overdue @due tag color",
+                    "default": "#ae81ff"
+                },
+                "todo.colors.due.today": {
+                    "type": "string",
+                    "description": "@due tag color for tasks due today",
+                    "default": "#f92672"
+                },
+                "todo.colors.due.soon": {
+                    "type": "string",
+                    "description": "@due tag color for tasks due soon",
+                    "default": "#e5d145"
+                },
+                "todo.colors.due.later": {
+                    "type": "string",
+                    "description": "@due tag color for future tasks",
+                    "default": "#a6e22e"
+                },
                 "todo.colors.tags.background": {
                     "type": "array",
                     "items": {
@@ -307,6 +327,23 @@
                         "dependency": {
                             "type": "string"
                         },
+                        "due": {
+                            "type": "object",
+                            "properties": {
+                                "overdue": {
+                                    "type": "string"
+                                },
+                                "today": {
+                                    "type": "string"
+                                },
+                                "soon": {
+                                    "type": "string"
+                                },
+                                "later": {
+                                    "type": "string"
+                                }
+                            }
+                        },
                         "tags": {
                             "type": "object",
                             "properties": {
@@ -358,6 +395,23 @@
                         "dependency": {
                             "type": "string"
                         },
+                        "due": {
+                            "type": "object",
+                            "properties": {
+                                "overdue": {
+                                    "type": "string"
+                                },
+                                "today": {
+                                    "type": "string"
+                                },
+                                "soon": {
+                                    "type": "string"
+                                },
+                                "later": {
+                                    "type": "string"
+                                }
+                            }
+                        },
                         "tags": {
                             "type": "object",
                             "properties": {
@@ -392,6 +446,12 @@
                     "type": "boolean",
                     "description": "Infer commonly used tags' names",
                     "default": true
+                },
+                "todo.due.soonDays": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Number of days ahead that @due tags are considered due soon",
+                    "default": 7
                 },
                 "todo.archive.name": {
                     "type": "string",

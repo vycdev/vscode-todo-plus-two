@@ -23,6 +23,12 @@ const Consts = {
                 tag: _.get(config, `${root}.tag`),
                 id: _.get(config, `${root}.id`),
                 dependency: _.get(config, `${root}.dependency`),
+                due: {
+                    overdue: _.get(config, `${root}.due.overdue`),
+                    today: _.get(config, `${root}.due.today`),
+                    soon: _.get(config, `${root}.due.soon`),
+                    later: _.get(config, `${root}.due.later`),
+                },
                 tags: {
                     background: _.get(config, `${root}.tags.background`, []),
                     foreground: _.get(config, `${root}.tags.foreground`, []),
@@ -159,6 +165,7 @@ const Consts = {
                     '|created|done|cancelled|started|lasted|wasted|est|\\d)[^\\s*~(:]+(?::\/\/[^\\s*~(:]+)?(?:\\([^)]*\\))?'
             ),
             tagCreated: /(?:^|[^a-zA-Z0-9])@created(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
+            tagDue: /(?:^|[^a-zA-Z0-9])(@due\([^)]*\))/gim,
             tagStarted: /(?:^|[^a-zA-Z0-9])@started(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
             tagFinished: /(?:^|[^a-zA-Z0-9])@(?:done|cancelled)(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
             tagElapsed: /(?:^|[^a-zA-Z0-9])@(?:lasted|wasted)(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
