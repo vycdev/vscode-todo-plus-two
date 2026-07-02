@@ -446,6 +446,20 @@ function viewFilesExpand() {
     ViewFiles.refresh(true);
 }
 
+function viewFilesToggleFinished(force: boolean = !ViewFiles.showFinished) {
+    ViewFiles.showFinished = force;
+    vscode.commands.executeCommand('setContext', 'todo-files-show-finished', force);
+    ViewFiles.refresh(true);
+}
+
+function viewFilesHideFinished() {
+    viewFilesToggleFinished(false);
+}
+
+function viewFilesShowFinished() {
+    viewFilesToggleFinished(true);
+}
+
 /* VIEW EMBEDDED */
 
 function viewEmbeddedCollapse() {
@@ -515,6 +529,8 @@ export {
     viewFilesOpen,
     viewFilesCollapse,
     viewFilesExpand,
+    viewFilesHideFinished,
+    viewFilesShowFinished,
     viewEmbeddedCollapse,
     viewEmbeddedExpand,
     viewEmbeddedFilter,

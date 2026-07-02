@@ -20,7 +20,18 @@ class Files extends View {
     id = 'todo.views.1files';
     clear = false;
     expanded = false;
+    showFinishedOverride: boolean;
     filePathRe = /^(?!~).*(?:\\|\/)/;
+
+    get showFinished() {
+        return _.isBoolean(this.showFinishedOverride)
+            ? this.showFinishedOverride
+            : _.get(this.config, 'file.view.showFinished') !== false;
+    }
+
+    set showFinished(value: boolean) {
+        this.showFinishedOverride = value;
+    }
 
     getTreeItem(item: Item): vscode.TreeItem {
         if (item.collapsibleState !== vscode.TreeItemCollapsibleState.None) {
@@ -71,6 +82,7 @@ class Files extends View {
                     data.line.text.match(Consts.regexes.comment)
                 );
                 if (!showComments && isCommentLine) return;
+                if (!this.showFinished && this.isFinishedTodo(data.line.text)) return;
 
                 const label = _.trimStart(data.line.text),
                     item = isGroup ? new Group(data, label) : new Todo(data, label);
@@ -78,7 +90,13 @@ class Files extends View {
                 items.push(item);
             });
 
-            if (!items.length) return [new Placeholder('The file is empty')];
+            if (!items.length) {
+                return [
+                    new Placeholder(
+                        this.showFinished ? 'The file is empty' : 'No unfinished tasks found'
+                    ),
+                ];
+            }
 
             return items;
         } else {
@@ -102,6 +120,12 @@ class Files extends View {
         this.clear = !!clear;
 
         super.refresh();
+
+        vscode.commands.executeCommand('setContext', 'todo-files-show-finished', this.showFinished);
+    }
+
+    isFinishedTodo(text: string) {
+        return !!text.match(Consts.regexes.todoFinished);
     }
 }
 

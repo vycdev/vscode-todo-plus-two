@@ -94,6 +94,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.file.include": ["**/TODO", "**/TODO.md", ...], // Globs to use for including files
   "todo.file.exclude": ["**/.git/**", ...], // Globs to use for excluding files
   "todo.file.view.expanded": true, // Start the tree in an expanded state
+  "todo.file.view.showFinished": true, // Show done and cancelled tasks in the Todo files view
   "todo.symbols.box": "☐", // Box symbol
   "todo.symbols.done": "✔", // Done symbol
   "todo.symbols.cancelled": "✘", // Cancelled symbol

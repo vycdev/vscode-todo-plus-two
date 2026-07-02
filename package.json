@@ -30,6 +30,8 @@
         "onCommand:todo.viewFilesOpen",
         "onCommand:todo.viewFilesCollapse",
         "onCommand:todo.viewFilesExpand",
+        "onCommand:todo.viewFilesHideFinished",
+        "onCommand:todo.viewFilesShowFinished",
         "onCommand:todo.viewEmbeddedCollapse",
         "onCommand:todo.viewEmbeddedExpand",
         "onCommand:todo.viewEmbeddedFilter",
@@ -150,6 +152,11 @@
                 "todo.file.view.expanded": {
                     "type": "boolean",
                     "description": "Start the tree in an expanded state",
+                    "default": true
+                },
+                "todo.file.view.showFinished": {
+                    "type": "boolean",
+                    "description": "Show done and cancelled tasks in the Todo files view",
                     "default": true
                 },
                 "todo.symbols.box": {
@@ -857,6 +864,22 @@
                 }
             },
             {
+                "command": "todo.viewFilesHideFinished",
+                "title": "Hide Finished Tasks",
+                "icon": {
+                    "light": "resources/icons/filter_light.svg",
+                    "dark": "resources/icons/filter_dark.svg"
+                }
+            },
+            {
+                "command": "todo.viewFilesShowFinished",
+                "title": "Show Finished Tasks",
+                "icon": {
+                    "light": "resources/icons/clear_filter_light.svg",
+                    "dark": "resources/icons/clear_filter_dark.svg"
+                }
+            },
+            {
                 "command": "todo.viewEmbeddedCollapse",
                 "title": "Collapse",
                 "icon": {
@@ -1053,6 +1076,14 @@
                     "when": "false"
                 },
                 {
+                    "command": "todo.viewFilesHideFinished",
+                    "when": "false"
+                },
+                {
+                    "command": "todo.viewFilesShowFinished",
+                    "when": "false"
+                },
+                {
                     "command": "todo.viewEmbeddedCollapse",
                     "when": "false"
                 },
@@ -1147,6 +1178,16 @@
                     "command": "todo.viewFilesExpand",
                     "when": "view == todo.views.1files && todo-files-expanded == false",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "todo.viewFilesHideFinished",
+                    "when": "view == todo.views.1files && todo-files-show-finished == true",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "todo.viewFilesShowFinished",
+                    "when": "view == todo.views.1files && todo-files-show-finished == false",
+                    "group": "navigation@3"
                 },
                 {
                     "command": "todo.viewEmbeddedCollapse",
