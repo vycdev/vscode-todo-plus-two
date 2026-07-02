@@ -10,7 +10,12 @@ import * as toTime from 'to-time';
 /* TIME */
 
 const Time = {
-    diff(to: Date | string | number, from: Date = new Date(), format: string = 'long') {
+    diff(
+        to: Date | string | number,
+        from: Date = new Date(),
+        format: string = 'long',
+        hoursPerDay: number = 24
+    ) {
         const toSeconds = Time.diffSeconds(to, from),
             toDate = new Date(from.getTime() + toSeconds * 1000);
 
@@ -18,9 +23,9 @@ const Time = {
             case 'long':
                 return Time.diffLong(toDate, from);
             case 'short':
-                return Time.diffShort(toDate, from);
+                return Time.diffShort(toDate, from, hoursPerDay);
             case 'short-compact':
-                return Time.diffShortCompact(toDate, from);
+                return Time.diffShortCompact(toDate, from, hoursPerDay);
             case 'clock':
                 return Time.diffClock(toDate, from);
             case 'seconds':
@@ -34,10 +39,11 @@ const Time = {
         return moment['preciseDiff'](from, to);
     },
 
-    diffShortRaw(to: Date, from: Date = new Date()) {
+    diffShortRaw(to: Date, from: Date = new Date(), hoursPerDay: number = 24) {
         const seconds = Math.round((to.getTime() - from.getTime()) / 1000),
             secondsAbs = Math.abs(seconds),
-            sign = Math.sign(seconds);
+            sign = Math.sign(seconds),
+            normalizedHoursPerDay = Math.max(1, Number(hoursPerDay) || 24);
 
         let remaining = secondsAbs,
             parts = [];
@@ -45,7 +51,7 @@ const Time = {
         const sections: [string, number][] = [
             ['y', 31536000],
             ['w', 604800],
-            ['d', 86400],
+            ['d', normalizedHoursPerDay * 3600],
             ['h', 3600],
             ['m', 60],
             ['s', 1],
@@ -62,8 +68,8 @@ const Time = {
         return { parts, sign };
     },
 
-    diffShort(to: Date, from?: Date) {
-        const { parts, sign } = Time.diffShortRaw(to, from);
+    diffShort(to: Date, from?: Date, hoursPerDay: number = 24) {
+        const { parts, sign } = Time.diffShortRaw(to, from, hoursPerDay);
 
         const shortParts = [];
 
@@ -76,8 +82,8 @@ const Time = {
         return `${sign < 0 ? '-' : ''}${shortParts.join(' ')}`;
     },
 
-    diffShortCompact(to: Date, from?: Date) {
-        return Time.diffShort(to, from).replace(/\s+/g, '');
+    diffShortCompact(to: Date, from?: Date, hoursPerDay: number = 24) {
+        return Time.diffShort(to, from, hoursPerDay).replace(/\s+/g, '');
     },
 
     diffClock(to: Date, from?: Date) {

@@ -7,6 +7,7 @@
 - Fixed default Todo file discovery globs so valid todo files are not hidden by an overly broad dot-directory exclude. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/3, https://github.com/vycdev/vscode-todo-plus-two/issues/11
 - Replaced Moment with the `moment-mini` package alias to reduce bundled date-library size. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/55
 - Added default `@today` cleanup when archiving or marking todos done/cancelled, configurable with `todo.archive.remove.tags` and `todo.timekeeping.finished.remove.tags`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/30, https://github.com/vycdev/vscode-todo-plus-two/issues/13
+- Added `todo.hoursPerDay` for configurable day length in short duration formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/16
 
 ### Version 5.2.0
 

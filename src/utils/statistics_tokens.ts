@@ -97,7 +97,12 @@ class StatisticsTokens {
 
     private formatTime(seconds: number, format: string): string {
         return seconds
-            ? Time.diff(Date.now() + seconds * 1000, undefined, Config.getKey(format))
+            ? Time.diff(
+                  Date.now() + seconds * 1000,
+                  undefined,
+                  Config.getKey(format),
+                  Config.getKey('hoursPerDay')
+              )
             : '';
     }
 }

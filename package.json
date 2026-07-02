@@ -509,6 +509,12 @@
                     "description": "Format used for the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens",
                     "default": "short-compact"
                 },
+                "todo.hoursPerDay": {
+                    "type": "number",
+                    "minimum": 1,
+                    "description": "Number of hours represented by one day when formatting short time durations",
+                    "default": 24
+                },
                 "todo.timer.statusbar.enabled": {
                     "type": [
                         "boolean",
