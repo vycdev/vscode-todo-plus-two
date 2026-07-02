@@ -570,7 +570,10 @@
                         "short",
                         "short-compact",
                         "clock",
-                        "hours"
+                        "hours",
+                        "man-hours",
+                        "man-days",
+                        "man-weeks"
                     ],
                     "description": "Format used for displaying time diff inside @lasted/wasted",
                     "default": "short-compact"
@@ -582,7 +585,10 @@
                         "short",
                         "short-compact",
                         "clock",
-                        "hours"
+                        "hours",
+                        "man-hours",
+                        "man-days",
+                        "man-weeks"
                     ],
                     "description": "Format used for the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens",
                     "default": "short-compact"
@@ -592,6 +598,18 @@
                     "minimum": 1,
                     "description": "Number of hours represented by one day when formatting short time durations",
                     "default": 24
+                },
+                "todo.manHoursPerDay": {
+                    "type": "number",
+                    "minimum": 1,
+                    "description": "Number of hours represented by one man-day when using man-time duration formats",
+                    "default": 8
+                },
+                "todo.manDaysPerWeek": {
+                    "type": "number",
+                    "minimum": 1,
+                    "description": "Number of man-days represented by one man-week when using man-time duration formats",
+                    "default": 5
                 },
                 "todo.timer.statusbar.enabled": {
                     "type": [

@@ -101,7 +101,9 @@ class StatisticsTokens {
                   Date.now() + seconds * 1000,
                   undefined,
                   Config.getKey(format),
-                  Config.getKey('hoursPerDay')
+                  Config.getKey('hoursPerDay'),
+                  Config.getKey('manHoursPerDay'),
+                  Config.getKey('manDaysPerWeek')
               )
             : '';
     }

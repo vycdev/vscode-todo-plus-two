@@ -143,6 +143,8 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.timekeeping.elapsed.format": "short-compact", // Format used for displaying time diff inside @lasted/waster
   "todo.timekeeping.estimate.format": "short-compact", // Format used for the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens
   "todo.hoursPerDay": 24, // Number of hours represented by one day when formatting short time durations
+  "todo.manHoursPerDay": 8, // Number of hours represented by one man-day when using man-time duration formats
+  "todo.manDaysPerWeek": 5, // Number of man-days represented by one man-week when using man-time duration formats
   "todo.timer.statusbar.enabled": true, // Show a timer for started todos in the statusbar
   "todo.timer.statusbar.alignment": "left", // Should the item be placed to the left or right?
   "todo.timer.statusbar.color": "", // The foreground color for this item

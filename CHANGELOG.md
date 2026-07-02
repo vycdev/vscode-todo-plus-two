@@ -14,6 +14,7 @@
 - Added a Todo files view toggle and `todo.file.view.showFinished` setting for hiding done and cancelled tasks. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/34
 - Updated the embedded activity-bar view from open editor changes so source edits refresh without regenerating the embedded snapshot. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/84
 - Added urgency coloring for `@due(...)` tags, configurable with `todo.colors.due.*` and `todo.due.soonDays`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/95
+- Added `man-hours`, `man-days`, and `man-weeks` duration formats with configurable `todo.manHoursPerDay` and `todo.manDaysPerWeek` settings. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/88
 
 ### Version 5.2.0
 

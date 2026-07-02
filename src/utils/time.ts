@@ -14,7 +14,9 @@ const Time = {
         to: Date | string | number,
         from: Date = new Date(),
         format: string = 'long',
-        hoursPerDay: number = 24
+        hoursPerDay: number = 24,
+        manHoursPerDay: number = 8,
+        manDaysPerWeek: number = 5
     ) {
         const toSeconds = Time.diffSeconds(to, from),
             toDate = new Date(from.getTime() + toSeconds * 1000);
@@ -32,6 +34,12 @@ const Time = {
                 return Time.diffSeconds(toDate, from);
             case 'hours':
                 return Time.diffHours(toDate, from);
+            case 'man-hours':
+                return Time.diffManHours(toDate, from);
+            case 'man-days':
+                return Time.diffMan(toDate, from, manHoursPerDay, manDaysPerWeek, false);
+            case 'man-weeks':
+                return Time.diffMan(toDate, from, manHoursPerDay, manDaysPerWeek, true);
         }
     },
 
@@ -84,6 +92,99 @@ const Time = {
 
     diffShortCompact(to: Date, from?: Date, hoursPerDay: number = 24) {
         return Time.diffShort(to, from, hoursPerDay).replace(/\s+/g, '');
+    },
+
+    diffManRaw(
+        to: Date,
+        from: Date = new Date(),
+        manHoursPerDay: number = 8,
+        manDaysPerWeek: number = 5,
+        includeWeeks: boolean = true
+    ) {
+        const seconds = Math.round((to.getTime() - from.getTime()) / 1000),
+            secondsAbs = Math.abs(seconds),
+            sign = Math.sign(seconds),
+            normalizedHoursPerDay = Math.max(1, Number(manHoursPerDay) || 8),
+            normalizedDaysPerWeek = Math.max(1, Number(manDaysPerWeek) || 5);
+
+        let remaining = secondsAbs,
+            parts = [];
+
+        const sections: [string, number][] = includeWeeks
+            ? [
+                  ['mw', normalizedHoursPerDay * normalizedDaysPerWeek * 3600],
+                  ['md', normalizedHoursPerDay * 3600],
+                  ['h', 3600],
+                  ['m', 60],
+                  ['s', 1],
+              ]
+            : [
+                  ['md', normalizedHoursPerDay * 3600],
+                  ['h', 3600],
+                  ['m', 60],
+                  ['s', 1],
+              ];
+
+        sections.forEach(([token, seconds]) => {
+            const times = Math.floor(remaining / seconds);
+
+            parts.push({ times, token });
+
+            remaining -= seconds * times;
+        });
+
+        return { parts, sign };
+    },
+
+    diffMan(
+        to: Date,
+        from?: Date,
+        manHoursPerDay: number = 8,
+        manDaysPerWeek: number = 5,
+        includeWeeks: boolean = true
+    ) {
+        const { parts, sign } = Time.diffManRaw(
+            to,
+            from,
+            manHoursPerDay,
+            manDaysPerWeek,
+            includeWeeks
+        );
+
+        const manParts = [];
+
+        parts.forEach(({ times, token }) => {
+            if (!times) return;
+
+            manParts.push(`${times}${token}`);
+        });
+
+        return `${sign < 0 ? '-' : ''}${manParts.join(' ')}`;
+    },
+
+    diffManHours(to: Date, from?: Date) {
+        const seconds = Math.round((to.getTime() - (from || new Date()).getTime()) / 1000),
+            secondsAbs = Math.abs(seconds),
+            sign = Math.sign(seconds),
+            manParts = [];
+
+        let remaining = secondsAbs;
+
+        const sections: [string, number][] = [
+            ['h', 3600],
+            ['m', 60],
+            ['s', 1],
+        ];
+
+        sections.forEach(([token, seconds]) => {
+            const times = Math.floor(remaining / seconds);
+
+            if (times) manParts.push(`${times}${token}`);
+
+            remaining -= seconds * times;
+        });
+
+        return `${sign < 0 ? '-' : ''}${manParts.join('')}`;
     },
 
     diffClock(to: Date, from?: Date) {
