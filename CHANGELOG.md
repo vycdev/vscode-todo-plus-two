@@ -1,3 +1,8 @@
+### Version 5.3.0 (Unreleased)
+
+- Preparing the 5.3.0 development cycle.
+- Updated the VS Code-bundled ripgrep fallback to use the supported `vscode-ripgrep` module lookup. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/42
+
 ### Version 5.2.0
 
 - Added portable task links with manual `@id(...)` anchors and cross-file `@depends(...)` references. Ctrl/Cmd-click or press `F12` to open a referenced task.
