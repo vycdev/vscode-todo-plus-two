@@ -246,6 +246,11 @@
                         "IDEA": "#cc00cc"
                     }
                 },
+                "todo.decorations.done.strikethrough": {
+                    "type": "boolean",
+                    "description": "Render done todos with strikethrough",
+                    "default": true
+                },
                 "todo.colors.dark": {
                     "type": "object",
                     "description": "Colors for dark themes",
