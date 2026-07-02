@@ -99,6 +99,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.symbols.cancelled": "✘", // Cancelled symbol
   "todo.colors.done": "#a6e22e", // Done todo color
   "todo.colors.cancelled": "#f92672", // Cancelled todo color
+  "todo.colors.started": "#4fc1ff", // Started todo color
   "todo.colors.code": "#fd971f", // Code color
   "todo.colors.comment": "#75715e", // Comment color
   "todo.colors.project": "#66d9ef", // Project color

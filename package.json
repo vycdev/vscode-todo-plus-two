@@ -177,6 +177,11 @@
                     "description": "Cancelled todo color",
                     "default": "#f92672"
                 },
+                "todo.colors.started": {
+                    "type": "string",
+                    "description": "Started todo color",
+                    "default": "#4fc1ff"
+                },
                 "todo.colors.code": {
                     "type": "string",
                     "description": "Code color",
@@ -271,6 +276,9 @@
                         "cancelled": {
                             "type": "string"
                         },
+                        "started": {
+                            "type": "string"
+                        },
                         "code": {
                             "type": "string"
                         },
@@ -317,6 +325,9 @@
                             "type": "string"
                         },
                         "cancelled": {
+                            "type": "string"
+                        },
+                        "started": {
                             "type": "string"
                         },
                         "code": {
