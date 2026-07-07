@@ -33,7 +33,7 @@ const File = {
                     const endPos = new vscode.Position(lineNumber, endIndex);
                     const selection = new vscode.Selection(startPos, endPos);
                     textEditor.selection = selection;
-                    textEditor.revealRange(selection, vscode.TextEditorRevealType.Default);
+                    textEditor.revealRange(selection, vscode.TextEditorRevealType.InCenter);
                 });
         } else {
             return vscode.commands.executeCommand('vscode.open', fileuri);

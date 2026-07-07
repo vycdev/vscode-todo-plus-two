@@ -1,6 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
-- Preparing the 5.3.0 development cycle.
+- Center the editor viewport when navigating to a todo from the embedded or files tree views, making the target line appear in the middle of the screen rather than at an edge. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/74
 - Updated the VS Code-bundled ripgrep fallback to use the supported `vscode-ripgrep` module lookup. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/42
 - Replaced eager startup activation with Todo language, view, and command activation events. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/41
 - Added strikethrough styling for done todos, enabled by default and configurable with `todo.decorations.done.strikethrough`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/54
