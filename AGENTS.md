@@ -66,7 +66,6 @@ Two independent todo sources with separate views:
 ## Boundaries
 
 - Never modify generated output in `out/`, `dist/`, or `node_modules/`
-- Never commit package-lock.json (in .gitignore)
 - Never add runtime dependencies without explaining why in the PR
 - Follow symlinks only when `todo.followSymlinks` is enabled (default: false)
 
