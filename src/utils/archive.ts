@@ -440,6 +440,25 @@ const Archive = {
 
             if (emptyLines < 0) return;
 
+            // Find the archive section. Empty lines immediately preceding the
+            // archive header serve as a visual separator and should be preserved
+            // regardless of the emptyLines setting.
+            const archive = doc.getArchive();
+            let trailingEmptyStart = -1;
+
+            if (archive) {
+                const archiveLine = archive.line.range.start.line;
+                trailingEmptyStart = archiveLine;
+                while (trailingEmptyStart > 0) {
+                    const prevLine = doc.textDocument.lineAt(
+                        trailingEmptyStart - 1
+                    );
+                    if (!prevLine || !Consts.regexes.empty.test(prevLine.text))
+                        break;
+                    trailingEmptyStart--;
+                }
+            }
+
             let streak = 0; // Number of consecutive empty lines
 
             AST.walkDown(
@@ -449,6 +468,15 @@ const Archive = {
                 false,
                 function ({ startLevel, line, level }) {
                     if (data.remove.find((other) => other === line)) return;
+
+                    // Preserve trailing empty lines that serve as a visual
+                    // separator between the content and the archive section.
+                    if (
+                        trailingEmptyStart >= 0 &&
+                        line.lineNumber >= trailingEmptyStart
+                    ) {
+                        return;
+                    }
 
                     if (line.text && !Consts.regexes.empty.test(line.text)) {
                         streak = 0;
