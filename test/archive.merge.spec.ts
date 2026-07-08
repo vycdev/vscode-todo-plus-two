@@ -1,5 +1,8 @@
 import { expect } from 'chai';
-import mergeHelper from '../src/utils/archive-helpers';
+import mergeHelper, {
+    getRemovableEmptyLineNumbers,
+    getTrailingEmptySeparatorStart,
+} from '../src/utils/archive-helpers';
 
 describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
     const Archive: any = { mergeInsertItemsIntoArchiveContent: mergeHelper };
@@ -436,5 +439,23 @@ describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
             .filter((l) => l.trim().startsWith('PROJECT1:')).length;
         expect(projectCount).to.equal(1);
         expect(merged).to.include('New Task');
+    });
+});
+
+describe('Archive empty-line pruning helpers', () => {
+    it('preserves blank separator lines immediately before the same-file Archive header', () => {
+        const lines = ['Todo:', '', '', 'Archive:', '  ✔ Done'];
+        const preserveFromLine = getTrailingEmptySeparatorStart(lines, 3);
+
+        expect(preserveFromLine).to.equal(1);
+        expect(getRemovableEmptyLineNumbers(lines, 0, [], preserveFromLine)).to.deep.equal([]);
+    });
+
+    it('still removes excess empty lines before the protected Archive separator', () => {
+        const lines = ['Todo:', '', '', '  ✔ Done', '', '', 'Archive:'];
+        const preserveFromLine = getTrailingEmptySeparatorStart(lines, 6);
+
+        expect(preserveFromLine).to.equal(4);
+        expect(getRemovableEmptyLineNumbers(lines, 1, [], preserveFromLine)).to.deep.equal([2]);
     });
 });

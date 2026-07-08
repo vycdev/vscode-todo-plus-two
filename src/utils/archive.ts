@@ -13,6 +13,7 @@ import Editor from './editor';
 import * as path from 'path';
 import File from './file';
 import Folder from './folder';
+import { getRemovableEmptyLineNumbers, getTrailingEmptySeparatorStart } from './archive-helpers';
 
 /* ARCHIVE */
 
@@ -52,6 +53,7 @@ const Archive = {
             remove: [], // Lines to remove
             // Map of `lineNumber => { text, projects?: string[] }` to insert
             insert: {},
+            archiveLine: archive ? archive.line.range.start.line : undefined,
         };
 
         for (let transformation of Archive.transformations.order) {
@@ -440,55 +442,28 @@ const Archive = {
 
             if (emptyLines < 0) return;
 
-            // Find the archive section. Empty lines immediately preceding the
-            // archive header serve as a visual separator and should be preserved
-            // regardless of the emptyLines setting.
-            const archive = doc.getArchive();
-            let trailingEmptyStart = -1;
+            const lines = Array.from(
+                { length: doc.textDocument.lineCount },
+                (_, lineNumber) => doc.textDocument.lineAt(lineNumber).text
+            );
+            let archiveLine = data.archiveLine;
 
-            if (archive) {
-                const archiveLine = archive.line.range.start.line;
-                trailingEmptyStart = archiveLine;
-                while (trailingEmptyStart > 0) {
-                    const prevLine = doc.textDocument.lineAt(
-                        trailingEmptyStart - 1
-                    );
-                    if (!prevLine || !Consts.regexes.empty.test(prevLine.text))
-                        break;
-                    trailingEmptyStart--;
-                }
+            if (typeof archiveLine !== 'number') {
+                const archive = doc.getArchive();
+                archiveLine = archive ? archive.line.range.start.line : undefined;
             }
 
-            let streak = 0; // Number of consecutive empty lines
+            const preserveFromLine = getTrailingEmptySeparatorStart(lines, archiveLine);
+            const removedLineNumbers = data.remove.map((line) => line.lineNumber);
 
-            AST.walkDown(
-                doc.textDocument,
-                -1,
-                false,
-                false,
-                function ({ startLevel, line, level }) {
-                    if (data.remove.find((other) => other === line)) return;
-
-                    // Preserve trailing empty lines that serve as a visual
-                    // separator between the content and the archive section.
-                    if (
-                        trailingEmptyStart >= 0 &&
-                        line.lineNumber >= trailingEmptyStart
-                    ) {
-                        return;
-                    }
-
-                    if (line.text && !Consts.regexes.empty.test(line.text)) {
-                        streak = 0;
-                    } else {
-                        streak++;
-
-                        if (streak > emptyLines) {
-                            data.remove.push(line);
-                        }
-                    }
-                }
-            );
+            getRemovableEmptyLineNumbers(
+                lines,
+                emptyLines,
+                removedLineNumbers,
+                preserveFromLine
+            ).forEach((lineNumber) => {
+                data.remove.push(doc.textDocument.lineAt(lineNumber));
+            });
         },
     },
 };
