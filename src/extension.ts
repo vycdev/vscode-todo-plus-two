@@ -18,8 +18,15 @@ import ViewFiles from './views/files';
 
 const activate = function (context: vscode.ExtensionContext) {
     const config = Config.get();
+    const updateUnarchiveContext = () =>
+        vscode.commands.executeCommand(
+            'setContext',
+            'todo-unarchive-enabled',
+            Config.getKey('archive.type') === 'InSameFile'
+        );
 
     Config.check(config);
+    updateUnarchiveContext();
 
     ViewEmbedded.expanded = config.embedded.view.expanded;
 
@@ -77,6 +84,7 @@ const activate = function (context: vscode.ExtensionContext) {
         vscode.languages.registerDocumentSymbolProvider(Consts.languageId, new SymbolsProvider()),
         vscode.window.onDidChangeActiveTextEditor(() => DocumentDecorator.update()),
         vscode.workspace.onDidChangeConfiguration(Consts.update),
+        vscode.workspace.onDidChangeConfiguration(updateUnarchiveContext),
         vscode.workspace.onDidChangeConfiguration(
             () =>
                 delete Utils.files.filesData &&
