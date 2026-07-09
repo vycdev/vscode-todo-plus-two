@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Preserved empty lines between the working section and the Archive header when archiving tasks. Previously the archiving step stripped these visual separator lines. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/58
 - Center the editor viewport when navigating to a todo from the embedded or files tree views, making the target line appear in the middle of the screen rather than at an edge. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/74
 - Updated the VS Code-bundled ripgrep fallback to use the supported `vscode-ripgrep` module lookup. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/42
 - Replaced eager startup activation with Todo language, view, and command activation events. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/41

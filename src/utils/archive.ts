@@ -13,6 +13,7 @@ import Editor from './editor';
 import * as path from 'path';
 import File from './file';
 import Folder from './folder';
+import { getRemovableEmptyLineNumbers, getTrailingEmptySeparatorStart } from './archive-helpers';
 
 /* ARCHIVE */
 
@@ -52,6 +53,7 @@ const Archive = {
             remove: [], // Lines to remove
             // Map of `lineNumber => { text, projects?: string[] }` to insert
             insert: {},
+            archiveLine: archive ? archive.line.range.start.line : undefined,
         };
 
         for (let transformation of Archive.transformations.order) {
@@ -440,27 +442,28 @@ const Archive = {
 
             if (emptyLines < 0) return;
 
-            let streak = 0; // Number of consecutive empty lines
-
-            AST.walkDown(
-                doc.textDocument,
-                -1,
-                false,
-                false,
-                function ({ startLevel, line, level }) {
-                    if (data.remove.find((other) => other === line)) return;
-
-                    if (line.text && !Consts.regexes.empty.test(line.text)) {
-                        streak = 0;
-                    } else {
-                        streak++;
-
-                        if (streak > emptyLines) {
-                            data.remove.push(line);
-                        }
-                    }
-                }
+            const lines = Array.from(
+                { length: doc.textDocument.lineCount },
+                (_, lineNumber) => doc.textDocument.lineAt(lineNumber).text
             );
+            let archiveLine = data.archiveLine;
+
+            if (typeof archiveLine !== 'number') {
+                const archive = doc.getArchive();
+                archiveLine = archive ? archive.line.range.start.line : undefined;
+            }
+
+            const preserveFromLine = getTrailingEmptySeparatorStart(lines, archiveLine);
+            const removedLineNumbers = data.remove.map((line) => line.lineNumber);
+
+            getRemovableEmptyLineNumbers(
+                lines,
+                emptyLines,
+                removedLineNumbers,
+                preserveFromLine
+            ).forEach((lineNumber) => {
+                data.remove.push(doc.textDocument.lineAt(lineNumber));
+            });
         },
     },
 };

@@ -6,6 +6,51 @@
 const projectParts = /^(\s*)([^:]+):(?=\s|$|@)/;
 const defaultIndentUnit = '  ';
 
+export function getTrailingEmptySeparatorStart(lines: string[], archiveLine?: number) {
+    if (typeof archiveLine !== 'number' || archiveLine < 0 || archiveLine >= lines.length) {
+        return undefined;
+    }
+
+    let separatorStart = archiveLine;
+
+    while (separatorStart > 0 && lines[separatorStart - 1].trim() === '') {
+        separatorStart--;
+    }
+
+    return separatorStart;
+}
+
+export function getRemovableEmptyLineNumbers(
+    lines: string[],
+    emptyLines: number,
+    removedLineNumbers: number[] = [],
+    preserveFromLine?: number
+) {
+    if (emptyLines < 0) return [];
+
+    const removedLineNumberSet = new Set(removedLineNumbers);
+    const removableLineNumbers = [] as number[];
+    let streak = 0;
+
+    lines.forEach((line, lineNumber) => {
+        if (removedLineNumberSet.has(lineNumber)) return;
+        if (typeof preserveFromLine === 'number' && lineNumber >= preserveFromLine) return;
+
+        if (line && line.trim() !== '') {
+            streak = 0;
+            return;
+        }
+
+        streak++;
+
+        if (streak > emptyLines) {
+            removableLineNumbers.push(lineNumber);
+        }
+    });
+
+    return removableLineNumbers;
+}
+
 export function mergeInsertItemsIntoArchiveContent(
     content: string,
     insertItems: any[],
