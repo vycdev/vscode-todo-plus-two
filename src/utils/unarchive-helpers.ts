@@ -100,9 +100,12 @@ function getProjectNamesAtLine(
         while (stack.length && level <= stack[stack.length - 1].level) stack.pop();
 
         const name = options.getProjectName(line);
-
         if (name) stack.push({ name, level });
     }
+
+    const todoLevel = getLineLevel(lines[todoLine], indentation);
+
+    while (stack.length && stack[stack.length - 1].level >= todoLevel) stack.pop();
 
     return stack.map((project) => project.name);
 }

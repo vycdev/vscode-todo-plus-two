@@ -74,6 +74,35 @@ describe('unarchiveItemsFromSameFileContent', () => {
         ]);
     });
 
+    it('restores a parent task after a nested project to the parent project', () => {
+        const content = [
+            'Work:',
+            '  Backend:',
+            '    ☐ Existing task',
+            '',
+            'Archive:',
+            '  Work:',
+            '    Backend:',
+            '      ✔ Child task',
+            '    ✔ Parent task',
+        ].join('\n');
+
+        const result = unarchiveItemsFromSameFileContent(content, [8], 4, options);
+
+        expect(result.count).to.equal(1);
+        expect(result.content.split('\n')).to.deep.equal([
+            'Work:',
+            '  Backend:',
+            '    ☐ Existing task',
+            '  ✔ Parent task',
+            '',
+            'Archive:',
+            '  Work:',
+            '    Backend:',
+            '      ✔ Child task',
+        ]);
+    });
+
     it('ignores selected finished tasks outside the Archive section', () => {
         const content = ['Todo:', '  ✔ Keep in place', 'Archive:', '  ✔ Restore me'].join('\n');
 
