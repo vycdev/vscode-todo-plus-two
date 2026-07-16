@@ -13,6 +13,8 @@ import Utils from './utils';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
 import DependencyIndex from './utils/dependency_index';
+import { Comment, Project, TodoFinished } from './todo/items';
+import { unarchiveItemsFromSameFileContent } from './utils/unarchive-helpers';
 import {
     DependencyReference,
     DependencyTarget,
@@ -213,6 +215,83 @@ function archive() {
 
     Utils.log.debug(`archive on document: ${textEditor.document.fileName}`);
     Utils.archive.run(doc);
+}
+
+async function unarchive() {
+    const textEditor = vscode.window.activeTextEditor;
+
+    if (!textEditor) {
+        return vscode.window.showInformationMessage('This command works only in Todo files');
+    }
+
+    const doc = new Document(textEditor);
+
+    if (!doc.isSupported()) {
+        return vscode.window.showInformationMessage('This command works only in Todo files');
+    }
+
+    if (Config.getKey('archive.type') !== 'InSameFile') {
+        return vscode.window.showInformationMessage(
+            'Unarchive is available only when todo.archive.type is set to InSameFile'
+        );
+    }
+
+    const archive = doc.getArchive();
+    if (!archive) {
+        return vscode.window.showInformationMessage('No archive section found');
+    }
+
+    const archiveLineNum = archive.line.range.start.line;
+    const lineNrs = _.uniq(
+        _.flatten(
+            textEditor.selections.map((selection) =>
+                _.range(selection.start.line, selection.end.line + 1)
+            )
+        )
+    ).filter((lineNr) => lineNr > archiveLineNum);
+
+    if (!lineNrs.length) {
+        return vscode.window.showInformationMessage(
+            'Place the cursor on an archived task to unarchive it'
+        );
+    }
+
+    const result = unarchiveItemsFromSameFileContent(
+        textEditor.document.getText(),
+        lineNrs,
+        archiveLineNum,
+        {
+            indentation: Utils.editor.getIndentation(textEditor),
+            isFinishedTodo: TodoFinished.is,
+            isComment: Comment.is,
+            getProjectName: (line) => {
+                if (!Project.is(line)) return;
+
+                const match = line.match(Consts.regexes.projectParts);
+
+                return match && match[2].trim();
+            },
+        }
+    );
+
+    if (!result.count) {
+        return vscode.window.showInformationMessage('No finished tasks found at cursor position');
+    }
+
+    const document = textEditor.document;
+    const lastLine = document.lineAt(document.lineCount - 1);
+    const applied = await Utils.editor.edits.apply(textEditor, [
+        vscode.TextEdit.replace(
+            new vscode.Range(0, 0, lastLine.lineNumber, lastLine.text.length),
+            result.content
+        ),
+    ]);
+
+    if (!applied) return vscode.window.showErrorMessage('Unable to unarchive the selected task');
+
+    vscode.window.showInformationMessage(
+        `Unarchived ${result.count} task${result.count === 1 ? '' : 's'}`
+    );
 }
 
 /* VIEW */
@@ -519,6 +598,7 @@ export {
     toggleStart,
     toggleTimer,
     archive,
+    unarchive,
     viewOpenFile,
     viewRevealTodo,
     openDependency,
@@ -547,4 +627,5 @@ export {
     toggleCancelled as editorToggleCancelled,
     toggleStart as editorToggleStart,
     archive as editorArchive,
+    unarchive as editorUnarchive,
 };

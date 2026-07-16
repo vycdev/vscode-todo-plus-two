@@ -44,7 +44,9 @@
         "onCommand:todo.editorToggleDone",
         "onCommand:todo.editorToggleCancelled",
         "onCommand:todo.editorToggleStart",
-        "onCommand:todo.editorArchive"
+        "onCommand:todo.editorArchive",
+        "onCommand:todo.unarchive",
+        "onCommand:todo.editorUnarchive"
     ],
     "contributes": {
         "languages": [
@@ -500,7 +502,7 @@
                         "InSeparateFile",
                         "InMultiSeparateFile"
                     ],
-                    "description": "Where to store archived todos: InSameFile inserts them under the Archive section inside the same file; InSeparateFile stores all archives in a single archive file at the workspace root; InMultiSeparateFile creates an archive file per original todo file.",
+                    "description": "Where to store archived todos: InSameFile inserts them under the Archive section inside the same file and enables the Unarchive command; InSeparateFile stores all archives in a single archive file at the workspace root; InMultiSeparateFile creates an archive file per original todo file.",
                     "default": "InMultiSeparateFile"
                 },
                 "todo.formatting.enabled": {
@@ -886,6 +888,10 @@
                 "title": "Todo: Archive"
             },
             {
+                "command": "todo.unarchive",
+                "title": "Todo: Unarchive"
+            },
+            {
                 "command": "todo.openDependency",
                 "title": "Todo: Open Dependency"
             },
@@ -1032,6 +1038,10 @@
             {
                 "command": "todo.editorArchive",
                 "title": "Archive"
+            },
+            {
+                "command": "todo.editorUnarchive",
+                "title": "Unarchive"
             }
         ],
         "keybindings": [
@@ -1066,6 +1076,12 @@
                 "key": "Shift+Ctrl+a",
                 "mac": "Shift+Cmd+a",
                 "when": "editorTextFocus && editorLangId == todo"
+            },
+            {
+                "command": "todo.unarchive",
+                "key": "Shift+Ctrl+u",
+                "mac": "Shift+Cmd+u",
+                "when": "editorTextFocus && editorLangId == todo && todo-unarchive-enabled == true"
             },
             {
                 "command": "todo.openDependencyAtCursor",
@@ -1120,6 +1136,10 @@
                 {
                     "command": "todo.archive",
                     "when": "editorLangId == todo"
+                },
+                {
+                    "command": "todo.unarchive",
+                    "when": "editorLangId == todo && todo-unarchive-enabled == true"
                 },
                 {
                     "command": "todo.addDependency",
@@ -1206,6 +1226,10 @@
                     "when": "false"
                 },
                 {
+                    "command": "todo.editorUnarchive",
+                    "when": "false"
+                },
+                {
                     "command": "todo.embeddedFilter",
                     "when": "todo-embedded-filtered == false"
                 },
@@ -1239,6 +1263,11 @@
                     "command": "todo.editorArchive",
                     "group": "todo@5",
                     "when": "editorTextFocus && editorLangId == todo"
+                },
+                {
+                    "command": "todo.editorUnarchive",
+                    "group": "todo@6",
+                    "when": "editorTextFocus && editorLangId == todo && todo-unarchive-enabled == true"
                 }
             ],
             "view/title": [

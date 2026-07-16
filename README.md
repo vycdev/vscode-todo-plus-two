@@ -35,7 +35,7 @@ ext install vycdev.vscode-todo-plus-two
 
 ## Usage
 
-It adds 14 commands to the command palette:
+It adds 15 commands to the command palette:
 
 ```js
 'Todo: Open'; // Open or create your project's todo file
@@ -46,6 +46,7 @@ It adds 14 commands to the command palette:
 'Todo: Toggle Start'; // Toggle a todo as started
 'Todo: Toggle Timer'; // Toggle the timer
 'Todo: Archive'; // Archive finished todos
+'Todo: Unarchive'; // Restore an archived task to its project list (when todo.archive.type is InSameFile)
 'Todo: Add Dependency'; // Search task IDs and add one to the selected todo
 'Todo: Find Dependents'; // Show todos that depend on an ID
 'Todo: Rename Task ID'; // Rename an ID and all matching references
@@ -54,7 +55,7 @@ It adds 14 commands to the command palette:
 'Todo: Embedded View - Toggle View All Files'; // Toggle between viewing all files or only the current one
 ```
 
-It adds 6 shortcuts when editing a `Todo` file:
+It adds 7 shortcuts when editing a `Todo` file:
 
 ```js
 'Cmd/Ctrl+Enter'; // Triggers `Todo: Toggle Box`
@@ -63,6 +64,7 @@ It adds 6 shortcuts when editing a `Todo` file:
 'Alt+C'; // Triggers `Todo: Toggle Cancelled`
 'Alt+S'; // Triggers `Todo: Toggle Start`
 'Cmd/Ctrl+Shift+A'; // Triggers  `Todo: Archive`
+'Cmd/Ctrl+Shift+U'; // Triggers `Todo: Unarchive` when todo.archive.type is InSameFile
 ```
 
 ### Task dependencies
