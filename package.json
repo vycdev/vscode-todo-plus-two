@@ -96,6 +96,7 @@
                 "todo.file.defaultContent": {
                     "type": "string",
                     "description": "New todo files default content",
+                    "editPresentation": "multilineText",
                     "default": "\nTodo:\n  ☐ Item\n"
                 },
                 "todo.file.include": {
