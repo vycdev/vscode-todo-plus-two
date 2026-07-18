@@ -13,9 +13,7 @@ describe('Timestamp utilities', () => {
     it('expands @now to the raw timestamp', () => {
         const date = new Date(2026, 6, 2, 10, 34);
 
-        expect(Timestamps.expand('@now', 'YYYY-MM-DD HH:mm', date)).to.equal(
-            '2026-07-02 10:34'
-        );
+        expect(Timestamps.expand('@now', 'YYYY-MM-DD HH:mm', date)).to.equal('2026-07-02 10:34');
     });
 
     it('detects an active @ prefix before the cursor', () => {

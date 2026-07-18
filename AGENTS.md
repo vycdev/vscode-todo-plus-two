@@ -53,6 +53,7 @@ export const activate = (context: ExtensionContext): void => { ... };
 - `src/utils/embedded/providers/` — ag, rg, js backends for embedded code todos
 
 Two independent todo sources with separate views:
+
 1. `.todo` files (structured project/todo format)
 2. Embedded todos (regex-extracted from code comments)
 
