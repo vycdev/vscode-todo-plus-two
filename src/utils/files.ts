@@ -6,7 +6,9 @@ import * as fs from 'fs';
 import * as pify from 'pify';
 import Config from '../config';
 import FilesView from '../views/files';
+import { getGlobMatchOptions, hasConditionalExcludeGlobs, isFileIncluded } from './file-globs';
 import Folder from './folder';
+import { getWorkspaceExcludeGlobs, getWorkspaceExcludeRules } from './workspace-excludes';
 
 /* FILES */
 
@@ -16,8 +18,9 @@ class Files {
     include = undefined;
     exclude = undefined;
     rootPaths = undefined;
+    configSignature = undefined;
     filesData = undefined; // { [filePath]: todo | undefined }
-    watcher: vscode.FileSystemWatcher = undefined;
+    watchers: vscode.FileSystemWatcher[] = [];
 
     async get(rootPaths = Folder.getAllRootPaths()) {
         rootPaths = _.castArray(rootPaths);
@@ -27,10 +30,22 @@ class Files {
         this.include = config.file.include;
         this.exclude = config.file.exclude;
 
-        if (!this.filesData || !_.isEqual(this.rootPaths, rootPaths)) {
+        const configSignature = JSON.stringify({
+            include: this.include,
+            exclude: this.exclude,
+            followSymlinks: !!config.followSymlinks,
+            workspaceExclude: rootPaths.map((rootPath) => getWorkspaceExcludeRules(rootPath)),
+        });
+
+        if (
+            !this.filesData ||
+            !_.isEqual(this.rootPaths, rootPaths) ||
+            this.configSignature !== configSignature
+        ) {
             this.rootPaths = rootPaths;
             this.unwatchPaths();
             await this.initFilesData(rootPaths);
+            this.configSignature = configSignature;
             this.watchPaths();
         } else {
             await this.updateFilesData();
@@ -49,6 +64,10 @@ class Files {
         /* HANDLERS */
 
         const refresh = _.debounce(() => FilesView.refresh(), 250);
+        const rescan = _.debounce(() => {
+            this.configSignature = undefined;
+            FilesView.refresh();
+        }, 250);
 
         const add = (event) => {
             console.log('add', event.fsPath);
@@ -64,7 +83,11 @@ class Files {
             console.log('change', event.fsPath);
             if (!this.filesData) return;
             const filePath = pathNormalizer(event.fsPath);
-            if (!this.isIncluded(filePath)) return;
+            if (!this.isIncluded(filePath)) {
+                delete this.filesData[filePath];
+                refresh();
+                return;
+            }
             this.filesData[filePath] = undefined;
             refresh();
         };
@@ -80,24 +103,42 @@ class Files {
         /* WATCHING */
 
         this.include.forEach((glob) => {
-            this.watcher = vscode.workspace.createFileSystemWatcher(glob);
+            const watcher = vscode.workspace.createFileSystemWatcher(glob);
 
-            this.watcher.onDidCreate(add);
-            this.watcher.onDidChange(change);
-            this.watcher.onDidDelete(unlink);
+            watcher.onDidCreate(add);
+            watcher.onDidChange(change);
+            watcher.onDidDelete(unlink);
+            this.watchers.push(watcher);
         });
+
+        if (
+            this.rootPaths.some((rootPath) =>
+                hasConditionalExcludeGlobs(getWorkspaceExcludeRules(rootPath))
+            )
+        ) {
+            const watcher = vscode.workspace.createFileSystemWatcher('**/*');
+
+            watcher.onDidCreate(rescan);
+            watcher.onDidDelete(rescan);
+            this.watchers.push(watcher);
+        }
     }
 
     unwatchPaths() {
-        if (!this.watcher) return;
-
-        this.watcher.dispose();
+        this.watchers.forEach((watcher) => watcher.dispose());
+        this.watchers = [];
     }
 
     getIncluded(filePaths) {
-        const micromatch = require('micromatch'); // Lazy import for performance
-
-        return micromatch(filePaths, this.include, { ignore: this.exclude, dot: true });
+        return filePaths.filter((filePath) =>
+            isFileIncluded(
+                filePath,
+                Folder.getRootPath(filePath),
+                this.include,
+                this.exclude || [],
+                getWorkspaceExcludeRules(filePath)
+            )
+        );
     }
 
     isIncluded(filePath) {
@@ -117,8 +158,8 @@ class Files {
                 rootPaths.map((cwd) =>
                     globby(include, {
                         cwd,
-                        ignore: exclude,
-                        dot: true,
+                        ignore: exclude.concat(getWorkspaceExcludeGlobs(cwd)),
+                        ...getGlobMatchOptions(),
                         absolute: true,
                         followSymbolicLinks: follow,
                     })
@@ -136,7 +177,16 @@ class Files {
             } catch (e) {
                 rp = fp;
             }
-            if (!seen.has(rp)) {
+            if (
+                !seen.has(rp) &&
+                isFileIncluded(
+                    fp,
+                    Folder.getRootPath(fp),
+                    include,
+                    exclude,
+                    getWorkspaceExcludeRules(fp)
+                )
+            ) {
                 seen.add(rp);
                 result.push(fp);
             }

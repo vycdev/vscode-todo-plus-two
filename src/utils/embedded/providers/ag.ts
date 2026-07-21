@@ -6,7 +6,9 @@ import stringMatches from 'string-matches';
 import Config from '../../../config';
 import Consts from '../../../consts';
 import Ackmate from '../../ackmate';
+import { getGlobMatchOptions } from '../../file-globs';
 import Folder from '../../folder';
+import { getWorkspaceExcludeGlobs } from '../../workspace-excludes';
 import Abstract from './abstract';
 
 /* AG */ // The Silver Searcher //URL: https://github.com/ggreer/the_silver_searcher
@@ -24,8 +26,8 @@ class AG extends Abstract {
                 rootPaths.map((cwd) =>
                     globby(this.include, {
                         cwd,
-                        ignore: this.exclude,
-                        dot: true,
+                        ignore: (this.exclude || []).concat(getWorkspaceExcludeGlobs(cwd)),
+                        ...getGlobMatchOptions(),
                         absolute: true,
                         followSymbolicLinks: follow,
                     })
@@ -45,7 +47,7 @@ class AG extends Abstract {
             } catch (e) {
                 rp = fp;
             }
-            if (!seen.has(rp)) {
+            if (!seen.has(rp) && this.isIncluded(fp)) {
                 seen.add(rp);
                 result.push(fp);
             }

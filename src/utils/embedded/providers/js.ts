@@ -4,6 +4,8 @@ import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Config from '../../../config';
 import File from '../../file';
+import { getGlobMatchOptions } from '../../file-globs';
+import { getWorkspaceExcludeGlobs } from '../../workspace-excludes';
 import Abstract from './abstract';
 
 /* JS */
@@ -43,8 +45,8 @@ class JS extends Abstract {
                 rootPaths.map((cwd) =>
                     globby(this.include, {
                         cwd,
-                        ignore: this.exclude,
-                        dot: true,
+                        ignore: (this.exclude || []).concat(getWorkspaceExcludeGlobs(cwd)),
+                        ...getGlobMatchOptions(),
                         absolute: true,
                         followSymbolicLinks: follow,
                     })
@@ -64,7 +66,7 @@ class JS extends Abstract {
             } catch (e) {
                 rp = fp;
             }
-            if (!seen.has(rp)) {
+            if (!seen.has(rp) && this.isIncluded(fp)) {
                 seen.add(rp);
                 result.push(fp);
             }

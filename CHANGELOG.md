@@ -19,6 +19,7 @@
 - Added `man-hours`, `man-days`, and `man-weeks` duration formats with configurable `todo.manHoursPerDay` and `todo.manDaysPerWeek` settings. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/88
 - Fixed embedded todo parsing so plain `--` in a todo message no longer truncates the embedded view entry. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/33
 - Displayed `todo.file.defaultContent` as a multiline text area in VS Code's Settings editor. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/51
+- Applied enabled workspace `files.exclude` globs when discovering Todo files and embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/67
 
 ### Version 5.2.0
 

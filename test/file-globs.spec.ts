@@ -1,6 +1,12 @@
 import { expect } from 'chai';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+    getEnabledExcludeGlobs,
+    getGlobMatchOptions,
+    hasConditionalExcludeGlobs,
+    isFileIncluded,
+} from '../src/utils/file-globs';
 
 const micromatch = require('micromatch');
 
@@ -45,5 +51,82 @@ describe('Default todo file globs', () => {
 
         ['TODO.md', 'notes/todos.txt'].forEach((file) => expect(matches).to.include(file));
         ['notes.md', 'notes.txt'].forEach((file) => expect(matches).not.to.include(file));
+    });
+});
+
+describe('Workspace file excludes', () => {
+    it('uses only enabled files.exclude patterns', () => {
+        expect(
+            getEnabledExcludeGlobs({
+                '**/generated/**': true,
+                '**/fixtures/**': false,
+                '**/*.js': { when: '$(basename).ts' },
+            })
+        ).to.deep.equal(['**/generated/**']);
+
+        expect(
+            hasConditionalExcludeGlobs({
+                '**/generated/**': true,
+                '**/*.js': { when: '$(basename).ts' },
+            })
+        ).to.equal(true);
+        expect(hasConditionalExcludeGlobs({ '**/generated/**': true })).to.equal(false);
+    });
+
+    it('applies workspace-relative excludes alongside todo globs', () => {
+        const rootPath = path.join(path.sep, 'workspace');
+        const include = ['**/TODO'];
+        const exclude = ['vendor', 'generated'];
+
+        expect(
+            isFileIncluded(path.join(rootPath, 'src', 'TODO'), rootPath, include, exclude)
+        ).to.equal(true);
+        expect(
+            isFileIncluded(path.join(rootPath, 'vendor', 'TODO'), rootPath, include, exclude)
+        ).to.equal(false);
+        expect(
+            isFileIncluded(path.join(rootPath, 'generated', 'TODO'), rootPath, include, exclude)
+        ).to.equal(false);
+    });
+
+    it('applies conditional excludes when the configured sibling exists', () => {
+        const rootPath = fs.mkdtempSync(path.join(process.cwd(), '.file-globs-'));
+        const javascriptPath = path.join(rootPath, 'example.js');
+        const typescriptPath = path.join(rootPath, 'example.ts');
+        const exclude = { '**/*.js': { when: '$(basename).ts' } };
+
+        try {
+            fs.writeFileSync(javascriptPath, '');
+            expect(isFileIncluded(javascriptPath, rootPath, ['**/*.js'], [], exclude)).to.equal(
+                true
+            );
+
+            fs.writeFileSync(typescriptPath, '');
+            expect(isFileIncluded(javascriptPath, rootPath, ['**/*.js'], [], exclude)).to.equal(
+                false
+            );
+
+            fs.unlinkSync(typescriptPath);
+            expect(isFileIncluded(javascriptPath, rootPath, ['**/*.js'], [], exclude)).to.equal(
+                true
+            );
+        } finally {
+            fs.unlinkSync(javascriptPath);
+            if (fs.existsSync(typescriptPath)) fs.unlinkSync(typescriptPath);
+            fs.rmdirSync(rootPath);
+        }
+    });
+
+    it('uses filesystem case sensitivity for glob matching', () => {
+        expect(getGlobMatchOptions('win32')).to.deep.equal({ dot: true, nocase: true });
+        expect(getGlobMatchOptions('darwin')).to.deep.equal({ dot: true, nocase: true });
+        expect(getGlobMatchOptions('linux')).to.deep.equal({ dot: true, nocase: false });
+
+        expect(
+            micromatch(['README.TXT'], ['**/*.txt'], getGlobMatchOptions('win32'))
+        ).to.deep.equal(['README.TXT']);
+        expect(
+            micromatch(['README.TXT'], ['**/*.txt'], getGlobMatchOptions('linux'))
+        ).to.deep.equal([]);
     });
 });
