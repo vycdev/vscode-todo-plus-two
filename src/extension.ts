@@ -40,7 +40,11 @@ const activate = function (context: vscode.ExtensionContext) {
     ViewFiles.expanded = config.file.view.expanded;
 
     vscode.commands.executeCommand('setContext', 'todo-files-expanded', ViewFiles.expanded);
-    vscode.commands.executeCommand('setContext', 'todo-files-show-finished', ViewFiles.showFinished);
+    vscode.commands.executeCommand(
+        'setContext',
+        'todo-files-show-finished',
+        ViewFiles.showFinished
+    );
     vscode.commands.executeCommand('setContext', 'todo-files-open-button', true);
 
     Utils.context = context;

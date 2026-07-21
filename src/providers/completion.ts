@@ -14,9 +14,7 @@ const TAG_TRIGGER_CHARACTERS = [Consts.symbols.tag, '('];
 const TIMESTAMP_TRIGGER_CHARACTERS = 'creatednowCREATEDNOW'.split('');
 
 class Completion implements vscode.CompletionItemProvider {
-    static triggerCharacters = _.uniq(
-        TAG_TRIGGER_CHARACTERS.concat(TIMESTAMP_TRIGGER_CHARACTERS)
-    );
+    static triggerCharacters = _.uniq(TAG_TRIGGER_CHARACTERS.concat(TIMESTAMP_TRIGGER_CHARACTERS));
 
     async provideCompletionItems(textDocument: vscode.TextDocument, pos: vscode.Position) {
         const line = textDocument.lineAt(pos.line).text;

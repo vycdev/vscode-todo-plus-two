@@ -27,8 +27,7 @@ function getCoreNodeModule(moduleName: string) {
 }
 
 function getCoreRipgrepPath() {
-    const ripgrep =
-        getCoreNodeModule('vscode-ripgrep') || getCoreNodeModule('@vscode/ripgrep');
+    const ripgrep = getCoreNodeModule('vscode-ripgrep') || getCoreNodeModule('@vscode/ripgrep');
 
     return ripgrep && (ripgrep.rgPath || (ripgrep.default && ripgrep.default.rgPath));
 }
