@@ -6,6 +6,7 @@ import Config from '../config';
 import Consts from '../consts';
 import Document from '../todo/document';
 import DependencyIndex from '../utils/dependency_index';
+import { getTagArgumentPrefix, getTagArguments, getTagNames } from '../utils/tag_completions';
 import Timestamps from '../utils/timestamps';
 
 /* COMPLETION */
@@ -20,6 +21,7 @@ class Completion implements vscode.CompletionItemProvider {
         const line = textDocument.lineAt(pos.line).text;
         const character = line[pos.character - 1];
         const tagPrefix = Timestamps.getPrefix(line, pos.character);
+        const tagArgumentPrefix = getTagArgumentPrefix(line, pos.character);
         const dependency = line.substring(0, pos.character).match(/@depends\(([^)]*)$/);
 
         if (dependency) return Completion.getDependencyIds(textDocument, pos, dependency[1]);
@@ -28,11 +30,36 @@ class Completion implements vscode.CompletionItemProvider {
             !character ||
             !_.trim(character).length ||
             _.includes(TAG_TRIGGER_CHARACTERS, character) ||
-            tagPrefix
+            tagPrefix ||
+            tagArgumentPrefix
         ) {
-            const range = tagPrefix
-                ? new vscode.Range(pos.line, tagPrefix.start, pos.line, tagPrefix.end)
+            const activeTagPrefix = tagArgumentPrefix || tagPrefix;
+            const range = activeTagPrefix
+                ? new vscode.Range(pos.line, activeTagPrefix.start, pos.line, activeTagPrefix.end)
                 : undefined;
+
+            const doc = new Document(textDocument),
+                tags = doc.getTags().map((tag) => tag.text),
+                tagsFiltered = tags.filter((tag) => Consts.regexes.tagNormal.test(tag));
+
+            const tagArguments =
+                tagArgumentPrefix && !/^@(id|depends)$/i.test(tagArgumentPrefix.name)
+                    ? getTagArguments(tagsFiltered, tagArgumentPrefix.name)
+                    : [];
+
+            if (tagArgumentPrefix && tagArguments.length) {
+                const tagsSmart = tagArguments.map((text) => {
+                    const item = new vscode.CompletionItem(text);
+
+                    item.filterText = text;
+                    item.insertText = `${text} `;
+                    item.range = range;
+
+                    return item;
+                });
+
+                return Completion.filterByPrefix(tagsSmart, tagArgumentPrefix.text);
+            }
 
             /* TIMESTAMPS */
 
@@ -64,15 +91,11 @@ class Completion implements vscode.CompletionItemProvider {
 
             /* SMART */
 
-            const doc = new Document(textDocument),
-                tags = _.uniq(doc.getTags().map((tag) => tag.text)),
-                tagsFiltered = tags.filter((tag) => Consts.regexes.tagNormal.test(tag));
-
-            const tagsSmart = tagsFiltered.map((text) => {
+            const tagsSmart = getTagNames(tagsFiltered).map((text) => {
                 const item = new vscode.CompletionItem(text);
 
                 item.filterText = text;
-                item.insertText = `${text} `;
+                item.insertText = text;
                 if (range) item.range = range;
 
                 return item;
