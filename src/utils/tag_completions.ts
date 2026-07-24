@@ -53,3 +53,13 @@ export const getTagArguments = (tags: string[], name: string): string[] => {
         return matches;
     }, []);
 };
+
+export const getTagArgumentCompletions = (
+    tags: string[],
+    prefix?: TagArgumentPrefix
+): string[] | undefined => {
+    if (!prefix) return;
+    if (/^@(id|depends)$/i.test(prefix.name)) return [];
+
+    return getTagArguments(tags, prefix.name);
+};

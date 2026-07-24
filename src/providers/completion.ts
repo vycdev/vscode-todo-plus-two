@@ -6,7 +6,11 @@ import Config from '../config';
 import Consts from '../consts';
 import Document from '../todo/document';
 import DependencyIndex from '../utils/dependency_index';
-import { getTagArgumentPrefix, getTagArguments, getTagNames } from '../utils/tag_completions';
+import {
+    getTagArgumentCompletions,
+    getTagArgumentPrefix,
+    getTagNames,
+} from '../utils/tag_completions';
 import Timestamps from '../utils/timestamps';
 
 /* COMPLETION */
@@ -42,12 +46,9 @@ class Completion implements vscode.CompletionItemProvider {
                 tags = doc.getTags().map((tag) => tag.text),
                 tagsFiltered = tags.filter((tag) => Consts.regexes.tagNormal.test(tag));
 
-            const tagArguments =
-                tagArgumentPrefix && !/^@(id|depends)$/i.test(tagArgumentPrefix.name)
-                    ? getTagArguments(tagsFiltered, tagArgumentPrefix.name)
-                    : [];
+            const tagArguments = getTagArgumentCompletions(tagsFiltered, tagArgumentPrefix);
 
-            if (tagArgumentPrefix && tagArguments.length) {
+            if (tagArgumentPrefix && tagArguments) {
                 const tagsSmart = tagArguments.map((text) => {
                     const item = new vscode.CompletionItem(text);
 

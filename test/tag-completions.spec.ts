@@ -1,5 +1,10 @@
 import { expect } from 'chai';
-import { getTagArgumentPrefix, getTagArguments, getTagNames } from '../src/utils/tag_completions';
+import {
+    getTagArgumentCompletions,
+    getTagArgumentPrefix,
+    getTagArguments,
+    getTagNames,
+} from '../src/utils/tag_completions';
 
 describe('Tag completion utilities', () => {
     it('collapses argument values into unique tag names', () => {
@@ -15,6 +20,12 @@ describe('Tag completion utilities', () => {
                 '@note'
             )
         ).to.deep.equal(['@note(one)', '@note(two)', '@NOTE(three)']);
+    });
+
+    it('keeps argument completion active when the tag has no known values', () => {
+        const prefix = getTagArgumentPrefix('Task @newtag(', 13);
+
+        expect(getTagArgumentCompletions(['@other(value)'], prefix)).to.deep.equal([]);
     });
 
     it('detects a partially typed tag argument before the cursor', () => {
