@@ -5,6 +5,7 @@ import * as absolute from 'absolute';
 import * as findUp from 'find-up';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { findClosestRootPath } from './file-globs';
 
 /* FOLDER */
 
@@ -26,10 +27,9 @@ const Folder = {
 
         if (!basePath || !absolute(basePath)) return firstRootPath;
 
-        const rootPaths = workspaceFolders.map((folder) => folder.uri.fsPath),
-            sortedRootPaths = _.sortBy(rootPaths, [(path) => path.length]).reverse(); // In order to get the closest root
+        const rootPaths = workspaceFolders.map((folder) => folder.uri.fsPath);
 
-        return sortedRootPaths.find((rootPath) => basePath.startsWith(rootPath));
+        return findClosestRootPath(basePath, rootPaths);
     },
 
     async getWrapperPathOf(rootPath, cwdPath, findPath) {

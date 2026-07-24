@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+    findClosestRootPath,
     getEnabledExcludeGlobs,
     getGlobMatchOptions,
     hasConditionalExcludeGlobs,
@@ -55,6 +56,15 @@ describe('Default todo file globs', () => {
 });
 
 describe('Workspace file excludes', () => {
+    it('resolves the closest workspace root across Windows path separators', () => {
+        const rootPaths = ['C:\\workspace', 'C:\\workspace\\packages\\app'];
+
+        expect(findClosestRootPath('C:/workspace/packages/app/src/TODO', rootPaths)).to.equal(
+            rootPaths[1]
+        );
+        expect(findClosestRootPath('C:/workspace-other/TODO', [rootPaths[0]])).to.equal(undefined);
+    });
+
     it('uses only enabled files.exclude patterns', () => {
         expect(
             getEnabledExcludeGlobs({

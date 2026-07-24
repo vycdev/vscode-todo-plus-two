@@ -16,6 +16,22 @@ export const getGlobMatchOptions = (
     nocase: platform === 'win32' || platform === 'darwin',
 });
 
+export const findClosestRootPath = (basePath: string, rootPaths: string[]): string | undefined => {
+    const normalizedBasePath = basePath.replace(/\\/g, '/').replace(/\/+$/, '');
+
+    return rootPaths
+        .slice()
+        .sort((a, b) => b.length - a.length)
+        .find((rootPath) => {
+            const normalizedRootPath = rootPath.replace(/\\/g, '/').replace(/\/+$/, '');
+
+            return (
+                normalizedBasePath === normalizedRootPath ||
+                normalizedBasePath.startsWith(`${normalizedRootPath}/`)
+            );
+        });
+};
+
 export const getEnabledExcludeGlobs = (exclude: ExcludeGlobs = {}): string[] =>
     Object.keys(exclude || {}).filter((glob) => exclude[glob] === true);
 
