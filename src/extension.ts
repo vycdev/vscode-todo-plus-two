@@ -50,7 +50,7 @@ const activate = function (context: vscode.ExtensionContext) {
     Utils.context = context;
     Utils.folder.initRootsRe();
     DependencyIndex.initialize(context);
-    Utils.init.language();
+    Utils.init.language(context);
     Utils.init.views();
     Utils.statistics.tokens.updateDisabledAll();
 

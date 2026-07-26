@@ -162,6 +162,11 @@
                     "description": "Show done and cancelled tasks in the Todo files view",
                     "default": true
                 },
+                "todo.automaticSymbol": {
+                    "type": "boolean",
+                    "description": "Automatically insert a new todo box when Enter is pressed at the end of a non-empty todo",
+                    "default": false
+                },
                 "todo.symbols.box": {
                     "type": "string",
                     "description": "Todo box string",
