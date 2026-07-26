@@ -69,7 +69,8 @@
                     ".task",
                     ".tasks",
                     ".taskpaper"
-                ]
+                ],
+                "configuration": "./language-configuration.json"
             }
         ],
         "grammars": [

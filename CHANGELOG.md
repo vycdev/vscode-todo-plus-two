@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Added a Todo language surrounding pair so typing `*` wraps selected text in bold markers. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/52
 - Added an `InSameFile` unarchive command to restore archived tasks, including attached comments, to their original project list. Accessible via the right-click context menu, command palette (`Todo: Unarchive`), or keyboard shortcut (`Shift+Ctrl+U` / `Shift+Cmd+U`). Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/72
 - Preserved empty lines between the working section and the Archive header when archiving tasks. Previously the archiving step stripped these visual separator lines. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/58
 - Center the editor viewport when navigating to a todo from the embedded or files tree views, making the target line appear in the middle of the screen rather than at an edge. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/74
