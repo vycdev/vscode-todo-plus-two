@@ -73,9 +73,15 @@ class Embedded extends View {
 
         if (_.isArray(obj)) {
             const todos = obj.map((obj) => {
+                const label = this.config.embedded.view.wholeLine
+                    ? obj.line
+                    : obj.message || obj.todo;
+
                 return new Todo(
                     obj,
-                    this.config.embedded.view.wholeLine ? obj.line : obj.message || obj.todo,
+                    this.config.embedded.view.showContext && obj.context
+                        ? `${label} — ${obj.context}`
+                        : label,
                     this.config.embedded.view.icons
                 );
             });

@@ -175,6 +175,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.embedded.file.groupByType": true, // Group embedded todos by type
   "todo.embedded.file.groupByFile": true, // Group embedded todos by file
   "todo.embedded.view.wholeLine": false, // Show the whole line
+  "todo.embedded.view.showContext": false, // Show the following source line when it is non-blank and not another embedded todo
   "todo.embedded.view.sortBy": "line", // Sort todos either by label or by source line
   "todo.embedded.view.groupByRoot": true, // Group embedded todos by workspace root
   "todo.embedded.view.groupByType": true, // Group embedded todos by type

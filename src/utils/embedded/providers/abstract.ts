@@ -9,6 +9,7 @@ import Config from '../../../config';
 import EmbeddedView from '../../../views/embedded';
 import Folder from '../../folder';
 import Consts from '../../../consts';
+import { getFollowingContext } from '../context';
 
 /* ABSTRACT */
 
@@ -142,13 +143,14 @@ class Abstract {
     }
 
     parseContent(filePath: string, content: string) {
-        const data = [];
+        const data = [],
+            lines = content.split(/\r?\n/);
 
         if (!content) return data;
 
         let parsedPath;
 
-        content.split(/\r?\n/).forEach((rawLine, lineNr) => {
+        lines.forEach((rawLine, lineNr) => {
             const line = _.trimStart(rawLine),
                 matches = stringMatches(line, Consts.regexes.todoEmbedded);
 
@@ -167,6 +169,7 @@ class Abstract {
                     rawLine,
                     line,
                     lineNr,
+                    context: this.getFollowingContext(lines, lineNr),
                     filePath,
                     root: parsedPath.root,
                     rootPath: parsedPath.rootPath,
@@ -176,6 +179,14 @@ class Abstract {
         });
 
         return data;
+    }
+
+    getFollowingContext(lines: string[], lineNr: number) {
+        if (!Config.getKey('embedded.view.showContext')) return;
+
+        return getFollowingContext(lines, lineNr, (line) => {
+            return !!stringMatches(_.trimStart(line), Consts.regexes.todoEmbedded).length;
+        });
     }
 
     updateDocumentData(textDocument: vscode.TextDocument) {
