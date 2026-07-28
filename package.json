@@ -172,6 +172,11 @@
                     "description": "Automatically insert a new todo box when Enter is pressed at the end of a non-empty todo",
                     "default": false
                 },
+                "todo.autoCompleteParents": {
+                    "type": "boolean",
+                    "description": "Automatically mark parent todos done when Todo: Toggle Done completes all of their nested todos",
+                    "default": false
+                },
                 "todo.symbols.box": {
                     "type": "string",
                     "description": "Todo box string",
