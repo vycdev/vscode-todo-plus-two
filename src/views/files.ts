@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import Utils from '../utils';
 import Consts from '../consts';
 import Config from '../config';
+import { matchesFilesViewFilter } from '../utils/files-view-filter';
 import File from './items/file';
 import Item from './items/item';
 import Group from './items/group';
@@ -20,6 +21,7 @@ class Files extends View {
     id = 'todo.views.1files';
     clear = false;
     expanded = false;
+    filter: string | false = false;
     showFinishedOverride: boolean;
     filePathRe = /^(?!~).*(?:\\|\/)/;
 
@@ -50,11 +52,17 @@ class Files extends View {
             return [];
         }
 
-        let obj = item ? item.obj : await Utils.files.get();
+        let obj = item ? item.obj : await Utils.files.get(undefined, this.filter);
 
         while (obj && '' in obj) obj = obj['']; // Collapsing unnecessary groups
 
-        if (_.isEmpty(obj)) return [new Placeholder('No todo files found')];
+        if (_.isEmpty(obj)) {
+            return [
+                new Placeholder(
+                    this.filter ? 'No matching todo files found' : 'No todo files found'
+                ),
+            ];
+        }
 
         if (obj.textEditor) {
             const items = [],
@@ -83,6 +91,7 @@ class Files extends View {
                 );
                 if (!showComments && isCommentLine) return;
                 if (!this.showFinished && this.isFinishedTodo(data.line.text)) return;
+                if (!this.matchesFilter(obj.textEditor, data.line.lineNumber, obj.filePath)) return;
 
                 const label = _.trimStart(data.line.text),
                     item = isGroup ? new Group(data, label) : new Todo(data, label);
@@ -93,7 +102,11 @@ class Files extends View {
             if (!items.length) {
                 return [
                     new Placeholder(
-                        this.showFinished ? 'The file is empty' : 'No unfinished tasks found'
+                        this.filter
+                            ? 'No matching tasks found'
+                            : this.showFinished
+                              ? 'The file is empty'
+                              : 'No unfinished tasks found'
                     ),
                 ];
             }
@@ -126,6 +139,21 @@ class Files extends View {
 
     isFinishedTodo(text: string) {
         return !!text.match(Consts.regexes.todoFinished);
+    }
+
+    matchesFilter(textEditor: vscode.TextDocument, lineNr: number, filePath: string) {
+        if (!this.filter) return true;
+
+        const branchLines = [textEditor.lineAt(lineNr).text],
+            startLevel = Utils.ast.getLevel(textEditor, branchLines[0]);
+
+        Utils.ast.walkDown(textEditor, lineNr, true, false, ({ line, level }) => {
+            if (level <= startLevel) return false;
+
+            branchLines.push(line.text);
+        });
+
+        return matchesFilesViewFilter(this.filter, filePath, branchLines);
     }
 }
 

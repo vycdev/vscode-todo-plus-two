@@ -8,6 +8,7 @@ import Config from '../config';
 import FilesView from '../views/files';
 import { getGlobMatchOptions, hasConditionalExcludeGlobs, isFileIncluded } from './file-globs';
 import Folder from './folder';
+import { matchesFilesViewFilter } from './files-view-filter';
 import { getWorkspaceExcludeGlobs, getWorkspaceExcludeRules } from './workspace-excludes';
 
 /* FILES */
@@ -22,7 +23,7 @@ class Files {
     filesData = undefined; // { [filePath]: todo | undefined }
     watchers: vscode.FileSystemWatcher[] = [];
 
-    async get(rootPaths = Folder.getAllRootPaths()) {
+    async get(rootPaths = Folder.getAllRootPaths(), filter: string | false = false) {
         rootPaths = _.castArray(rootPaths);
 
         const config = Config.get();
@@ -53,7 +54,7 @@ class Files {
 
         this.updateContext();
 
-        return this.getTodos();
+        return this.getTodos(filter);
     }
 
     async watchPaths() {
@@ -243,7 +244,7 @@ class Files {
         };
     }
 
-    getTodos() {
+    getTodos(filter: string | false = false) {
         if (_.isEmpty(this.filesData)) return;
 
         const todos = {}, // { [ROOT] { { [FILEPATH] => [DATA] } }
@@ -253,6 +254,7 @@ class Files {
             const data = this.filesData[filePath];
 
             if (!data) return;
+            if (!matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()])) return;
 
             if (!todos[data.root]) todos[data.root] = {};
 

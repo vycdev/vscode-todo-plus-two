@@ -30,6 +30,10 @@
         "onCommand:todo.viewFilesOpen",
         "onCommand:todo.viewFilesCollapse",
         "onCommand:todo.viewFilesExpand",
+        "onCommand:todo.filesFilter",
+        "onCommand:todo.filesClearFilter",
+        "onCommand:todo.viewFilesFilter",
+        "onCommand:todo.viewFilesClearFilter",
         "onCommand:todo.viewFilesHideFinished",
         "onCommand:todo.viewFilesShowFinished",
         "onCommand:todo.viewEmbeddedCollapse",
@@ -913,6 +917,14 @@
                 "title": "Todo: Rename Task ID"
             },
             {
+                "command": "todo.filesFilter",
+                "title": "Todo: Files View - Filter"
+            },
+            {
+                "command": "todo.filesClearFilter",
+                "title": "Todo: Files View - Clear Filter"
+            },
+            {
                 "command": "todo.embeddedFilter",
                 "title": "Todo: Embedded View - Filter"
             },
@@ -946,6 +958,22 @@
                 "icon": {
                     "light": "resources/icons/expand_light.svg",
                     "dark": "resources/icons/expand_dark.svg"
+                }
+            },
+            {
+                "command": "todo.viewFilesFilter",
+                "title": "Filter",
+                "icon": {
+                    "light": "resources/icons/filter_light.svg",
+                    "dark": "resources/icons/filter_dark.svg"
+                }
+            },
+            {
+                "command": "todo.viewFilesClearFilter",
+                "title": "Clear Filter",
+                "icon": {
+                    "light": "resources/icons/clear_filter_light.svg",
+                    "dark": "resources/icons/clear_filter_dark.svg"
                 }
             },
             {
@@ -1175,6 +1203,14 @@
                     "when": "false"
                 },
                 {
+                    "command": "todo.viewFilesFilter",
+                    "when": "false"
+                },
+                {
+                    "command": "todo.viewFilesClearFilter",
+                    "when": "false"
+                },
+                {
                     "command": "todo.viewFilesHideFinished",
                     "when": "false"
                 },
@@ -1229,6 +1265,14 @@
                 {
                     "command": "todo.editorUnarchive",
                     "when": "false"
+                },
+                {
+                    "command": "todo.filesFilter",
+                    "when": "todo-files-filtered == false"
+                },
+                {
+                    "command": "todo.filesClearFilter",
+                    "when": "todo-files-filtered == true"
                 },
                 {
                     "command": "todo.embeddedFilter",
@@ -1286,6 +1330,16 @@
                     "command": "todo.viewFilesExpand",
                     "when": "view == todo.views.1files && todo-files-expanded == false",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "todo.viewFilesFilter",
+                    "when": "view == todo.views.1files && todo-files-filtered == false",
+                    "group": "navigation@4"
+                },
+                {
+                    "command": "todo.viewFilesClearFilter",
+                    "when": "view == todo.views.1files && todo-files-filtered == true",
+                    "group": "navigation@4"
                 },
                 {
                     "command": "todo.viewFilesHideFinished",

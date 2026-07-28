@@ -40,6 +40,7 @@ const activate = function (context: vscode.ExtensionContext) {
     ViewFiles.expanded = config.file.view.expanded;
 
     vscode.commands.executeCommand('setContext', 'todo-files-expanded', ViewFiles.expanded);
+    vscode.commands.executeCommand('setContext', 'todo-files-filtered', !!ViewFiles.filter);
     vscode.commands.executeCommand(
         'setContext',
         'todo-files-show-finished',

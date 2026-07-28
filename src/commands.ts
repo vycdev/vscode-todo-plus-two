@@ -525,6 +525,26 @@ function viewFilesExpand() {
     ViewFiles.refresh(true);
 }
 
+async function viewFilesFilter() {
+    const filter = await vscode.window.showInputBox({ placeHolder: 'Filter string...' });
+
+    if (!filter || ViewFiles.filter === filter) return;
+
+    ViewFiles.filter = filter;
+    vscode.commands.executeCommand('setContext', 'todo-files-filtered', true);
+    ViewFiles.refresh();
+}
+
+const filesFilter = viewFilesFilter;
+
+function viewFilesClearFilter() {
+    ViewFiles.filter = false;
+    vscode.commands.executeCommand('setContext', 'todo-files-filtered', false);
+    ViewFiles.refresh();
+}
+
+const filesClearFilter = viewFilesClearFilter;
+
 function viewFilesToggleFinished(force: boolean = !ViewFiles.showFinished) {
     ViewFiles.showFinished = force;
     vscode.commands.executeCommand('setContext', 'todo-files-show-finished', force);
@@ -609,6 +629,10 @@ export {
     viewFilesOpen,
     viewFilesCollapse,
     viewFilesExpand,
+    viewFilesFilter,
+    filesFilter,
+    viewFilesClearFilter,
+    filesClearFilter,
     viewFilesHideFinished,
     viewFilesShowFinished,
     viewEmbeddedCollapse,
