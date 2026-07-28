@@ -7,6 +7,7 @@ import Config from '../../../config';
 import Consts from '../../../consts';
 import Ackmate from '../../ackmate';
 import { getGlobMatchOptions } from '../../file-globs';
+import File from '../../file';
 import Folder from '../../folder';
 import { getWorkspaceExcludeGlobs } from '../../workspace-excludes';
 import Abstract from './abstract';
@@ -95,7 +96,23 @@ class AG extends Abstract {
         return ackmate.filter((obj) => includedFilePaths.includes(obj.filePath));
     }
 
-    ackmate2data(ackmate) {
+    async ackmate2data(ackmate) {
+        const contextLines = {};
+
+        if (Config.getKey('embedded.view.showContext')) {
+            await Promise.all(
+                Array.from(new Set(ackmate.map((obj) => obj.filePath))).map(
+                    async (filePath: string) => {
+                        const content = await File.read(filePath);
+
+                        if (content !== undefined) {
+                            contextLines[filePath] = content.split(/\r?\n/);
+                        }
+                    }
+                )
+            );
+        }
+
         ackmate.forEach(({ filePath, line: rawLine, lineNr }) => {
             const line = _.trimStart(rawLine),
                 matches = stringMatches(line, Consts.regexes.todoEmbedded);
@@ -113,6 +130,9 @@ class AG extends Abstract {
                     rawLine,
                     line,
                     lineNr,
+                    context: contextLines[filePath]
+                        ? this.getFollowingContext(contextLines[filePath], lineNr)
+                        : undefined,
                     filePath,
                     root: parsedPath.root,
                     rootPath: parsedPath.rootPath,
@@ -134,7 +154,7 @@ class AG extends Abstract {
 
         this.filesData = {};
 
-        this.ackmate2data(ackmate);
+        await this.ackmate2data(ackmate);
 
         // Update non-empty set to only include files that actually have todos
         this.nonEmptyFiles = new Set(Object.keys(this.filesData));
@@ -146,7 +166,7 @@ class AG extends Abstract {
 
         const ackmate = await this.getAckmate(pending);
 
-        this.ackmate2data(ackmate);
+        await this.ackmate2data(ackmate);
 
         // Prune files that still have no results
         this.filesData = _.transform(

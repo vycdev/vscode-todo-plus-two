@@ -824,6 +824,11 @@
                     "description": "Show the whole line",
                     "default": false
                 },
+                "todo.embedded.view.showContext": {
+                    "type": "boolean",
+                    "description": "Show the source line immediately following an embedded todo, unless it is blank or another embedded todo",
+                    "default": false
+                },
                 "todo.embedded.view.sort": {
                     "type": "string",
                     "enum": [
