@@ -3,17 +3,17 @@
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Config from '../../../config';
+import Consts from '../../../consts';
 import File from '../../file';
 import { getGlobMatchOptions } from '../../file-globs';
 import { getWorkspaceExcludeGlobs } from '../../workspace-excludes';
+import { hasEmbeddedMatch } from '../regex';
 import Abstract from './abstract';
 
 /* JS */
 
 class JS extends Abstract {
     /* PRIVATE HELPERS */
-
-    private static QUICK_TODO_RE = /TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE/i;
 
     private async forEachInBatches<T>(
         items: T[],
@@ -139,9 +139,8 @@ class JS extends Abstract {
 
         if (!content) return [];
 
-        // Quick pre-check: skip expensive line-by-line matching when the file
-        // clearly contains no todo-like markers.
-        if (!JS.QUICK_TODO_RE.test(content)) return [];
+        // Skip full parsing when no line matches the configured embedded regex.
+        if (!hasEmbeddedMatch(content, Consts.regexes.todoEmbedded)) return [];
 
         return this.parseContent(filePath, content);
     }
