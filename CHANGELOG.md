@@ -20,6 +20,7 @@
 - Fixed embedded todo parsing so plain `--` in a todo message no longer truncates the embedded view entry. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/33
 - Displayed `todo.file.defaultContent` as a multiline text area in VS Code's Settings editor. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/51
 - Applied enabled workspace `files.exclude` globs when discovering Todo files and embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/67
+- Improved tag completion to suggest unique tag names first and previously used argument values after typing an opening parenthesis. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/80
 
 ### Version 5.2.0
 
