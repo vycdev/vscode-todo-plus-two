@@ -162,6 +162,11 @@
                     "description": "Show done and cancelled tasks in the Todo files view",
                     "default": true
                 },
+                "todo.autoCompleteParents": {
+                    "type": "boolean",
+                    "description": "Automatically mark parent todos done when Todo: Toggle Done completes all of their nested todos",
+                    "default": false
+                },
                 "todo.symbols.box": {
                     "type": "string",
                     "description": "Todo box string",

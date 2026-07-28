@@ -13,8 +13,9 @@ import Utils from './utils';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
 import DependencyIndex from './utils/dependency_index';
-import { Comment, Project, TodoFinished } from './todo/items';
+import { Comment, Project, Todo, TodoFinished } from './todo/items';
 import { unarchiveItemsFromSameFileContent } from './utils/unarchive-helpers';
+import { AutoCompleteLine, getAutoCompletableParentLines } from './utils/auto-complete';
 import {
     DependencyReference,
     DependencyTarget,
@@ -33,6 +34,7 @@ const callTodosMethodOptions = {
     method: undefined,
     args: [],
     blockOnOpenDependencies: false,
+    autoCompleteParents: false,
     errors: {
         invalid: 'Only todos can perform this action',
         filtered: 'This todo cannot perform this action',
@@ -96,7 +98,8 @@ async function callTodosMethod(options?) {
         return line.text.indexOf(Consts.symbols.tag);
     });
 
-    await Utils.editor.edits.apply(textEditor, edits);
+    const applied = await Utils.editor.edits.apply(textEditor, edits);
+    if (!applied) return;
 
     textEditor.selections = textEditor.selections.map((selection, index) => {
         // Putting the cursors before first new tag
@@ -108,6 +111,88 @@ async function callTodosMethod(options?) {
         const position = new vscode.Position(selection.start.line, tagIndex);
         return new vscode.Selection(position, position);
     });
+
+    if (options.autoCompleteParents && Config.getKey('autoCompleteParents')) {
+        await autoCompleteParents(
+            textEditor,
+            todosFiltered.map((todo) => todo.line.lineNumber)
+        );
+    }
+}
+
+async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines: number[]) {
+    const doc = new Document(textEditor),
+        lines: AutoCompleteLine[] = _.range(textEditor.document.lineCount)
+            .map((lineNumber): AutoCompleteLine => {
+                const text = textEditor.document.lineAt(lineNumber).text,
+                    todo = doc.getTodoAt(lineNumber, true) as Todo,
+                    status = todo
+                        ? todo.isBox()
+                            ? 'box'
+                            : todo.isDone()
+                              ? 'done'
+                              : todo.isCancelled()
+                                ? 'cancelled'
+                                : 'other'
+                        : undefined;
+
+                return {
+                    lineNumber,
+                    level: Utils.ast.getLevel(textEditor.document, text),
+                    status,
+                };
+            })
+            .filter((line) => textEditor.document.lineAt(line.lineNumber).text.trim()),
+        possibleLines = getAutoCompletableParentLines(lines, completedLines);
+
+    if (!possibleLines.length) return;
+
+    const dependencyIndex = await DependencyIndex.get(textEditor.document),
+        parentLines: number[] = [],
+        remainingLines = possibleLines.slice();
+
+    let madeProgress = true;
+
+    while (madeProgress) {
+        madeProgress = false;
+
+        for (const lineNumber of remainingLines.slice()) {
+            const unavailableLines = remainingLines.filter(
+                    (candidateLine) => candidateLine !== lineNumber
+                ),
+                eligibleLines = getAutoCompletableParentLines(
+                    lines,
+                    completedLines,
+                    unavailableLines
+                );
+
+            if (eligibleLines.indexOf(lineNumber) < 0) continue;
+
+            const todo = doc.getTodoAt(lineNumber, true) as Todo,
+                blocked = await getBlockedTodos(
+                    [todo],
+                    textEditor.document,
+                    parentLines,
+                    dependencyIndex
+                );
+
+            if (blocked.length) continue;
+
+            parentLines.push(lineNumber);
+            remainingLines.splice(remainingLines.indexOf(lineNumber), 1);
+            madeProgress = true;
+        }
+    }
+
+    const parents = parentLines.map((lineNumber) => doc.getTodoAt(lineNumber, true) as Todo);
+
+    parents.forEach((todo) => todo.done());
+
+    const edits = parents.reduce(
+        (all, todo) => all.concat(todo.makeEdit() || []),
+        [] as vscode.TextEdit[]
+    );
+    if (edits.length) await Utils.editor.edits.apply(textEditor, edits);
 }
 
 /* COMMANDS */
@@ -174,7 +259,11 @@ function toggleBox() {
 }
 
 function toggleDone() {
-    return callTodosMethod({ method: 'toggleDone', blockOnOpenDependencies: true });
+    return callTodosMethod({
+        method: 'toggleDone',
+        blockOnOpenDependencies: true,
+        autoCompleteParents: true,
+    });
 }
 
 function toggleCancelled() {
@@ -457,17 +546,22 @@ async function renameDependencyId() {
     }
 }
 
-async function getBlockedTodos(todos: any[], document: vscode.TextDocument) {
-    const index = await DependencyIndex.get(document);
+async function getBlockedTodos(
+    todos: any[],
+    document: vscode.TextDocument,
+    virtuallyFinishedLines: number[] = [],
+    existingIndex?: any
+) {
+    const index = existingIndex || (await DependencyIndex.get(document)),
+        virtuallyFinished = new Set(virtuallyFinishedLines),
+        isFinished = (target: DependencyTarget) =>
+            (target.filePath === document.uri.fsPath && virtuallyFinished.has(target.lineNumber)) ||
+            DependencyIndex.isFinished(target);
 
     return todos
         .filter((todo) => !todo.isFinished())
         .map((todo) => {
-            const ids = getUnresolvedIds(
-                getDependencies(todo.text),
-                index.targets,
-                DependencyIndex.isFinished
-            );
+            const ids = getUnresolvedIds(getDependencies(todo.text), index.targets, isFinished);
 
             return { todo, ids };
         })
