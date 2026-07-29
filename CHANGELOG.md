@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Added embedded todo detection for inline Liquid `{% comment %} ... {% endcomment %}` tags. Addresses: https://github.com/vycdev/vscode-todo-plus-two/issues/46
 - Added case-insensitive filtering to the Todo files view, including task text and file paths. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/69
 - Added a Todo language surrounding pair so typing `*` wraps selected text in bold markers. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/52
 - Added an opt-in `todo.automaticSymbol` setting that inserts a new todo box when Enter is pressed at the end of a non-empty todo. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/83
@@ -27,6 +28,7 @@
 - Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`, while avoiding blank lines and consecutive embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/79
 - Added opt-in automatic parent completion with `todo.autoCompleteParents`, cascading upwards when `Todo: Toggle Done` completes all nested todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/63
 - Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/18
+- Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
 
 ### Version 5.2.0
 
