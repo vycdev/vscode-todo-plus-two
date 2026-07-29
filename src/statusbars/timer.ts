@@ -1,11 +1,11 @@
 /* IMPORT */
 
-import * as moment from 'moment';
 import * as vscode from 'vscode';
 import Config from '../config';
 import Consts from '../consts';
 import Document from '../todo/document';
 import Utils from '../utils';
+import { parseStartedDate } from '../utils/timekeeping';
 
 /* TIMER */
 
@@ -63,7 +63,12 @@ class Timer {
     }
 
     updateData(doc: Document) {
-        const todo = doc.getTodosBoxStarted()[0];
+        const startedFormat = this.config.timekeeping.started.format,
+            todo = doc.getTodosBoxStarted().find((candidate) => {
+                const startedTag = candidate['getTag'](Consts.regexes.tagStarted); //TSC
+
+                return Boolean(parseStartedDate(startedTag, startedFormat));
+            });
 
         if (!todo) {
             if (!this.data.line) return false;
@@ -73,12 +78,11 @@ class Timer {
             if (this.data.text === todo.text) return false;
 
             const startedTag = todo['getTag'](Consts.regexes.tagStarted), //TSC
-                startedFormat = this.config.timekeeping.started.format,
-                startedMoment = moment(startedTag, startedFormat),
+                parsedStartedDate = parseStartedDate(startedTag, startedFormat),
                 startedMilliseconds =
                     startedFormat.indexOf('s') >= 0
-                        ? startedMoment.valueOf()
-                        : Math.floor(startedMoment.valueOf() / 60000) * 60000 +
+                        ? parsedStartedDate.getTime()
+                        : Math.floor(parsedStartedDate.getTime() / 60000) * 60000 +
                           (Date.now() % 60000), // Syncing the seconds with the current time if they are not provided
                 startedDate = new Date(startedMilliseconds);
 
