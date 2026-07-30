@@ -32,6 +32,7 @@
 - Fixed automatic parent completion so indented project sections remain separate task hierarchies.
 - Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/18
 - Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
+- Fixed Todo wrapper lookup so similarly prefixed sibling folders are not treated as part of the workspace root.
 - Fixed archiving so todo titles containing a colon are not mistaken for project headers and discarded.
 - Fixed timestamp-free `@started` tags so they no longer produce an invalid status-bar timer or an empty elapsed-time tag.
 - Kept scanning accessible workspace roots and Todo files when another path cannot be read. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/9
