@@ -6,6 +6,7 @@ import Utils from '../utils';
 import Consts from '../consts';
 import Config from '../config';
 import { matchesFilesViewFilter } from '../utils/files-view-filter';
+import Tags from '../utils/tags';
 import File from './items/file';
 import Item from './items/item';
 import Group from './items/group';
@@ -93,7 +94,11 @@ class Files extends View {
                 if (!this.showFinished && this.isFinishedTodo(data.line.text)) return;
                 if (!this.matchesFilter(obj.textEditor, data.line.lineNumber, obj.filePath)) return;
 
-                const label = _.trimStart(data.line.text),
+                const lineText = _.trimStart(data.line.text),
+                    label =
+                        this.config.file.view.showTags === false
+                            ? Tags.removeAll(lineText)
+                            : lineText,
                     item = isGroup ? new Group(data, label) : new Todo(data, label);
 
                 items.push(item);
