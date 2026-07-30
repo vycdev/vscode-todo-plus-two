@@ -44,6 +44,10 @@
         "onCommand:todo.viewEmbeddedShowActiveFile",
         "onCommand:todo.viewOpenFile",
         "onCommand:todo.viewRevealTodo",
+        "onCommand:todo.viewToggleBox",
+        "onCommand:todo.viewToggleDone",
+        "onCommand:todo.viewToggleCancelled",
+        "onCommand:todo.viewToggleStart",
         "onCommand:todo.editorToggleBox",
         "onCommand:todo.editorToggleDone",
         "onCommand:todo.editorToggleCancelled",
@@ -651,7 +655,7 @@
                     "default": ""
                 },
                 "todo.timer.statusbar.priority": {
-                    "type": "boolean",
+                    "type": "number",
                     "description": "The priority of this item. Higher value means the item should be shown more to the left",
                     "default": -10
                 },
@@ -1065,6 +1069,22 @@
                 "title": "Open"
             },
             {
+                "command": "todo.viewToggleBox",
+                "title": "Toggle Box"
+            },
+            {
+                "command": "todo.viewToggleDone",
+                "title": "Toggle Done"
+            },
+            {
+                "command": "todo.viewToggleCancelled",
+                "title": "Toggle Cancelled"
+            },
+            {
+                "command": "todo.viewToggleStart",
+                "title": "Toggle Start"
+            },
+            {
                 "command": "todo.editorToggleBox",
                 "title": "Toggle Box"
             },
@@ -1402,6 +1422,31 @@
                 {
                     "command": "todo.viewOpenFile",
                     "when": "view =~ /todo\\.views/ && viewItem == file"
+                },
+                {
+                    "command": "todo.viewRevealTodo",
+                    "when": "view == todo.views.1files && viewItem == todo",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "todo.viewToggleBox",
+                    "when": "view == todo.views.1files && viewItem == todo",
+                    "group": "1_status@1"
+                },
+                {
+                    "command": "todo.viewToggleDone",
+                    "when": "view == todo.views.1files && viewItem == todo",
+                    "group": "1_status@2"
+                },
+                {
+                    "command": "todo.viewToggleCancelled",
+                    "when": "view == todo.views.1files && viewItem == todo",
+                    "group": "1_status@3"
+                },
+                {
+                    "command": "todo.viewToggleStart",
+                    "when": "view == todo.views.1files && viewItem == todo",
+                    "group": "1_status@4"
                 }
             ]
         }
