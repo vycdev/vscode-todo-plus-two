@@ -87,7 +87,7 @@ const Time = {
             shortParts.push(`${times}${token}`);
         });
 
-        return `${sign < 0 ? '-' : ''}${shortParts.join(' ')}`;
+        return shortParts.length ? `${sign < 0 ? '-' : ''}${shortParts.join(' ')}` : '0s';
     },
 
     diffShortCompact(to: Date, from?: Date, hoursPerDay: number = 24) {
