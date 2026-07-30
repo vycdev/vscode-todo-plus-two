@@ -396,10 +396,49 @@ function viewRevealTodo(todo: ItemTodo) {
         const startIndex = todo.obj.rawLine.indexOf(todo.obj.todo),
             endIndex = startIndex + todo.obj.todo.length;
 
-        Utils.file.open(todo.obj.filePath, true, todo.obj.lineNr, startIndex, endIndex);
+        return Utils.file.open(todo.obj.filePath, true, todo.obj.lineNr, startIndex, endIndex);
     } else {
-        Utils.file.open(todo.obj.filePath, true, todo.obj.lineNr);
+        return Utils.file.open(todo.obj.filePath, true, todo.obj.lineNr);
     }
+}
+
+async function viewCallTodosMethod(todo: ItemTodo, options?) {
+    if (!todo || !todo.obj || !todo.obj.filePath || !_.isNumber(todo.obj.lineNr)) return;
+
+    await viewRevealTodo(todo);
+
+    return callTodosMethod(options);
+}
+
+function viewToggleBox(todo: ItemTodo) {
+    return viewCallTodosMethod(todo, 'toggleBox');
+}
+
+function viewToggleDone(todo: ItemTodo) {
+    return viewCallTodosMethod(todo, {
+        method: 'toggleDone',
+        blockOnOpenDependencies: true,
+        autoCompleteParents: true,
+    });
+}
+
+function viewToggleCancelled(todo: ItemTodo) {
+    return viewCallTodosMethod(todo, {
+        method: 'toggleCancelled',
+        blockOnOpenDependencies: true,
+    });
+}
+
+function viewToggleStart(todo: ItemTodo) {
+    return viewCallTodosMethod(todo, {
+        checkValidity: true,
+        filter: (item) => item.isBox(),
+        method: 'toggleStart',
+        errors: {
+            invalid: 'Only todos can be started',
+            filtered: 'Only not done/cancelled todos can be started',
+        },
+    });
 }
 
 function openDependencyTarget(target: DependencyTarget) {
@@ -717,6 +756,10 @@ export {
     unarchive,
     viewOpenFile,
     viewRevealTodo,
+    viewToggleBox,
+    viewToggleDone,
+    viewToggleCancelled,
+    viewToggleStart,
     openDependency,
     openDependencyAtCursor,
     addDependency,
