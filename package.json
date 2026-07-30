@@ -781,7 +781,10 @@
                     "default": "(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)"
                 },
                 "todo.embedded.providers.ag.args": {
-                    "type": "string",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "description": "Extra arguments to pass to ag",
                     "default": [
                         "--ignore-case"
@@ -793,7 +796,10 @@
                     "default": "(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)"
                 },
                 "todo.embedded.providers.rg.args": {
-                    "type": "string",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "description": "Extra arguments to pass to rg",
                     "default": [
                         "--ignore-case"

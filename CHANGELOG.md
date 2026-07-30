@@ -28,6 +28,7 @@
 - Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`, while avoiding blank lines and consecutive embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/79
 - Added opt-in automatic parent completion with `todo.autoCompleteParents`, cascading upwards when `Todo: Toggle Done` completes all nested todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/63
 - Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
+- Fixed the `ag` and `rg` embedded provider argument settings to accept their documented string-array values.
 
 ### Version 5.2.0
 
