@@ -1,5 +1,7 @@
 ### Version 5.3.0 (Unreleased)
 
+- Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
+- Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
 - Added embedded todo detection for inline Liquid `{% comment %} ... {% endcomment %}` tags. Addresses: https://github.com/vycdev/vscode-todo-plus-two/issues/46
 - Added case-insensitive filtering to the Todo files view, including task text and file paths. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/69
 - Added a Todo language surrounding pair so typing `*` wraps selected text in bold markers. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/52
@@ -27,7 +29,7 @@
 - Improved tag completion to suggest unique tag names first and previously used argument values after typing an opening parenthesis. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/80
 - Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`, while avoiding blank lines and consecutive embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/79
 - Added opt-in automatic parent completion with `todo.autoCompleteParents`, cascading upwards when `Todo: Toggle Done` completes all nested todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/63
-- Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
+- Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/18
 - Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
 
 ### Version 5.2.0
