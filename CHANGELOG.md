@@ -33,6 +33,7 @@
 - Fixed automatic parent completion so indented project sections remain separate task hierarchies.
 - Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/18
 - Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
+- Fixed zero-length short durations so rapidly completed tasks record `@lasted(0s)` instead of an empty elapsed tag.
 - Fixed embedded provider changes so switching `todo.embedded.provider` takes effect without reloading VS Code.
 - Added a `todo.file.view.showTags` setting for hiding tags from Todo files view labels. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/23
 - Fixed the `ag` and `rg` embedded provider argument settings to accept their documented string-array values.
