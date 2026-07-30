@@ -2,6 +2,7 @@
 
 import * as _ from 'lodash';
 import Config from './config';
+import { tagEstimateRegex } from './utils/estimate';
 
 /* CONSTS */
 
@@ -169,7 +170,7 @@ const Consts = {
             tagStarted: /(?:^|[^a-zA-Z0-9])@started(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
             tagFinished: /(?:^|[^a-zA-Z0-9])@(?:done|cancelled)(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
             tagElapsed: /(?:^|[^a-zA-Z0-9])@(?:lasted|wasted)(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
-            tagEstimate: /(?:^|[^a-zA-Z0-9])@est\(([^)]*)\)|@(\d\S+)/,
+            tagEstimate: tagEstimateRegex,
             tagId: /@id\([^\r\n)]*\)/,
             tagDependency: /@depends\([^\r\n)]*\)/,
             formatted:

@@ -13,7 +13,11 @@ import Editor from './editor';
 import * as path from 'path';
 import File from './file';
 import Folder from './folder';
-import { getRemovableEmptyLineNumbers, getTrailingEmptySeparatorStart } from './archive-helpers';
+import {
+    createArchiveFinishedDateGetter,
+    getRemovableEmptyLineNumbers,
+    getTrailingEmptySeparatorStart,
+} from './archive-helpers';
 
 /* ARCHIVE */
 
@@ -72,19 +76,11 @@ const Archive = {
 
         const finishedFormat = Config.getKey('timekeeping.finished.format');
 
-        let prevFinishedDate: number | Date = -1; // Ensuring comments' position relative to their parent todo is preserved
-
-        function getFinishedDate(line) {
-            if (Consts.regexes.todoFinished.test(line)) {
-                const match = line.match(Consts.regexes.tagFinished);
-
-                if (match) return (prevFinishedDate = moment(match[1], finishedFormat).toDate());
-
-                return (prevFinishedDate = -1);
-            }
-
-            return prevFinishedDate;
-        }
+        const getFinishedDate = createArchiveFinishedDateGetter(
+            Consts.regexes.todoFinished,
+            Consts.regexes.tagFinished,
+            (value) => moment(value, finishedFormat).toDate()
+        );
 
         const line2number = (line) => line.lineNumber;
         const line2date = Config.getKey('archive.sortByDate')
