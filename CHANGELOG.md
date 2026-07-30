@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
 - Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
 - Added embedded todo detection for inline Liquid `{% comment %} ... {% endcomment %}` tags. Addresses: https://github.com/vycdev/vscode-todo-plus-two/issues/46
