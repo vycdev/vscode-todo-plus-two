@@ -44,6 +44,36 @@ describe('Task dependencies', () => {
         );
     });
 
+    it('requires ID and dependency tags to start at a tag boundary', () => {
+        expect(getIds('☐ Mention foo@id(fake) and `@id(code)`')).to.deep.equal([]);
+        expect(getDependencies('☐ Mention foo@depends(fake) and `@depends(code)`')).to.deep.equal(
+            []
+        );
+
+        const ids = getIds('☐ Keep (@id(real-id)');
+        const dependencies = getDependencies('☐ Keep [@depends(real-dependency)');
+
+        expect(ids[0]).to.include({
+            id: 'real-id',
+            start: '☐ Keep (@id('.length,
+            end: '☐ Keep (@id(real-id'.length,
+            tagStart: '☐ Keep ('.length,
+            tagEnd: '☐ Keep (@id(real-id)'.length,
+        });
+        expect(dependencies[0]).to.include({
+            id: 'real-dependency',
+            start: '☐ Keep [@depends('.length,
+            end: '☐ Keep [@depends(real-dependency'.length,
+            tagStart: '☐ Keep ['.length,
+            tagEnd: '☐ Keep [@depends(real-dependency)'.length,
+        });
+
+        expect(getIds('@id(first)@id(second)').map((reference) => reference.id)).to.deep.equal([
+            'first',
+            'second',
+        ]);
+    });
+
     it('finds every dependency on a task and ignores empty references', () => {
         const dependencies = getDependencies(
             '☐ Ship @depends(api contract) @depends(release/v2) @depends()'

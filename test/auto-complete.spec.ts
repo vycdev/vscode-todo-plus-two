@@ -5,8 +5,9 @@ describe('Automatic parent completion', () => {
     const line = (
         lineNumber: number,
         level: number,
-        status?: AutoCompleteLine['status']
-    ): AutoCompleteLine => ({ lineNumber, level, status });
+        status?: AutoCompleteLine['status'],
+        isProject = false
+    ): AutoCompleteLine => ({ lineNumber, level, status, isProject });
 
     it('completes parents from the deepest level upwards', () => {
         const lines = [line(0, 0, 'box'), line(1, 1, 'box'), line(2, 2, 'done')];
@@ -33,7 +34,13 @@ describe('Automatic parent completion', () => {
     });
 
     it('does not cross a project boundary', () => {
-        const lines = [line(0, 0, 'box'), line(1, 0), line(2, 1, 'done')];
+        const lines = [line(0, 0, 'box'), line(1, 0, undefined, true), line(2, 1, 'done')];
+
+        expect(getAutoCompletableParentLines(lines, [2])).to.deep.equal([]);
+    });
+
+    it('does not cross an indented project boundary', () => {
+        const lines = [line(0, 0, 'box'), line(1, 1, undefined, true), line(2, 2, 'done')];
 
         expect(getAutoCompletableParentLines(lines, [2])).to.deep.equal([]);
     });

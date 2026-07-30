@@ -6,6 +6,26 @@
 const projectParts = /^(\s*)([^:]+):(?=\s|$|@)/;
 const defaultIndentUnit = '  ';
 
+export function createArchiveFinishedDateGetter(
+    todoFinishedRegex: RegExp,
+    tagFinishedRegex: RegExp,
+    parseDate: (value: string) => Date
+) {
+    let previousFinishedDate: number | Date = -1;
+
+    return (line: string) => {
+        // Global regular expressions retain their last match position. Reset it
+        // so adjacent finished todos are both classified independently.
+        todoFinishedRegex.lastIndex = 0;
+        if (todoFinishedRegex.test(line)) {
+            const match = line.match(tagFinishedRegex);
+            previousFinishedDate = match ? parseDate(match[1]) : -1;
+        }
+
+        return previousFinishedDate;
+    };
+}
+
 export function getTrailingEmptySeparatorStart(lines: string[], archiveLine?: number) {
     if (typeof archiveLine !== 'number' || archiveLine < 0 || archiveLine >= lines.length) {
         return undefined;

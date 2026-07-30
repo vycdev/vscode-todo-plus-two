@@ -20,7 +20,10 @@ function getReferences(text: string, tag: string): DependencyReference[] {
     let match: RegExpExecArray;
 
     while ((match = regex.exec(text))) {
-        const id = normalizeId(match[1]);
+        if (match.index > 0 && /[a-zA-Z0-9`]/.test(text[match.index - 1])) continue;
+
+        const rawId = match[1];
+        const id = normalizeId(rawId);
 
         // Empty tags are harmless text, but cannot identify or reference a task.
         if (!id) continue;
@@ -30,7 +33,7 @@ function getReferences(text: string, tag: string): DependencyReference[] {
         references.push({
             id,
             start: valueStart,
-            end: valueStart + match[1].length,
+            end: valueStart + rawId.length,
             tagStart: match.index,
             tagEnd: match.index + match[0].length,
         });

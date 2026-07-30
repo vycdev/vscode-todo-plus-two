@@ -13,4 +13,10 @@ describe('Tag utilities', () => {
 
         expect(Tags.remove(text, ['@today', 'high'])).to.equal('Task @todayish @done');
     });
+
+    it('preserves longer tag names containing digits or punctuation', () => {
+        const text = 'Task @todo_extra @todo-bar @todo2 @todo @todoish';
+
+        expect(Tags.remove(text, ['todo'])).to.equal('Task @todo_extra @todo-bar @todo2 @todoish');
+    });
 });
