@@ -126,6 +126,7 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
             .map((lineNumber): AutoCompleteLine => {
                 const text = textEditor.document.lineAt(lineNumber).text,
                     todo = doc.getTodoAt(lineNumber, true) as Todo,
+                    project = doc.getProjectAt(lineNumber, true) as Project,
                     status = todo
                         ? todo.isBox()
                             ? 'box'
@@ -140,6 +141,7 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
                     lineNumber,
                     level: Utils.ast.getLevel(textEditor.document, text),
                     status,
+                    isProject: !!project,
                 };
             })
             .filter((line) => textEditor.document.lineAt(line.lineNumber).text.trim()),
