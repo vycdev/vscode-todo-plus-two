@@ -31,6 +31,7 @@
 - Added opt-in automatic parent completion with `todo.autoCompleteParents`, cascading upwards when `Todo: Toggle Done` completes all nested todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/63
 - Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/18
 - Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
+- Fixed dependency parsing so `@id(...)` and `@depends(...)` directly attached to words or backticks are not treated as task links.
 
 ### Version 5.2.0
 
