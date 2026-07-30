@@ -101,6 +101,12 @@ class Files extends View {
                             : lineText,
                     item = isGroup ? new Group(data, label) : new Todo(data, label);
 
+                item.contextValue = data.line.text.match(Consts.regexes.todo)
+                    ? 'todo'
+                    : isGroup
+                      ? 'group'
+                      : 'item';
+
                 items.push(item);
             });
 

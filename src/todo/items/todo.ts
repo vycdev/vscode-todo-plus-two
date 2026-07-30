@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import Config from '../../config';
 import Consts from '../../consts';
 import Utils from '../../utils';
+import { parseStartedDate } from '../../utils/timekeeping';
 import Item from './item';
 
 /* TODO */
@@ -193,13 +194,15 @@ class Todo extends Item {
 
             if (Config.getKey('timekeeping.elapsed.enabled') && started) {
                 const startedFormat = Config.getKey('timekeeping.started.format'),
-                    startedMoment = moment(started, startedFormat),
-                    startedDate = new Date(startedMoment.valueOf()),
-                    elapsedFormat = Config.getKey('timekeeping.elapsed.format'),
-                    time = Utils.time.diff(new Date(), startedDate, elapsedFormat),
-                    elapsedTag = `@${isPositive ? 'lasted' : 'wasted'}(${time})`;
+                    startedDate = parseStartedDate(started, startedFormat);
 
-                this.addTag(elapsedTag);
+                if (startedDate) {
+                    const elapsedFormat = Config.getKey('timekeeping.elapsed.format'),
+                        time = Utils.time.diff(new Date(), startedDate, elapsedFormat),
+                        elapsedTag = `@${isPositive ? 'lasted' : 'wasted'}(${time})`;
+
+                    this.addTag(elapsedTag);
+                }
             }
         }
     }

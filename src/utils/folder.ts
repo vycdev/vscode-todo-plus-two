@@ -5,7 +5,7 @@ import * as absolute from 'absolute';
 import * as findUp from 'find-up';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { findClosestRootPath } from './file-globs';
+import { findClosestRootPath, isPathWithinRoot } from './file-globs';
 
 /* FOLDER */
 
@@ -38,7 +38,7 @@ const Folder = {
         if (foundPath) {
             const wrapperPath = path.dirname(foundPath);
 
-            if (wrapperPath.startsWith(rootPath)) {
+            if (isPathWithinRoot(wrapperPath, rootPath)) {
                 return wrapperPath;
             }
         }
