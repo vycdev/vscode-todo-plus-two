@@ -4,6 +4,7 @@ export interface AutoCompleteLine {
     lineNumber: number;
     level: number;
     status?: AutoCompleteStatus;
+    isProject?: boolean;
 }
 
 export const getAutoCompletableParentLines = (
@@ -24,6 +25,7 @@ export const getAutoCompletableParentLines = (
 
         for (let index = startIndex - 1; index >= 0; index--) {
             const line = lines[index];
+            if (line.isProject) break;
             if (line.level >= childLevel) continue;
 
             childLevel = line.level;
@@ -48,6 +50,7 @@ export const getAutoCompletableParentLines = (
             for (let index = startIndex + 1; index < lines.length; index++) {
                 const line = lines[index];
                 if (line.level <= candidate.level) break;
+                if (line.isProject) break;
                 if (line.status) descendants.push(line);
             }
 
