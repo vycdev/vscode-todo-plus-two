@@ -32,6 +32,7 @@
 - Fixed automatic parent completion so indented project sections remain separate task hierarchies.
 - Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/18
 - Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
+- Fixed configured tag cleanup so shorter names do not corrupt longer tags containing digits or punctuation.
 - Fixed the `todo.timer.statusbar.priority` configuration schema so numeric priorities can be configured.
 - Fixed dependency parsing so `@id(...)` and `@depends(...)` directly attached to words or backticks are not treated as task links.
 
