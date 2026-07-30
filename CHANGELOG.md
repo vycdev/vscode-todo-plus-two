@@ -1,5 +1,8 @@
 ### Version 5.3.0 (Unreleased)
 
+- Fixed embedded todo parsing for file paths that start with a number.
+- Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
+- Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
 - Added embedded todo detection for inline Liquid `{% comment %} ... {% endcomment %}` tags. Addresses: https://github.com/vycdev/vscode-todo-plus-two/issues/46
 - Added case-insensitive filtering to the Todo files view, including task text and file paths. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/69
 - Added a Todo language surrounding pair so typing `*` wraps selected text in bold markers. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/52
@@ -27,8 +30,18 @@
 - Improved tag completion to suggest unique tag names first and previously used argument values after typing an opening parenthesis. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/80
 - Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`, while avoiding blank lines and consecutive embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/79
 - Added opt-in automatic parent completion with `todo.autoCompleteParents`, cascading upwards when `Todo: Toggle Done` completes all nested todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/63
+- Fixed automatic parent completion so indented project sections remain separate task hierarchies.
+- Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/18
 - Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
 - Fixed the `ag` and `rg` embedded provider argument settings to accept their documented string-array values.
+- Fixed Todo wrapper lookup so similarly prefixed sibling folders are not treated as part of the workspace root.
+- Fixed archiving so todo titles containing a colon are not mistaken for project headers and discarded.
+- Fixed timestamp-free `@started` tags so they no longer produce an invalid status-bar timer or an empty elapsed-time tag.
+- Kept scanning accessible workspace roots and Todo files when another path cannot be read. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/9
+- Added right-click actions to open or change the status of tasks in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/64
+- Fixed configured tag cleanup so shorter names do not corrupt longer tags containing digits or punctuation.
+- Fixed the `todo.timer.statusbar.priority` configuration schema so numeric priorities can be configured.
+- Fixed dependency parsing so `@id(...)` and `@depends(...)` directly attached to words or backticks are not treated as task links.
 
 ### Version 5.2.0
 

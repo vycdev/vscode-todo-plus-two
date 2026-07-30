@@ -7,6 +7,7 @@ import {
     getGlobMatchOptions,
     hasConditionalExcludeGlobs,
     isFileIncluded,
+    isPathWithinRoot,
 } from '../src/utils/file-globs';
 
 const micromatch = require('micromatch');
@@ -56,6 +57,11 @@ describe('Default todo file globs', () => {
 });
 
 describe('Workspace file excludes', () => {
+    it('does not treat similarly prefixed siblings as children of a workspace root', () => {
+        expect(isPathWithinRoot('C:/workspace/project/TODO', 'C:\\workspace')).to.equal(true);
+        expect(isPathWithinRoot('C:/workspace-other/TODO', 'C:\\workspace')).to.equal(false);
+    });
+
     it('resolves the closest workspace root across Windows path separators', () => {
         const rootPaths = ['C:\\workspace', 'C:\\workspace\\packages\\app'];
 

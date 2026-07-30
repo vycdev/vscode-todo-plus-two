@@ -9,6 +9,7 @@ import FilesView from '../views/files';
 import { getGlobMatchOptions, hasConditionalExcludeGlobs, isFileIncluded } from './file-globs';
 import Folder from './folder';
 import { matchesFilesViewFilter } from './files-view-filter';
+import { mapFulfilled } from './promises';
 import { getWorkspaceExcludeGlobs, getWorkspaceExcludeRules } from './workspace-excludes';
 
 /* FILES */
@@ -154,19 +155,19 @@ class Files {
             exclude = config.file.exclude || [],
             follow = !!Config.getKey('followSymlinks');
 
-        const raw = _.flatten(
-            await Promise.all(
-                rootPaths.map((cwd) =>
+        const scans = await mapFulfilled<string, string[]>(
+                rootPaths,
+                (cwd) =>
                     globby(include, {
                         cwd,
                         ignore: exclude.concat(getWorkspaceExcludeGlobs(cwd)),
                         ...getGlobMatchOptions(),
                         absolute: true,
                         followSymbolicLinks: follow,
-                    })
-                )
-            )
-        ) as string[]; //TSC
+                    }),
+                (cwd, error) => console.warn(`Todo+: Could not scan ${cwd}`, error)
+            ),
+            raw = ([] as string[]).concat(...scans);
 
         // Deduplicate by realpath to avoid cycles and duplicate targets (defensive)
         const seen = new Set<string>();
@@ -204,10 +205,15 @@ class Files {
         const BATCH_SIZE = Math.max(1, Number(Config.get().file.batchSize) || 50);
         for (let i = 0; i < filePaths.length; i += BATCH_SIZE) {
             const batch = filePaths.slice(i, i + BATCH_SIZE);
-            await Promise.all(
-                batch.map(async (filePath: string) => {
+            await mapFulfilled(
+                batch,
+                async (filePath: string) => {
                     this.filesData[filePath] = await this.getFileData(filePath);
-                })
+                },
+                (filePath, error) => {
+                    delete this.filesData[filePath];
+                    console.warn(`Todo+: Could not open ${filePath}`, error);
+                }
             );
             await new Promise((resolve) => setTimeout(resolve, 0));
         }
@@ -222,10 +228,15 @@ class Files {
         const BATCH_SIZE = Math.max(1, Number(Config.get().file.batchSize) || 50);
         for (let i = 0; i < pending.length; i += BATCH_SIZE) {
             const batch = pending.slice(i, i + BATCH_SIZE);
-            await Promise.all(
-                batch.map(async (filePath: string) => {
+            await mapFulfilled(
+                batch,
+                async (filePath: string) => {
                     this.filesData[filePath] = await this.getFileData(filePath);
-                })
+                },
+                (filePath, error) => {
+                    delete this.filesData[filePath];
+                    console.warn(`Todo+: Could not open ${filePath}`, error);
+                }
             );
             await new Promise((resolve) => setTimeout(resolve, 0));
         }

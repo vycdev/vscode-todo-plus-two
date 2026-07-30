@@ -1,8 +1,38 @@
 import { expect } from 'chai';
 import mergeHelper, {
+    createArchiveFinishedDateGetter,
     getRemovableEmptyLineNumbers,
     getTrailingEmptySeparatorStart,
 } from '../src/utils/archive-helpers';
+
+describe('Archive finished-date sorting helper', () => {
+    it('reads dates from consecutive finished todos', () => {
+        const getFinishedDate = createArchiveFinishedDateGetter(
+            /^\s*✔\s.*$/gm,
+            /@done\(([^)]*)\)/,
+            (value) => new Date(`${value}T00:00:00Z`)
+        );
+
+        const older = getFinishedDate('  ✔ Older @done(2024-01-01)');
+        const newer = getFinishedDate('  ✔ Newer @done(2025-01-01)');
+
+        expect(older).to.deep.equal(new Date('2024-01-01T00:00:00Z'));
+        expect(newer).to.deep.equal(new Date('2025-01-01T00:00:00Z'));
+    });
+
+    it('keeps an attached comment with its finished todo', () => {
+        const getFinishedDate = createArchiveFinishedDateGetter(
+            /^\s*✔\s.*$/gm,
+            /@done\(([^)]*)\)/,
+            (value) => new Date(`${value}T00:00:00Z`)
+        );
+
+        const todoDate = getFinishedDate('  ✔ Done @done(2025-01-01)');
+        const commentDate = getFinishedDate('    Attached comment');
+
+        expect(commentDate).to.equal(todoDate);
+    });
+});
 
 describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
     const Archive: any = { mergeInsertItemsIntoArchiveContent: mergeHelper };
@@ -69,6 +99,25 @@ describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
 
         // the comment should still be present in the merged content
         expect(merged).to.include('comment for task1');
+    });
+
+    it('preserves archived todo titles containing a colon', () => {
+        const existing = `Archive:\nPROJECT1:`;
+
+        const insertItem = {
+            obj: {
+                text: 'PROJECT1:\n    <o> Fix: parser behavior @done(2026-07-30)',
+                projects: ['PROJECT1'],
+            },
+            lineNumber: 40,
+        };
+
+        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+            indentation: '    ',
+        });
+
+        expect(merged).to.include('<o> Fix: parser behavior @done(2026-07-30)');
+        expect(merged.split('\n').filter((line) => line.trim() === 'PROJECT1:')).to.have.length(1);
     });
 
     it('inserts header-only projects correctly and only once', () => {
