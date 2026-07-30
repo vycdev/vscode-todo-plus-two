@@ -6,6 +6,7 @@ import Config from '../config';
 import Consts from '../consts';
 import { Comment, Project, Tag, TodoBox, TodoDone, TodoCancelled } from '../todo/items';
 import AST from './ast';
+import { getEstimateDuration } from './estimate';
 import Tokens from './statistics_tokens';
 import Time from './time';
 
@@ -60,12 +61,11 @@ const Statistics = {
         parseEstimate(tag: string, from?: Date) {
             if (Statistics.timeTags.estimates[tag]) return Statistics.timeTags.estimates[tag];
 
-            const est = tag.match(Consts.regexes.tagEstimate);
+            const time = getEstimateDuration(tag);
 
-            if (!est) return 0;
+            if (!time) return 0;
 
-            const time = est[2] || est[1],
-                seconds = Time.diffSeconds(time, from);
+            const seconds = Time.diffSeconds(time, from);
 
             Statistics.timeTags.estimates[tag] = seconds;
 
