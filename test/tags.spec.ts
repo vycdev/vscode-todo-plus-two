@@ -13,4 +13,22 @@ describe('Tag utilities', () => {
 
         expect(Tags.remove(text, ['@today', 'high'])).to.equal('Task @todayish @done');
     });
+
+    it('removes all tags for presentation while preserving surrounding text', () => {
+        expect(Tags.removeAll('☐ Task @today @done(2026-07-02)')).to.equal('☐ Task');
+        expect(Tags.removeAll('☐ @high Task')).to.equal('☐ Task');
+        expect(Tags.removeAll('☐ Contact user@example.com')).to.equal('☐ Contact user@example.com');
+        expect(Tags.removeAll('Project: @work')).to.equal('Project:');
+        expect(Tags.removeAll('☐ Task (@work), [@today]')).to.equal('☐ Task (), []');
+        expect(Tags.removeAll('☐ First, @work, next')).to.equal('☐ First, next');
+        expect(Tags.removeAll('☐ See `code @tag` @https://example.com')).to.equal(
+            '☐ See `code @tag`'
+        );
+    });
+
+    it('preserves longer tag names containing digits or punctuation', () => {
+        const text = 'Task @todo_extra @todo-bar @todo2 @todo @todoish';
+
+        expect(Tags.remove(text, ['todo'])).to.equal('Task @todo_extra @todo-bar @todo2 @todoish');
+    });
 });

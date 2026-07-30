@@ -54,6 +54,15 @@ describe('Embedded todo regex defaults', () => {
                 regex.test('{% comment %} TODO: update the product copy {% endcomment %}')
             ).to.equal(true);
         });
+
+        it(`declares ${provider} arguments as an array of strings`, () => {
+            const properties = pkg.contributes.configuration.properties,
+                schema = properties[`todo.embedded.providers.${provider}.args`];
+
+            expect(schema.type).to.equal('array');
+            expect(schema.items).to.deep.equal({ type: 'string' });
+            expect(schema.default).to.deep.equal(['--ignore-case']);
+        });
     });
 });
 

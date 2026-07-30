@@ -28,12 +28,38 @@ const Tags = {
         const regex = new RegExp(
             `(^|[^a-zA-Z0-9])@(?:${names
                 .map((name) => escapeRegExp(name))
-                .join('|')})(?:(?:\\([^)]*\\))|(?![a-zA-Z]))`,
+                .join('|')})(?:(?:\\([^)]*\\))|(?![^\\s*~(]))`,
             'g'
         );
 
         return text
             .replace(regex, (match, prefix) => (prefix && /\S/.test(prefix) ? prefix : ''))
+            .trimRight();
+    },
+
+    removeAll(text: string) {
+        const regex = /(^|[^a-zA-Z0-9`])(@[^\s*~(`]+)(\([^)]*\))?/gm;
+
+        return text
+            .replace(regex, (match, prefix, tagName, _argument, offset, source) => {
+                const codeMarkers = source.slice(0, offset).match(/`/g);
+
+                if (codeMarkers && codeMarkers.length % 2) return match;
+
+                const trailingMatch = tagName.match(/[.,;:!?()[\]{}<>"']+$/),
+                    trailing = trailingMatch ? trailingMatch[0] : '',
+                    name = trailing ? tagName.slice(0, -trailing.length) : tagName;
+
+                if (name === '@') return match;
+
+                const beforeMatch = source.slice(0, offset).trimRight(),
+                    punctuation =
+                        trailing && beforeMatch.slice(-1) === trailing.charAt(0)
+                            ? trailing.slice(1)
+                            : trailing;
+
+                return (prefix && /\S/.test(prefix) ? prefix : '') + punctuation;
+            })
             .trimRight();
     },
 };
