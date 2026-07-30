@@ -16,6 +16,7 @@ import { getFollowingContext } from '../context';
 /* ABSTRACT */
 
 class Abstract {
+    disposed = false;
     include = undefined;
     exclude = undefined;
     rootPaths = undefined;
@@ -32,6 +33,8 @@ class Abstract {
         filter: string | false = false,
         onlyActiveFile: boolean = false
     ) {
+        if (this.disposed) return;
+
         rootPaths = _.castArray(rootPaths);
 
         const config = Config.get();
@@ -63,6 +66,9 @@ class Abstract {
                     await this.initFilesData(rootPaths, progress);
                 }
             );
+
+            if (this.disposed) return;
+
             this.configSignature = configSignature;
             this.watchPaths();
         } else {
@@ -75,6 +81,8 @@ class Abstract {
                     await this.updateFilesData(progress);
                 }
             );
+
+            if (this.disposed) return;
         }
 
         return this.getTodos(groupByRoot, groupByType, groupByFile, filter, onlyActiveFile);
@@ -155,6 +163,11 @@ class Abstract {
     unwatchPaths() {
         this.watchers.forEach((watcher) => watcher.dispose());
         this.watchers = [];
+    }
+
+    dispose() {
+        this.disposed = true;
+        this.unwatchPaths();
     }
 
     getIncluded(filePaths) {

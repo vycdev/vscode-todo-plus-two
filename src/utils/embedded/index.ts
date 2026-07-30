@@ -8,6 +8,7 @@ import Config from '../../config';
 import AG from './providers/ag';
 import JS from './providers/js';
 import RG from './providers/rg';
+import { resetEmbeddedProvider } from './provider-lifecycle';
 
 declare const __non_webpack_require__: NodeRequire;
 
@@ -41,6 +42,7 @@ const Embedded = {
         const { javascript, ag, rg } = Embedded.providers;
         const cfg = Config.get();
         const preferred = cfg.embedded.provider; // "javascript" | "ag" | "rg" | ""
+        const generation = Embedded.providerGeneration;
 
         let Provider;
 
@@ -55,10 +57,17 @@ const Embedded = {
             Provider = (await ag()) || (await rg()) || javascript();
         }
 
+        if (generation !== Embedded.providerGeneration) return Embedded.initProvider();
+
         Embedded.provider = new Provider();
     },
 
+    resetProvider() {
+        resetEmbeddedProvider(Embedded);
+    },
+
     provider: undefined as JS | AG | RG,
+    providerGeneration: 0,
 
     providers: {
         javascript() {
