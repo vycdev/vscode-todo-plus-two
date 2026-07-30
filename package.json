@@ -171,6 +171,11 @@
                     "description": "Show done and cancelled tasks in the Todo files view",
                     "default": true
                 },
+                "todo.file.view.showTags": {
+                    "type": "boolean",
+                    "description": "Show tags in Todo files view labels",
+                    "default": true
+                },
                 "todo.automaticSymbol": {
                     "type": "boolean",
                     "description": "Automatically insert a new todo box when Enter is pressed at the end of a non-empty todo",
