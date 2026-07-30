@@ -52,7 +52,6 @@ const activate = function (context: vscode.ExtensionContext) {
     Utils.folder.initRootsRe();
     DependencyIndex.initialize(context);
     Utils.init.language(context);
-    Utils.init.views();
     Utils.statistics.tokens.updateDisabledAll();
 
     const embeddedRefreshTimers = {};
@@ -75,6 +74,15 @@ const activate = function (context: vscode.ExtensionContext) {
             if (filePath) ViewEmbedded.refreshFile(filePath);
         }, 250);
     };
+    const updateFileCaches = (event: vscode.ConfigurationChangeEvent) => {
+        delete Utils.files.filesData;
+
+        if (event.affectsConfiguration('todo.embedded.provider')) {
+            Utils.embedded.resetProvider();
+        } else if (Utils.embedded.provider) {
+            delete Utils.embedded.provider.filesData;
+        }
+    };
 
     context.subscriptions.push(
         vscode.languages.registerCompletionItemProvider(
@@ -90,12 +98,7 @@ const activate = function (context: vscode.ExtensionContext) {
         vscode.window.onDidChangeActiveTextEditor(() => DocumentDecorator.update()),
         vscode.workspace.onDidChangeConfiguration(Consts.update),
         vscode.workspace.onDidChangeConfiguration(updateUnarchiveContext),
-        vscode.workspace.onDidChangeConfiguration(
-            () =>
-                delete Utils.files.filesData &&
-                Utils.embedded.provider &&
-                delete Utils.embedded.provider.filesData
-        ),
+        vscode.workspace.onDidChangeConfiguration(updateFileCaches),
         vscode.workspace.onDidChangeConfiguration(() => DocumentDecorator.update()),
         vscode.workspace.onDidChangeConfiguration(Utils.statistics.tokens.updateDisabledAll),
         vscode.workspace.onDidChangeTextDocument(ChangesDecorator.onChanges),
@@ -108,6 +111,8 @@ const activate = function (context: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeWorkspaceFolders(Utils.files.unwatchPaths),
         vscode.workspace.onDidChangeWorkspaceFolders(Utils.folder.initRootsRe)
     );
+
+    Utils.init.views();
 
     DocumentDecorator.update();
 
