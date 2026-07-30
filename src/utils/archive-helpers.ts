@@ -252,7 +252,12 @@ export function mergeInsertItemsIntoArchiveContent(
         const projectPath =
             obj.projects && obj.projects.length ? obj.projects.join(projectSeparator) : undefined;
         const textLinesRaw = text.split('\n').map((l) => l.replace(projectTagRegex, ''));
-        const textLines = textLinesRaw.filter((line) => !projectParts.test(line));
+        const projectNames = new Set((obj.projects || []).map((project: string) => project.trim()));
+        const textLines = textLinesRaw.filter((line) => {
+            const match = line.match(projectParts);
+
+            return !match || !projectNames.has(match[2].trim());
+        });
 
         if (projectPath) {
             // Ensure chain

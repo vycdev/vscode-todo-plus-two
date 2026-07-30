@@ -71,6 +71,25 @@ describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
         expect(merged).to.include('comment for task1');
     });
 
+    it('preserves archived todo titles containing a colon', () => {
+        const existing = `Archive:\nPROJECT1:`;
+
+        const insertItem = {
+            obj: {
+                text: 'PROJECT1:\n    <o> Fix: parser behavior @done(2026-07-30)',
+                projects: ['PROJECT1'],
+            },
+            lineNumber: 40,
+        };
+
+        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+            indentation: '    ',
+        });
+
+        expect(merged).to.include('<o> Fix: parser behavior @done(2026-07-30)');
+        expect(merged.split('\n').filter((line) => line.trim() === 'PROJECT1:')).to.have.length(1);
+    });
+
     it('inserts header-only projects correctly and only once', () => {
         const existing = `Archive:\n`;
 
