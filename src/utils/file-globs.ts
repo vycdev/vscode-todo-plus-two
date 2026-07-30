@@ -16,20 +16,23 @@ export const getGlobMatchOptions = (
     nocase: platform === 'win32' || platform === 'darwin',
 });
 
-export const findClosestRootPath = (basePath: string, rootPaths: string[]): string | undefined => {
-    const normalizedBasePath = basePath.replace(/\\/g, '/').replace(/\/+$/, '');
+const normalizePath = (filePath: string): string =>
+    filePath.replace(/\\/g, '/').replace(/\/+$/, '');
 
+export const isPathWithinRoot = (filePath: string, rootPath: string): boolean => {
+    const normalizedPath = normalizePath(filePath);
+    const normalizedRootPath = normalizePath(rootPath);
+
+    return (
+        normalizedPath === normalizedRootPath || normalizedPath.startsWith(`${normalizedRootPath}/`)
+    );
+};
+
+export const findClosestRootPath = (basePath: string, rootPaths: string[]): string | undefined => {
     return rootPaths
         .slice()
         .sort((a, b) => b.length - a.length)
-        .find((rootPath) => {
-            const normalizedRootPath = rootPath.replace(/\\/g, '/').replace(/\/+$/, '');
-
-            return (
-                normalizedBasePath === normalizedRootPath ||
-                normalizedBasePath.startsWith(`${normalizedRootPath}/`)
-            );
-        });
+        .find((rootPath) => isPathWithinRoot(basePath, rootPath));
 };
 
 export const getEnabledExcludeGlobs = (exclude: ExcludeGlobs = {}): string[] =>
