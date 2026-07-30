@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
 - Added embedded todo detection for inline Liquid `{% comment %} ... {% endcomment %}` tags. Addresses: https://github.com/vycdev/vscode-todo-plus-two/issues/46
 - Added case-insensitive filtering to the Todo files view, including task text and file paths. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/69
 - Added a Todo language surrounding pair so typing `*` wraps selected text in bold markers. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/52
