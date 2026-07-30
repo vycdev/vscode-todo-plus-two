@@ -651,7 +651,7 @@
                     "default": ""
                 },
                 "todo.timer.statusbar.priority": {
-                    "type": "boolean",
+                    "type": "number",
                     "description": "The priority of this item. Higher value means the item should be shown more to the left",
                     "default": -10
                 },
