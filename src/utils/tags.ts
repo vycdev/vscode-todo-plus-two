@@ -28,7 +28,7 @@ const Tags = {
         const regex = new RegExp(
             `(^|[^a-zA-Z0-9])@(?:${names
                 .map((name) => escapeRegExp(name))
-                .join('|')})(?:(?:\\([^)]*\\))|(?![a-zA-Z]))`,
+                .join('|')})(?:(?:\\([^)]*\\))|(?![^\\s*~(]))`,
             'g'
         );
 

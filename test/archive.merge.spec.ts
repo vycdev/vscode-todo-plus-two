@@ -1,8 +1,38 @@
 import { expect } from 'chai';
 import mergeHelper, {
+    createArchiveFinishedDateGetter,
     getRemovableEmptyLineNumbers,
     getTrailingEmptySeparatorStart,
 } from '../src/utils/archive-helpers';
+
+describe('Archive finished-date sorting helper', () => {
+    it('reads dates from consecutive finished todos', () => {
+        const getFinishedDate = createArchiveFinishedDateGetter(
+            /^\s*✔\s.*$/gm,
+            /@done\(([^)]*)\)/,
+            (value) => new Date(`${value}T00:00:00Z`)
+        );
+
+        const older = getFinishedDate('  ✔ Older @done(2024-01-01)');
+        const newer = getFinishedDate('  ✔ Newer @done(2025-01-01)');
+
+        expect(older).to.deep.equal(new Date('2024-01-01T00:00:00Z'));
+        expect(newer).to.deep.equal(new Date('2025-01-01T00:00:00Z'));
+    });
+
+    it('keeps an attached comment with its finished todo', () => {
+        const getFinishedDate = createArchiveFinishedDateGetter(
+            /^\s*✔\s.*$/gm,
+            /@done\(([^)]*)\)/,
+            (value) => new Date(`${value}T00:00:00Z`)
+        );
+
+        const todoDate = getFinishedDate('  ✔ Done @done(2025-01-01)');
+        const commentDate = getFinishedDate('    Attached comment');
+
+        expect(commentDate).to.equal(todoDate);
+    });
+});
 
 describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
     const Archive: any = { mergeInsertItemsIntoArchiveContent: mergeHelper };
