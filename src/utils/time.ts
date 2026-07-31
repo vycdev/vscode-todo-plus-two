@@ -201,7 +201,7 @@ const Time = {
             );
         });
 
-        return `${sign < 0 ? '-' : ''}${clockParts.join(':')}`;
+        return `${sign < 0 ? '-' : ''}${clockParts.length ? clockParts.join(':') : '0'}`;
     },
 
     diffSeconds(to: Date | string | number, from: Date = new Date()) {
