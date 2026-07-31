@@ -45,6 +45,7 @@
 - Fixed configured tag cleanup so shorter names do not corrupt longer tags containing digits or punctuation.
 - Fixed the `todo.timer.statusbar.priority` configuration schema so numeric priorities can be configured.
 - Fixed dependency parsing so `@id(...)` and `@depends(...)` directly attached to words or backticks are not treated as task links.
+- Fixed shorthand estimates directly attached to words, such as `release@2h`, being counted as task estimates.
 
 ### Version 5.2.0
 

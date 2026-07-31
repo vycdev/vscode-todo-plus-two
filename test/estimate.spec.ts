@@ -19,5 +19,6 @@ describe('Estimate tags', () => {
     it('uses the same strict matching when locating an estimate in todo text', () => {
         expect('Task @1.'.match(tagEstimateRegex)).to.equal(null);
         expect(getEstimateDuration('Task @2h30m next')).to.equal('2h30m');
+        expect(getEstimateDuration('release@2h next')).to.equal(undefined);
     });
 });
