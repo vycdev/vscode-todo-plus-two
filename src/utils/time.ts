@@ -159,7 +159,7 @@ const Time = {
             manParts.push(`${times}${token}`);
         });
 
-        return `${sign < 0 ? '-' : ''}${manParts.join(' ')}`;
+        return manParts.length ? `${sign < 0 ? '-' : ''}${manParts.join(' ')}` : '0s';
     },
 
     diffManHours(to: Date, from?: Date) {
@@ -184,7 +184,7 @@ const Time = {
             remaining -= seconds * times;
         });
 
-        return `${sign < 0 ? '-' : ''}${manParts.join('')}`;
+        return manParts.length ? `${sign < 0 ? '-' : ''}${manParts.join('')}` : '0s';
     },
 
     diffClock(to: Date, from?: Date) {

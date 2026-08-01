@@ -61,7 +61,7 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
-- Fixed man-day and man-week elapsed formats so generated `@lasted`/`@wasted` tags use the configured work schedule and remain included in statistics. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/88
+- Fixed man-time elapsed formats so generated `@lasted`/`@wasted` tags use the configured work schedule, represent zero-length durations as `0s`, and remain included in statistics. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/88
 
 ### Version 5.2.0
 

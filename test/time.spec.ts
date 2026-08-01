@@ -60,6 +60,14 @@ describe('Time utilities', () => {
         expect(Time.diff(to, from, 'man-hours')).to.equal('25h15m');
     });
 
+    it('renders zero man-time durations as 0s', () => {
+        const instant = new Date('2020-01-01T00:00:00Z');
+
+        expect(Time.diff(instant, instant, 'man-hours')).to.equal('0s');
+        expect(Time.diff(instant, instant, 'man-days')).to.equal('0s');
+        expect(Time.diff(instant, instant, 'man-weeks')).to.equal('0s');
+    });
+
     it('supports man-days formatting', () => {
         const from = new Date('2020-01-01T00:00:00Z');
         const to = new Date(from.getTime() + 25 * 3600 * 1000);
