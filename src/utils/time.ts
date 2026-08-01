@@ -204,7 +204,9 @@ const Time = {
         return `${sign < 0 ? '-' : ''}${clockParts.join(':')}`;
     },
 
-    diffSeconds(to: Date | string | number, from: Date = new Date()) {
+    diffSeconds(to?: Date | string | number, from: Date = new Date()) {
+        if (to === undefined || to === null) return 0;
+
         let toDate;
 
         if (to instanceof Date) {

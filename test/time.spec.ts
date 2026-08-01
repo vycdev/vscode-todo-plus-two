@@ -30,6 +30,10 @@ describe('Time utilities', () => {
         expect(Time.diff(instant, instant, 'short-compact')).to.equal('0s');
     });
 
+    it('ignores missing elapsed durations', () => {
+        expect(Time.diffSeconds(undefined)).to.equal(0);
+    });
+
     it('supports flat man-hours formatting', () => {
         const from = new Date('2020-01-01T00:00:00Z');
         const to = new Date(from.getTime() + (25 * 3600 + 15 * 60) * 1000);
