@@ -24,6 +24,7 @@ import {
     getUnresolvedIds,
     isValidId,
     normalizeId,
+    willFinishTodo,
 } from './utils/dependencies';
 
 /* CALL TODOS METHOD */
@@ -71,7 +72,10 @@ async function callTodosMethod(options?) {
     if (!todosFiltered.length) return;
 
     if (options.blockOnOpenDependencies) {
-        const blocked = await getBlockedTodos(todosFiltered, textEditor.document);
+        const blocked = await getBlockedTodos(
+            todosFiltered.filter((todo) => willFinishTodo(todo, options.method)),
+            textEditor.document
+        );
 
         if (blocked.length) {
             const ids = _.uniq(_.flatten(blocked.map(({ ids }) => ids)));
@@ -600,7 +604,6 @@ async function getBlockedTodos(
             DependencyIndex.isFinished(target);
 
     return todos
-        .filter((todo) => !todo.isFinished())
         .map((todo) => {
             const ids = getUnresolvedIds(getDependencies(todo.text), index.targets, isFinished);
 

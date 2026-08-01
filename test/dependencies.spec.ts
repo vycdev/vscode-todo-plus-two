@@ -6,6 +6,7 @@ import {
     getUnresolvedIds,
     isValidId,
     normalizeId,
+    willFinishTodo,
 } from '../src/utils/dependencies';
 
 function target(id: string, text: string): DependencyTarget {
@@ -22,6 +23,14 @@ function target(id: string, text: string): DependencyTarget {
 }
 
 describe('Task dependencies', () => {
+    function todoStatus(status: 'open' | 'done' | 'cancelled') {
+        return {
+            isDone: () => status === 'done',
+            isCancelled: () => status === 'cancelled',
+            isFinished: () => status !== 'open',
+        };
+    }
+
     it('accepts readable IDs with spaces and punctuation', () => {
         const references = getIds(
             '  ☐ Release the API @id(release/v2: candidate A & B) @id(δelta)'
@@ -113,6 +122,15 @@ describe('Task dependencies', () => {
         expect(
             getUnresolvedIds(dependencies, targets, (item) => item.text === 'done')
         ).to.deep.equal(['shared', 'missing']);
+    });
+
+    it('checks dependencies when toggling between finished states', () => {
+        expect(willFinishTodo(todoStatus('open'), 'toggleDone')).to.equal(true);
+        expect(willFinishTodo(todoStatus('open'), 'toggleCancelled')).to.equal(true);
+        expect(willFinishTodo(todoStatus('done'), 'toggleDone')).to.equal(false);
+        expect(willFinishTodo(todoStatus('done'), 'toggleCancelled')).to.equal(true);
+        expect(willFinishTodo(todoStatus('cancelled'), 'toggleDone')).to.equal(true);
+        expect(willFinishTodo(todoStatus('cancelled'), 'toggleCancelled')).to.equal(false);
     });
 
     it('validates and normalizes IDs before renaming', () => {
