@@ -1,11 +1,10 @@
 /* IMPORT */
 
-import * as _ from 'lodash';
 import * as absolute from 'absolute';
 import * as findUp from 'find-up';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { findClosestRootPath, isPathWithinRoot } from './file-globs';
+import { findClosestRootPath, getRootPathsRegExp, isPathWithinRoot } from './file-globs';
 
 /* FOLDER */
 
@@ -47,12 +46,7 @@ const Folder = {
     rootsRe: undefined,
 
     initRootsRe() {
-        const roots = Folder.getAllRootPaths().sort().reverse(),
-            rootsRe = new RegExp(
-                `^(${roots.map((root) => _.escapeRegExp(root).replace(/\\\\/g, '(?:\\\\|/)')).join('|')})(.*)$`
-            );
-
-        Folder.rootsRe = rootsRe;
+        Folder.rootsRe = getRootPathsRegExp(Folder.getAllRootPaths());
     },
 
     parsePath(filePath): any {

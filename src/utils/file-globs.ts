@@ -19,6 +19,26 @@ export const getGlobMatchOptions = (
 const normalizePath = (filePath: string): string =>
     filePath.replace(/\\/g, '/').replace(/\/+$/, '');
 
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export const getRootPathsRegExp = (rootPaths: string[]): RegExp | undefined => {
+    const roots = rootPaths.filter((rootPath) => !!rootPath);
+
+    if (!roots.length) return;
+
+    const patterns = roots
+        .slice()
+        .sort((a, b) => b.length - a.length)
+        .map((rootPath) => {
+            const normalizedRootPath = rootPath.replace(/\\/g, '/');
+            const pattern = escapeRegExp(normalizedRootPath).replace(/\//g, '(?:\\\\|/)');
+
+            return /\/$/.test(normalizedRootPath) ? pattern : `${pattern}(?=$|[\\\\/])`;
+        });
+
+    return new RegExp(`^(${patterns.join('|')})(.*)$`);
+};
+
 export const isPathWithinRoot = (filePath: string, rootPath: string): boolean => {
     const normalizedPath = normalizePath(filePath);
     const normalizedRootPath = normalizePath(rootPath);
