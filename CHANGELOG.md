@@ -58,6 +58,7 @@
 - Fixed indentation detection staying stale after a Todo document is reindented.
 - Fixed dependency checks being skipped when toggling directly between done and cancelled states. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/153
 - Fixed tag parsing when `todo.tags.names` is empty so normal tags no longer freeze document parsing.
+- Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 
 ### Version 5.2.0
 
