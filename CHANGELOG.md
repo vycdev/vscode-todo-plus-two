@@ -35,6 +35,7 @@
 - Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
 - Fixed zero-length short durations so rapidly completed tasks record `@lasted(0s)` instead of an empty elapsed tag.
 - Fixed embedded provider changes so switching `todo.embedded.provider` takes effect without reloading VS Code.
+- Allowed the default automatic embedded provider selection in the configuration schema.
 - Added a `todo.file.view.showTags` setting for hiding tags from Todo files view labels. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/23
 - Fixed the `ag` and `rg` embedded provider argument settings to accept their documented string-array values.
 - Fixed Todo wrapper lookup so similarly prefixed sibling folders are not treated as part of the workspace root.

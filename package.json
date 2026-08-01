@@ -777,6 +777,7 @@
                 "todo.embedded.provider": {
                     "type": "string",
                     "enum": [
+                        "",
                         "javascript",
                         "ag",
                         "rg"
