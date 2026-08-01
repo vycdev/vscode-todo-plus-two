@@ -36,6 +36,23 @@ describe('Time utilities', () => {
         expect(Time.diff(instant, instant, 'clock')).to.equal('0');
     });
 
+    it('round-trips clock durations', () => {
+        const from = new Date('2020-01-01T00:00:00Z');
+        const durations = [0, 30, 59, 60, 3600, 8 * 24 * 3600, 365 * 24 * 3600, -3600];
+
+        durations.forEach((seconds) => {
+            const to = new Date(from.getTime() + seconds * 1000),
+                clock = Time.diff(to, from, 'clock');
+
+            expect(Time.durationSeconds(clock, from)).to.equal(seconds);
+        });
+
+        expect(Time.durationSeconds('1:60', from)).to.equal(0);
+        expect(Time.durationSeconds('1:', from)).to.equal(0);
+        expect(Time.durationSeconds('2020', from)).to.equal(0);
+        expect(Time.durationSeconds(30 as any, from)).to.equal(0);
+    });
+
     it('supports flat man-hours formatting', () => {
         const from = new Date('2020-01-01T00:00:00Z');
         const to = new Date(from.getTime() + (25 * 3600 + 15 * 60) * 1000);

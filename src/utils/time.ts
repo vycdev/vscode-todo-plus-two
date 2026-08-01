@@ -204,6 +204,31 @@ const Time = {
         return `${sign < 0 ? '-' : ''}${clockParts.length ? clockParts.join(':') : '0'}`;
     },
 
+    durationSeconds(to: string, from: Date = new Date()) {
+        if (!_.isString(to)) return 0;
+
+        const normalized = to.trim();
+
+        if (/^-?[\d:]+$/.test(normalized)) {
+            if (!/^-?\d+(?::\d+)*$/.test(normalized)) return 0;
+
+            const sign = normalized.startsWith('-') ? -1 : 1,
+                parts = normalized.replace(/^-/, '').split(':').map(Number),
+                isValidClock =
+                    parts.length <= 6 &&
+                    (parts.length > 1 || parts[0] < 60) &&
+                    parts.slice(1).every((part) => part < 60);
+
+            if (!isValidClock) return 0;
+
+            const units = [31536000, 604800, 86400, 3600, 60, 1].slice(-parts.length);
+
+            return sign * parts.reduce((seconds, part, index) => seconds + part * units[index], 0);
+        }
+
+        return Time.diffSeconds(to, from);
+    },
+
     diffSeconds(to: Date | string | number, from: Date = new Date()) {
         let toDate;
 
