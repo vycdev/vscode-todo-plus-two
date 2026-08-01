@@ -8,8 +8,11 @@ const Timestamps = {
     aliases: ['@created', '@now'],
 
     getPrefix(line: string, character: number) {
-        const beforeCursor = line.substring(0, character),
-            match = beforeCursor.match(/(?:^|[^a-zA-Z0-9`])(@[^\s*~(]*)$/);
+        const beforeCursor = line.substring(0, character);
+
+        if ((beforeCursor.match(/`/g) || []).length % 2) return;
+
+        const match = beforeCursor.match(/(?:^|[^a-zA-Z0-9`])(@[^\s*~(`]*)$/);
 
         if (!match) return;
 
