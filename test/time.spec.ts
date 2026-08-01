@@ -80,4 +80,21 @@ describe('Time utilities', () => {
 
         expect(Time.diff(to, from, 'man-weeks', 24, 6, 3)).to.equal('2mw');
     });
+
+    it('parses man-time durations using the configured sizes', () => {
+        const from = new Date('2020-01-01T00:00:00Z');
+
+        expect(Time.diffSeconds('1md 2h', from, 8, 5)).to.equal(10 * 3600);
+        expect(Time.diffSeconds('2mw 1md', from, 6, 3)).to.equal(42 * 3600);
+        expect(Time.diffSeconds('1mw1md', from, 8, 5)).to.equal(48 * 3600);
+    });
+
+    it('round-trips formatted man-time durations', () => {
+        const from = new Date('2020-01-01T00:00:00Z');
+        const to = new Date(from.getTime() + 42 * 3600 * 1000);
+        const formatted = Time.diff(to, from, 'man-weeks', 24, 6, 3);
+
+        expect(Time.diffSeconds(formatted, from, 6, 3)).to.equal(42 * 3600);
+        expect(Time.diff(formatted, from, 'man-weeks', 24, 6, 3)).to.equal(formatted);
+    });
 });

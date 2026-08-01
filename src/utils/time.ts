@@ -18,7 +18,7 @@ const Time = {
         manHoursPerDay: number = 8,
         manDaysPerWeek: number = 5
     ) {
-        const toSeconds = Time.diffSeconds(to, from),
+        const toSeconds = Time.diffSeconds(to, from, manHoursPerDay, manDaysPerWeek),
             toDate = new Date(from.getTime() + toSeconds * 1000);
 
         switch (format) {
@@ -204,7 +204,12 @@ const Time = {
         return `${sign < 0 ? '-' : ''}${clockParts.length ? clockParts.join(':') : '0'}`;
     },
 
-    durationSeconds(to: string, from: Date = new Date()) {
+    durationSeconds(
+        to: string,
+        from: Date = new Date(),
+        manHoursPerDay: number = 8,
+        manDaysPerWeek: number = 5
+    ) {
         if (!_.isString(to)) return 0;
 
         const normalized = to.trim();
@@ -226,10 +231,15 @@ const Time = {
             return sign * parts.reduce((seconds, part, index) => seconds + part * units[index], 0);
         }
 
-        return Time.diffSeconds(to, from);
+        return Time.diffSeconds(to, from, manHoursPerDay, manDaysPerWeek);
     },
 
-    diffSeconds(to: Date | string | number, from: Date = new Date()) {
+    diffSeconds(
+        to: Date | string | number,
+        from: Date = new Date(),
+        manHoursPerDay: number = 8,
+        manDaysPerWeek: number = 5
+    ) {
         let toDate;
 
         if (to instanceof Date) {
@@ -237,6 +247,15 @@ const Time = {
         } else if (_.isNumber(to)) {
             toDate = new Date(to);
         } else {
+            const normalizedHoursPerDay = Math.max(1, Number(manHoursPerDay) || 8),
+                normalizedDaysPerWeek = Math.max(1, Number(manDaysPerWeek) || 5);
+
+            to = to.replace(/(\d+(?:\.\d+)?)\s*mw(?=\d|\W|$)/gi, (match, weeks) => {
+                return `${Number(weeks) * normalizedHoursPerDay * normalizedDaysPerWeek}h`;
+            });
+            to = to.replace(/(\d+(?:\.\d+)?)\s*md(?=\d|\W|$)/gi, (match, days) => {
+                return `${Number(days) * normalizedHoursPerDay}h`;
+            });
             to = to.replace(/ and /gi, ' ');
             // Normalize compact durations like "1h5m21s" into a tokenized form that `to-time` can parse reliably.
             // Insert a space after any time unit (ms|s|m|h|d|w|y) when followed immediately by a digit.
