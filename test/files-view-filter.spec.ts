@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { matchesFilesViewFilter } from '../src/utils/files-view-filter';
+import { hasUnfinishedTodo, matchesFilesViewFilter } from '../src/utils/files-view-filter';
 
 describe('Files view filter', () => {
     it('matches task text case-insensitively and treats the filter literally', () => {
@@ -29,5 +29,25 @@ describe('Files view filter', () => {
 
     it('allows every branch when filtering is inactive', () => {
         expect(matchesFilesViewFilter(false, '/workspace/TODO', ['Project:'])).to.equal(true);
+    });
+
+    it('keeps finished parents that contain unfinished descendants', () => {
+        const todoPattern = /^[ ]*[☐✔✘] /;
+        const finishedTodoPattern = /^[ ]*[✔✘] /;
+
+        expect(
+            hasUnfinishedTodo(
+                ['  ✔ finished child', '    ☐ unfinished grandchild'],
+                todoPattern,
+                finishedTodoPattern
+            )
+        ).to.equal(true);
+        expect(
+            hasUnfinishedTodo(
+                ['  ✔ finished child', '    ✘ cancelled grandchild'],
+                todoPattern,
+                finishedTodoPattern
+            )
+        ).to.equal(false);
     });
 });
