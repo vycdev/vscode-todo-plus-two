@@ -1,6 +1,7 @@
 ### Version 5.3.0 (Unreleased)
 
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
+- Added task-level timer pausing and resuming with `Todo: Toggle Timer` (`Alt+T`) and PlainTasks-compatible `@toggle(...)` timestamps; the previous status-bar action is now `Todo: Toggle Status Bar Timer`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/91
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
 - Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
