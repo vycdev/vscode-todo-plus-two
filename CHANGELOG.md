@@ -55,6 +55,7 @@
 - Fixed shorthand estimates directly attached to words, such as `release@2h`, being counted as task estimates.
 - Fixed the status bar timer configuration schema so its boolean enabled and disabled values are accepted.
 - Fixed the Todo files view so hiding finished tasks keeps finished parents that contain unfinished descendants.
+- Fixed indentation detection staying stale after a Todo document is reindented.
 
 ### Version 5.2.0
 
