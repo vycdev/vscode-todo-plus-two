@@ -17,4 +17,10 @@ describe('Todo configuration schema', () => {
         expect(priority.type).to.equal('number');
         expect(priority.default).to.be.a('number');
     });
+
+    it('accepts automatic embedded provider selection', () => {
+        const provider = pkg.contributes.configuration.properties['todo.embedded.provider'];
+
+        expect(provider.enum).to.include(provider.default);
+    });
 });
