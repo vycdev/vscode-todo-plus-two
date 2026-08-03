@@ -4,6 +4,7 @@ import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Consts from '../consts';
 import { DependencyReference, DependencyTarget, getDependencies, getIds } from './dependencies';
+import { loadAvailableDocuments } from './document-loader';
 import Files from './files';
 import Folder from './folder';
 import Regex from './regex';
@@ -129,8 +130,12 @@ const DependencyIndex = {
 
         try {
             const paths = await Files.getFilePaths(Folder.getAllRootPaths());
-            const fileDocuments = await Promise.all(
-                paths.map((filePath) => vscode.workspace.openTextDocument(filePath))
+            const fileDocuments = await loadAvailableDocuments(
+                paths,
+                (filePath) => vscode.workspace.openTextDocument(filePath),
+                (filePath, error) => {
+                    console.warn(`Todo+: Could not open ${filePath}`, error);
+                }
             );
 
             fileDocuments.forEach((candidate) => {
