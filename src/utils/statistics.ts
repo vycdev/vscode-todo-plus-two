@@ -49,7 +49,7 @@ const Statistics = {
             if (!match) return 0;
 
             const time = match[1],
-                seconds = Time.diffSeconds(time);
+                seconds = Time.durationSeconds(time);
 
             Statistics.timeTags.elapseds[tag] = seconds;
 
@@ -65,7 +65,7 @@ const Statistics = {
 
             if (!time) return 0;
 
-            const seconds = Time.diffSeconds(time, from);
+            const seconds = Time.durationSeconds(time, from);
 
             Statistics.timeTags.estimates[tag] = seconds;
 
