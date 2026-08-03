@@ -16,11 +16,26 @@ export interface DependencyTarget extends DependencyReference {
 
 function getReferences(text: string, tag: string): DependencyReference[] {
     const regex = new RegExp(`@${tag}\\(([^\\r\\n)]*)\\)`, 'g');
+    const inlineCodeRanges: Array<{ start: number; end: number }> = [];
+    const inlineCodeRegex = /`[^\r\n`]*`/g;
     const references: DependencyReference[] = [];
+    let inlineCodeMatch: RegExpExecArray;
     let match: RegExpExecArray;
+
+    while ((inlineCodeMatch = inlineCodeRegex.exec(text))) {
+        inlineCodeRanges.push({
+            start: inlineCodeMatch.index,
+            end: inlineCodeMatch.index + inlineCodeMatch[0].length,
+        });
+    }
 
     while ((match = regex.exec(text))) {
         if (match.index > 0 && /[a-zA-Z0-9`]/.test(text[match.index - 1])) continue;
+        if (
+            inlineCodeRanges.some((range) => match.index > range.start && match.index < range.end)
+        ) {
+            continue;
+        }
 
         const rawId = match[1];
         const id = normalizeId(rawId);
