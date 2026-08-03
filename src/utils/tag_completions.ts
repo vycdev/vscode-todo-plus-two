@@ -12,7 +12,10 @@ export const getTagArgumentPrefix = (
     character: number
 ): TagArgumentPrefix | undefined => {
     const beforeCursor = line.substring(0, character);
-    const match = beforeCursor.match(/(?:^|[^a-zA-Z0-9`])(@[^\s*~(]+\([^)]*)$/);
+
+    if ((beforeCursor.match(/`/g) || []).length % 2) return;
+
+    const match = beforeCursor.match(/(?:^|[^a-zA-Z0-9`])(@[^\s*~(`]+\([^`)]*)$/);
 
     if (!match || line[character] === ')') return;
 

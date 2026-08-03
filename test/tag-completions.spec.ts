@@ -45,4 +45,18 @@ describe('Tag completion utilities', () => {
     it('does not complete before an existing closing parenthesis', () => {
         expect(getTagArgumentPrefix('Task @note(con)', 14)).to.equal(undefined);
     });
+
+    it('ignores tag argument prefixes inside inline code', () => {
+        const inlineCode = '`Task @note(con`';
+        const afterInlineCode = '`Task` @note(con';
+
+        expect(getTagArgumentPrefix(inlineCode, inlineCode.length - 1)).to.equal(undefined);
+        expect(getTagArgumentPrefix(inlineCode, inlineCode.length)).to.equal(undefined);
+        expect(getTagArgumentPrefix(afterInlineCode, afterInlineCode.length)).to.deep.equal({
+            text: '@note(con',
+            name: '@note',
+            start: 7,
+            end: 16,
+        });
+    });
 });
