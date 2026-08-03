@@ -20,6 +20,7 @@
 - Added `todo.hoursPerDay` for configurable day length in short duration formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/16
 - Fixed project and special-tag decorations so color/tag settings refresh without restart. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/24, https://github.com/vycdev/vscode-todo-plus-two/issues/2
 - Added `@created` and `@now` completions for inserting the current date/time anywhere in todo files. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/38
+- Fixed timestamp completions being offered inside inline code spans.
 - Added configurable coloring for started todos with `todo.colors.started`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/59
 - Added a Todo files view toggle and `todo.file.view.showFinished` setting for hiding done and cancelled tasks. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/34
 - Updated the embedded activity-bar view from open editor changes so source edits refresh without regenerating the embedded snapshot. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/84

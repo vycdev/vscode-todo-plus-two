@@ -23,4 +23,14 @@ describe('Timestamp utilities', () => {
             end: 12,
         });
     });
+
+    it('ignores timestamp prefixes inside inline code', () => {
+        expect(Timestamps.getPrefix('`note @cre', 10)).to.equal(undefined);
+        expect(Timestamps.getPrefix('`note @cre`', 11)).to.equal(undefined);
+        expect(Timestamps.getPrefix('`note` @cre', 11)).to.deep.equal({
+            text: '@cre',
+            start: 7,
+            end: 11,
+        });
+    });
 });
