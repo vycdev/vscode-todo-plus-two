@@ -26,9 +26,16 @@ describe('Tag utilities', () => {
         );
     });
 
-    it('preserves longer tag names containing digits or punctuation', () => {
-        const text = 'Task @todo_extra @todo-bar @todo2 @todo @todoish';
+    it('removes configured tags before terminal punctuation', () => {
+        expect(Tags.remove('Task @today, next', ['today'])).to.equal('Task, next');
+        expect(Tags.remove('Task (@today).', ['today'])).to.equal('Task ().');
+    });
 
-        expect(Tags.remove(text, ['todo'])).to.equal('Task @todo_extra @todo-bar @todo2 @todoish');
+    it('preserves longer tag names containing digits or punctuation', () => {
+        const text = "Task @todo_extra @todo-bar @todo2 @todo.bar @todo:bar @todo's @todo @todoish";
+
+        expect(Tags.remove(text, ['todo'])).to.equal(
+            "Task @todo_extra @todo-bar @todo2 @todo.bar @todo:bar @todo's @todoish"
+        );
     });
 });

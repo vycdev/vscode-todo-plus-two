@@ -47,6 +47,7 @@
 - Kept scanning accessible workspace roots and Todo files when another path cannot be read. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/9
 - Added right-click actions to open or change the status of tasks in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/64
 - Fixed configured tag cleanup so shorter names do not corrupt longer tags containing digits or punctuation.
+- Fixed configured tag cleanup when a tag is followed by terminal punctuation.
 - Fixed the `todo.timer.statusbar.priority` configuration schema so numeric priorities can be configured.
 - Fixed dependency parsing so `@id(...)` and `@depends(...)` directly attached to words or backticks are not treated as task links.
 - Fixed dependency parsing so `@id(...)` and `@depends(...)` inside inline code are not treated as task links.
