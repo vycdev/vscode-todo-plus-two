@@ -48,6 +48,7 @@
 - Fixed dependency parsing so `@id(...)` and `@depends(...)` directly attached to words or backticks are not treated as task links.
 - Fixed dependency parsing so `@id(...)` and `@depends(...)` inside inline code are not treated as task links.
 - Fixed shorthand estimates directly attached to words, such as `release@2h`, being counted as task estimates.
+- Fixed the status bar timer configuration schema so its boolean enabled and disabled values are accepted.
 
 ### Version 5.2.0
 

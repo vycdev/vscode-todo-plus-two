@@ -644,6 +644,8 @@
                         "string"
                     ],
                     "enum": [
+                        true,
+                        false,
                         "estimate"
                     ],
                     "description": "Show a timer for started todos in the statusbar",
