@@ -4,6 +4,18 @@ function escapeRegExp(str: string) {
     return str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
 }
 
+function isInsideInlineCode(text: string, offset: number): boolean {
+    const markerRuns = text.slice(0, offset).match(/`+/g) || [];
+    let delimiterLength = 0;
+
+    markerRuns.forEach((marker) => {
+        if (!delimiterLength) delimiterLength = marker.length;
+        else if (marker.length === delimiterLength) delimiterLength = 0;
+    });
+
+    return delimiterLength > 0;
+}
+
 const Tags = {
     normalizeNames(tags: string[] = []): string[] {
         const values = Array.isArray(tags) ? tags : [tags];
@@ -35,18 +47,20 @@ const Tags = {
         );
 
         return text
-            .replace(regex, (match, prefix) => (prefix && /\S/.test(prefix) ? prefix : ''))
+            .replace(regex, (match, prefix, offset, source) => {
+                if (isInsideInlineCode(source, offset + prefix.length)) return match;
+
+                return prefix && /\S/.test(prefix) ? prefix : '';
+            })
             .trimRight();
     },
 
     removeAll(text: string) {
-        const regex = /(^|[^a-zA-Z0-9`])(@[^\s*~(`]+)(\([^)]*\))?/gm;
+        const regex = /(^|[^a-zA-Z0-9])(@[^\s*~(`]+)(\([^)]*\))?/gm;
 
         return text
             .replace(regex, (match, prefix, tagName, _argument, offset, source) => {
-                const codeMarkers = source.slice(0, offset).match(/`/g);
-
-                if (codeMarkers && codeMarkers.length % 2) return match;
+                if (isInsideInlineCode(source, offset + prefix.length)) return match;
 
                 const trailingMatch = tagName.match(/[.,;:!?()[\]{}<>"']+$/),
                     trailing = trailingMatch ? trailingMatch[0] : '',
