@@ -9,29 +9,9 @@ import AG from './providers/ag';
 import JS from './providers/js';
 import RG from './providers/rg';
 import { resetEmbeddedProvider } from './provider-lifecycle';
+import { getCoreRipgrepPath } from './ripgrep';
 
 declare const __non_webpack_require__: NodeRequire;
-
-/* HELPERS */
-
-function getCoreNodeModule(moduleName: string) {
-    const modulePaths = [
-        path.join(vscode.env.appRoot, 'node_modules.asar', moduleName),
-        path.join(vscode.env.appRoot, 'node_modules', moduleName),
-    ];
-
-    for (let modulePath of modulePaths) {
-        try {
-            return __non_webpack_require__(modulePath);
-        } catch (e) {}
-    }
-}
-
-function getCoreRipgrepPath() {
-    const ripgrep = getCoreNodeModule('vscode-ripgrep') || getCoreNodeModule('@vscode/ripgrep');
-
-    return ripgrep && (ripgrep.rgPath || (ripgrep.default && ripgrep.default.rgPath));
-}
 
 /* EMBEDDED */
 
@@ -100,7 +80,7 @@ const Embedded = {
                 return RG;
             } catch (e) {}
 
-            const rgPath = getCoreRipgrepPath();
+            const rgPath = getCoreRipgrepPath(vscode.env.appRoot, __non_webpack_require__);
 
             if (rgPath) {
                 RG.bin = rgPath;
