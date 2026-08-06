@@ -10,17 +10,12 @@ import Editor from './editor';
 const AST = {
     indentationRe: /^( +|\t+)/m,
 
-    indentations: {}, // filePath => { indentation, lineCount, confident }
+    indentations: new WeakMap<vscode.TextDocument, { indentation: string; version: number }>(),
 
     getIndentation(textDocument: vscode.TextDocument) {
-        const filePath = textDocument.fileName,
-            cached = AST.indentations[filePath];
+        const cached = AST.indentations.get(textDocument);
 
-        if (cached) {
-            if (cached.confident) return cached.indentation; // We are confident about this
-
-            if (cached.lineCount === textDocument.lineCount) return cached.indentation; // Probably nothing changed
-        }
+        if (cached && cached.version === textDocument.version) return cached.indentation;
 
         const text = textDocument.getText(),
             match = AST.indentationRe.exec(text),
@@ -43,11 +38,10 @@ const AST = {
         // If the editor didn't provide a consistent indentation, fall back on detection
         if (!indentation) indentation = detectIndent(sample).indent || '    ';
 
-        AST.indentations[filePath] = {
+        AST.indentations.set(textDocument, {
             indentation,
-            lineCount: textDocument.lineCount,
-            confident: !!match,
-        };
+            version: textDocument.version,
+        });
 
         return indentation;
     },
