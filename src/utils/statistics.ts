@@ -7,6 +7,7 @@ import Consts from '../consts';
 import { Comment, Project, Tag, TodoBox, TodoDone, TodoCancelled } from '../todo/items';
 import AST from './ast';
 import { getEstimateDuration } from './estimate';
+import { getStatisticsLines } from './statistics-lines';
 import Tokens from './statistics_tokens';
 import Time from './time';
 
@@ -191,32 +192,7 @@ const Statistics = {
             // item lists in line-number order and walk them sequentially, tracking
             // whether the current context is a pending todo (wasPending).
 
-            function mergeSorted(arr1, arr2) {
-                // Merge two arrays sorted by lineNumber into a single sorted array
-                const merged = new Array(arr1.length + arr2.length);
-
-                let i = arr1.length - 1,
-                    j = arr2.length - 1,
-                    k = merged.length;
-
-                while (k) {
-                    merged[--k] =
-                        j < 0 || (i >= 0 && arr1[i].lineNumber > arr2[j].lineNumber)
-                            ? arr1[i--]
-                            : arr2[j--];
-                }
-
-                return merged;
-            }
-
-            const groups = [
-                    items.projects || [],
-                    items.todosBox || [],
-                    items.todosDone || [],
-                    items.todosCancelled || [],
-                    items.tags || [],
-                ],
-                lines = groups.reduce((a, b) => mergeSorted(a, b), []);
+            const lines = getStatisticsLines(items);
 
             let wasPending = false;
 
@@ -232,13 +208,9 @@ const Statistics = {
                         !wasPending
                     );
                 } else {
-                    // Update wasPending state: only TodoBox should set it to true
-                    // finished/cancelled todos (and other items) set it to false
-                    if (nextItem instanceof TodoBox) {
-                        wasPending = true;
-                    } else if (nextItem instanceof TodoDone || nextItem instanceof TodoCancelled) {
-                        wasPending = false;
-                    }
+                    // Only tags attached to a pending todo contribute remaining estimates.
+                    // Comments, projects and finished todos all end the pending context.
+                    wasPending = nextItem instanceof TodoBox;
                 }
             }
 
@@ -252,34 +224,7 @@ const Statistics = {
 
             if (!items.projects) return;
 
-            function mergeSorted(arr1, arr2) {
-                //URL: https://stackoverflow.com/questions/5958169/how-to-merge-two-sorted-arrays-into-a-sorted-array#answer-31310853
-
-                const merged = new Array(arr1.length + arr2.length);
-
-                let i = arr1.length - 1,
-                    j = arr2.length - 1,
-                    k = merged.length;
-
-                while (k) {
-                    merged[--k] =
-                        j < 0 || (i >= 0 && arr1[i].lineNumber > arr2[j].lineNumber)
-                            ? arr1[i--]
-                            : arr2[j--];
-                }
-
-                return merged;
-            }
-
-            const groups = [
-                    items.projects,
-                    items.todosBox,
-                    items.todosDone,
-                    items.todosCancelled,
-                    items.tags,
-                    items.comments,
-                ],
-                lines = groups.reduce((arr1, arr2) => mergeSorted(arr1, arr2));
+            const lines = getStatisticsLines(items);
 
             items.projects.forEach((project) => {
                 Statistics.tokens.updateProject(
