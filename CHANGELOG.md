@@ -57,6 +57,7 @@
 - Fixed the Todo files view so hiding finished tasks keeps finished parents that contain unfinished descendants.
 - Fixed indentation detection staying stale after a Todo document is reindented.
 - Fixed dependency checks being skipped when toggling directly between done and cancelled states. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/153
+- Fixed tag parsing when `todo.tags.names` is empty so normal tags no longer freeze document parsing.
 
 ### Version 5.2.0
 

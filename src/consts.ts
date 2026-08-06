@@ -3,6 +3,7 @@
 import * as _ from 'lodash';
 import Config from './config';
 import { tagEstimateRegex } from './utils/estimate';
+import { createTagRegexes } from './utils/tag-regexes';
 
 /* CONSTS */
 
@@ -73,6 +74,7 @@ const Consts = {
 
         const embeddedRegex = _.get(config, 'embedded.regex', '');
         const embeddedFlags = _.get(config, 'embedded.regexFlags', '');
+        const tagRegexes = createTagRegexes(tagsNames);
 
         const regexes = {
             impossible: /(?=a)b/gm,
@@ -143,28 +145,9 @@ const Consts = {
                 'gm'
             ),
             tag: /(?:^|[^a-zA-Z0-9`])(@[^\s*~(]+(?::\/\/[^\s*~(:]+)?(?:\([^)]*\))?)/gm,
-            tagSpecial: new RegExp(
-                '(?:^|[^a-zA-Z0-9])@(' +
-                    tagsNames.map((n: any) => _.escapeRegExp(n)).join('|') +
-                    ')(?:(?:\\([^)]*\\))|(?![a-zA-Z]))',
-                'gm'
-            ),
-            tagSpecialNormal: new RegExp(
-                '(?:^|[^a-zA-Z0-9])(?:' +
-                    tagsNames
-                        .map(
-                            (n: any) =>
-                                '(@' + _.escapeRegExp(n) + '(?:(?:\\([^)]*\\))|(?![a-zA-Z])))'
-                        )
-                        .join('|') +
-                    '|(@[^\\s*~(]+(?::\/\/[^\\s*~(:]+)?(?:(?:\\([^)]*\\))|(?![a-zA-Z]))))',
-                'gm'
-            ),
-            tagNormal: new RegExp(
-                '(?:^|[^a-zA-Z0-9])@(?!' +
-                    tagsNames.map((n: any) => _.escapeRegExp(n)).join('|') +
-                    '|created|done|cancelled|started|lasted|wasted|est|\\d)[^\\s*~(:]+(?::\/\/[^\\s*~(:]+)?(?:\\([^)]*\\))?'
-            ),
+            tagSpecial: tagRegexes.tagSpecial,
+            tagSpecialNormal: tagRegexes.tagSpecialNormal,
+            tagNormal: tagRegexes.tagNormal,
             tagCreated: /(?:^|[^a-zA-Z0-9])@created(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
             tagDue: /(?:^|[^a-zA-Z0-9])(@due\([^)]*\))/gim,
             tagStarted: /(?:^|[^a-zA-Z0-9])@started(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
