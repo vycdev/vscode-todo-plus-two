@@ -95,6 +95,7 @@ describe('Time utilities', () => {
         expect(Time.diffSeconds('1md 2h', from, 8, 5)).to.equal(10 * 3600);
         expect(Time.diffSeconds('2mw 1md', from, 6, 3)).to.equal(42 * 3600);
         expect(Time.diffSeconds('1mw1md', from, 8, 5)).to.equal(48 * 3600);
+        expect(Time.durationSeconds('2mw 1md', from, 6, 3)).to.equal(42 * 3600);
     });
 
     it('round-trips formatted man-time durations', () => {

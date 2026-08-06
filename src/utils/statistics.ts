@@ -55,12 +55,7 @@ const Statistics = {
             if (!match) return 0;
 
             const time = match[1],
-                seconds = Time.durationSeconds(
-                    time,
-                    undefined,
-                    manHoursPerDay,
-                    manDaysPerWeek
-                );
+                seconds = Time.durationSeconds(time, undefined, manHoursPerDay, manDaysPerWeek);
 
             Statistics.timeTags.elapseds[cacheKey] = seconds;
 
@@ -81,12 +76,7 @@ const Statistics = {
 
             if (!time) return 0;
 
-            const seconds = Time.durationSeconds(
-                time,
-                from,
-                manHoursPerDay,
-                manDaysPerWeek
-            );
+            const seconds = Time.durationSeconds(time, from, manHoursPerDay, manDaysPerWeek);
 
             Statistics.timeTags.estimates[cacheKey] = seconds;
 
