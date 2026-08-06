@@ -5,6 +5,7 @@ import {
     findClosestRootPath,
     getEnabledExcludeGlobs,
     getGlobMatchOptions,
+    getRootPathsRegExp,
     hasConditionalExcludeGlobs,
     isFileIncluded,
     isPathWithinRoot,
@@ -57,6 +58,32 @@ describe('Default todo file globs', () => {
 });
 
 describe('Workspace file excludes', () => {
+    it('does not create a workspace root matcher without valid roots', () => {
+        expect(getRootPathsRegExp([])).to.equal(undefined);
+        expect(getRootPathsRegExp([''])).to.equal(undefined);
+    });
+
+    it('matches workspace roots only at path boundaries', () => {
+        const rootsRe = getRootPathsRegExp(['/workspace', '/workspace/packages/app']);
+
+        expect(rootsRe).not.to.equal(undefined);
+        expect(rootsRe!.exec('/workspace-other/TODO')).to.equal(null);
+        expect(rootsRe!.exec('/workspace/packages/app/TODO')![1]).to.equal(
+            '/workspace/packages/app'
+        );
+        expect(rootsRe!.exec('/workspace/TODO')![1]).to.equal('/workspace');
+    });
+
+    it('matches Windows workspace roots across path separators', () => {
+        const backslashRootRe = getRootPathsRegExp(['C:\\workspace']);
+        const slashRootRe = getRootPathsRegExp(['C:/workspace']);
+
+        expect(backslashRootRe!.exec('C:/workspace/TODO')![1]).to.equal('C:/workspace');
+        expect(backslashRootRe!.exec('C:\\workspace\\TODO')![1]).to.equal('C:\\workspace');
+        expect(backslashRootRe!.exec('C:/workspace-other/TODO')).to.equal(null);
+        expect(slashRootRe!.exec('C:\\workspace\\TODO')![1]).to.equal('C:\\workspace');
+    });
+
     it('does not treat similarly prefixed siblings as children of a workspace root', () => {
         expect(isPathWithinRoot('C:/workspace/project/TODO', 'C:\\workspace')).to.equal(true);
         expect(isPathWithinRoot('C:/workspace-other/TODO', 'C:\\workspace')).to.equal(false);
