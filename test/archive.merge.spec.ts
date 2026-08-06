@@ -322,6 +322,25 @@ describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
         expect(merged).to.include('\n  <o> TASK2');
     });
 
+    it('preserves CRLF line endings when merging into an existing archive file', () => {
+        const existing = 'PROJECT1:\r\n  <o> TASK1 @done(2025-11-21 10:27:24 pm)\r\n';
+        const insertItem = {
+            obj: {
+                text: '  <o> TASK2 @done(2025-11-21 11:01:14 pm)',
+                projects: ['PROJECT1'],
+            },
+            lineNumber: 100,
+        };
+
+        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+            indentation: '  ',
+        });
+
+        expect(merged).to.equal(
+            'PROJECT1:\r\n  <o> TASK2 @done(2025-11-21 11:01:14 pm)\r\n  <o> TASK1 @done(2025-11-21 10:27:24 pm)'
+        );
+    });
+
     it('inserts child project items under the existing project header after previously adding parent project items', () => {
         const existing = [
             'PROJECT1:',

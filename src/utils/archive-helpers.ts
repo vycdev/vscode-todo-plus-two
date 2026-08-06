@@ -76,12 +76,13 @@ export function mergeInsertItemsIntoArchiveContent(
     insertItems: any[],
     config: any
 ) {
+    const normalizedContent = content || '';
+    const lineEnding = normalizedContent.includes('\r\n') ? '\r\n' : '\n';
     const projectTagRegex = /\s*@project\([^)]*\)/g;
     const rootIndentLevel =
         config && typeof config.rootIndentLevel === 'number' ? config.rootIndentLevel : 0;
     // Strip project tags from existing content to avoid clutter and duplicate information
-    content = (content || '').replace(projectTagRegex, '');
-    let lines = content.split('\n');
+    const lines = normalizedContent.replace(projectTagRegex, '').split(/\r?\n/);
 
     // Remove leading and trailing empty lines to avoid creating an extra blank
     // line when merging into empty files or appending to files that have a
@@ -271,7 +272,7 @@ export function mergeInsertItemsIntoArchiveContent(
             '.';
         const projectPath =
             obj.projects && obj.projects.length ? obj.projects.join(projectSeparator) : undefined;
-        const textLinesRaw = text.split('\n').map((l) => l.replace(projectTagRegex, ''));
+        const textLinesRaw = text.split(/\r?\n/).map((l) => l.replace(projectTagRegex, ''));
         const projectNames = new Set((obj.projects || []).map((project: string) => project.trim()));
         const textLines = textLinesRaw.filter((line) => {
             const match = line.match(projectParts);
@@ -335,7 +336,7 @@ export function mergeInsertItemsIntoArchiveContent(
         }
     });
 
-    return lines.join('\n');
+    return lines.join(lineEnding);
 }
 
 export default mergeInsertItemsIntoArchiveContent;
