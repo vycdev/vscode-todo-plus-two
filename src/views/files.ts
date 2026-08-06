@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import Utils from '../utils';
 import Consts from '../consts';
 import Config from '../config';
-import { matchesFilesViewFilter } from '../utils/files-view-filter';
+import { hasUnfinishedTodo, matchesFilesViewFilter } from '../utils/files-view-filter';
 import Tags from '../utils/tags';
 import File from './items/file';
 import Item from './items/item';
@@ -91,7 +91,13 @@ class Files extends View {
                     data.line.text.match(Consts.regexes.comment)
                 );
                 if (!showComments && isCommentLine) return;
-                if (!this.showFinished && this.isFinishedTodo(data.line.text)) return;
+                if (
+                    !this.showFinished &&
+                    this.isFinishedTodo(data.line.text) &&
+                    (!isGroup ||
+                        !this.hasUnfinishedDescendant(obj.textEditor, data.line.lineNumber))
+                )
+                    return;
                 if (!this.matchesFilter(obj.textEditor, data.line.lineNumber, obj.filePath)) return;
 
                 const lineText = _.trimStart(data.line.text),
@@ -150,6 +156,19 @@ class Files extends View {
 
     isFinishedTodo(text: string) {
         return !!text.match(Consts.regexes.todoFinished);
+    }
+
+    hasUnfinishedDescendant(textDocument: vscode.TextDocument, lineNr: number) {
+        const descendantLines = [],
+            startLevel = Utils.ast.getLevel(textDocument, textDocument.lineAt(lineNr).text);
+
+        Utils.ast.walkDown(textDocument, lineNr, true, false, ({ line, level }) => {
+            if (level <= startLevel) return false;
+
+            descendantLines.push(line.text);
+        });
+
+        return hasUnfinishedTodo(descendantLines, Consts.regexes.todo, Consts.regexes.todoFinished);
     }
 
     matchesFilter(textEditor: vscode.TextDocument, lineNr: number, filePath: string) {

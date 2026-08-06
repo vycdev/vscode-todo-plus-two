@@ -13,4 +13,10 @@ const matchesFilesViewFilter = (
     return filterRe.test(filePath) || branchLines.some((line) => filterRe.test(line));
 };
 
-export { matchesFilesViewFilter };
+const hasUnfinishedTodo = (
+    lines: string[],
+    todoPattern: RegExp,
+    finishedTodoPattern: RegExp
+): boolean => lines.some((line) => !!line.match(todoPattern) && !line.match(finishedTodoPattern));
+
+export { hasUnfinishedTodo, matchesFilesViewFilter };
