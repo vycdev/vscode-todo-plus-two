@@ -56,6 +56,7 @@
 - Fixed the status bar timer configuration schema so its boolean enabled and disabled values are accepted.
 - Fixed the Todo files view so hiding finished tasks keeps finished parents that contain unfinished descendants.
 - Fixed indentation detection staying stale after a Todo document is reindented.
+- Fixed dependency checks being skipped when toggling directly between done and cancelled states. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/153
 
 ### Version 5.2.0
 

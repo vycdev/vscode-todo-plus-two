@@ -14,6 +14,12 @@ export interface DependencyTarget extends DependencyReference {
     text: string;
 }
 
+export interface DependencyTodoStatus {
+    isDone(): boolean;
+    isCancelled(): boolean;
+    isFinished(): boolean;
+}
+
 function getReferences(text: string, tag: string): DependencyReference[] {
     const regex = new RegExp(`@${tag}\\(([^\\r\\n)]*)\\)`, 'g');
     const inlineCodeRanges: Array<{ start: number; end: number }> = [];
@@ -86,6 +92,13 @@ function getUnresolvedIds(
     return ids;
 }
 
+function willFinishTodo(todo: DependencyTodoStatus, method: string) {
+    if (method === 'toggleDone') return !todo.isDone();
+    if (method === 'toggleCancelled') return !todo.isCancelled();
+
+    return !todo.isFinished();
+}
+
 function getIds(text: string) {
     return getReferences(text, 'id');
 }
@@ -96,4 +109,4 @@ function getDependencies(text: string) {
 
 /* EXPORT */
 
-export { getIds, getDependencies, normalizeId, isValidId, getUnresolvedIds };
+export { getIds, getDependencies, normalizeId, isValidId, getUnresolvedIds, willFinishTodo };
