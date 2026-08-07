@@ -44,4 +44,17 @@ describe('Todo inline formatting', () => {
             []
         );
     });
+
+    it('recognizes adjacent distinct formatting spans (delimiter-specific boundaries)', () => {
+        expect(getFormattedText('*bold*_italic_')).to.deep.equal(['*bold*', '_italic_']);
+        expect(getFormattedText('*bold*~struck~')).to.deep.equal(['*bold*', '~struck~']);
+        expect(getFormattedText('_italic_`code`')).to.deep.equal(['_italic_', '`code`']);
+        expect(getFormattedText('~struck~*bold*')).to.deep.equal(['~struck~', '*bold*']);
+    });
+
+    it('recognizes formatting adjacent to punctuation and whitespace', () => {
+        expect(getFormattedText('*bold*,_italic_')).to.deep.equal(['*bold*', '_italic_']);
+        expect(getFormattedText('*bold* _italic_')).to.deep.equal(['*bold*', '_italic_']);
+        expect(getFormattedText('(*bold*)[_italic_]')).to.deep.equal(['*bold*', '_italic_']);
+    });
 });
