@@ -106,4 +106,29 @@ describe('Time utilities', () => {
         expect(Time.diffSeconds(formatted, from, 6, 3)).to.equal(42 * 3600);
         expect(Time.diff(formatted, from, 'man-weeks', 24, 6, 3)).to.equal(formatted);
     });
+
+    it('applies a leading sign to complete man-time durations', () => {
+        const from = new Date('2020-01-01T00:00:00Z'),
+            negativeManDay = Time.diff(
+                new Date(from.getTime() - 10 * 3600 * 1000),
+                from,
+                'man-days',
+                24,
+                8,
+                5
+            ),
+            negativeManWeek = Time.diff(
+                new Date(from.getTime() - 50 * 3600 * 1000),
+                from,
+                'man-weeks',
+                24,
+                8,
+                5
+            );
+
+        expect(negativeManDay).to.equal('-1md 2h');
+        expect(Time.diffSeconds(negativeManDay, from, 8, 5)).to.equal(-10 * 3600);
+        expect(negativeManWeek).to.equal('-1mw 1md 2h');
+        expect(Time.diffSeconds(negativeManWeek, from, 8, 5)).to.equal(-50 * 3600);
+    });
 });

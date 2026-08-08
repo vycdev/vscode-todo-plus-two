@@ -240,7 +240,8 @@ const Time = {
         manHoursPerDay: number = 8,
         manDaysPerWeek: number = 5
     ) {
-        let toDate;
+        let toDate,
+            durationSign = 1;
 
         if (to instanceof Date) {
             toDate = to;
@@ -249,6 +250,11 @@ const Time = {
         } else {
             const normalizedHoursPerDay = Math.max(1, Number(manHoursPerDay) || 8),
                 normalizedDaysPerWeek = Math.max(1, Number(manDaysPerWeek) || 5);
+
+            if (/^\s*-\s*\d/.test(to) && /\d+(?:\.\d+)?\s*m[dw](?=\d|\W|$)/i.test(to)) {
+                durationSign = -1;
+                to = to.replace(/^\s*-\s*/, '');
+            }
 
             to = to.replace(/(\d+(?:\.\d+)?)\s*mw(?=\d|\W|$)/gi, (match, weeks) => {
                 return `${Number(weeks) * normalizedHoursPerDay * normalizedDaysPerWeek}h`;
@@ -293,7 +299,7 @@ const Time = {
             }
         }
 
-        return toDate ? Math.round((toDate.getTime() - from.getTime()) / 1000) : 0;
+        return toDate ? durationSign * Math.round((toDate.getTime() - from.getTime()) / 1000) : 0;
     },
 
     diffHours(to: Date, from: Date = new Date()) {
