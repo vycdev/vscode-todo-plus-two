@@ -18,7 +18,7 @@
 - Replaced Moment with the `moment-mini` package alias to reduce bundled date-library size. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/55
 - Added default `@today` cleanup when archiving or marking todos done/cancelled, configurable with `todo.archive.remove.tags` and `todo.timekeeping.finished.remove.tags`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/30, https://github.com/vycdev/vscode-todo-plus-two/issues/13
 - Added `todo.hoursPerDay` for configurable day length in short duration formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/16
-- Fixed project and special-tag decorations so color/tag settings refresh without restart. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/24, https://github.com/vycdev/vscode-todo-plus-two/issues/2
+- Fixed project and special-tag decorations so color/tag settings refresh without restart, and shorter special-tag color palettes repeat across every configured name. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/24, https://github.com/vycdev/vscode-todo-plus-two/issues/2
 - Added `@created` and `@now` completions for inserting the current date/time anywhere in todo files. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/38
 - Fixed timestamp completions being offered inside inline code spans.
 - Added configurable coloring for started todos with `todo.colors.started`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/59
