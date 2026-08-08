@@ -7,6 +7,7 @@ import Config from '../../config';
 import Consts from '../../consts';
 import Utils from '../../utils';
 import { parseStartedDate } from '../../utils/timekeeping';
+import { matchesTodoStatus, removeTodoStatusTag } from '../../utils/todo-status';
 import Item from './item';
 
 /* TODO */
@@ -208,8 +209,12 @@ class Todo extends Item {
     }
 
     unfinish() {
-        this.removeTag(Consts.regexes.tagFinished);
-        this.removeTag(Consts.regexes.tagElapsed);
+        this.lineNextText = _.trimEnd(
+            removeTodoStatusTag(this.lineNextText, Consts.regexes.tagFinished)
+        );
+        this.lineNextText = _.trimEnd(
+            removeTodoStatusTag(this.lineNextText, Consts.regexes.tagElapsed)
+        );
     }
 
     /* SYMBOLS */
@@ -285,15 +290,15 @@ class Todo extends Item {
     /* IS */
 
     isBox() {
-        return Item.is(this.text, Consts.regexes.todoBox);
+        return matchesTodoStatus(this.text, Consts.regexes.todoBox);
     }
 
     isDone() {
-        return Item.is(this.text, Consts.regexes.todoDone);
+        return matchesTodoStatus(this.text, Consts.regexes.todoDone);
     }
 
     isCancelled() {
-        return Item.is(this.text, Consts.regexes.todoCancelled);
+        return matchesTodoStatus(this.text, Consts.regexes.todoCancelled);
     }
 
     isFinished() {
