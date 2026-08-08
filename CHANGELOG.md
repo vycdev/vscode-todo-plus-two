@@ -30,6 +30,7 @@
 - Displayed `todo.file.defaultContent` as a multiline text area in VS Code's Settings editor. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/51
 - Applied enabled workspace `files.exclude` globs when discovering Todo files and embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/67
 - Improved tag completion to suggest unique tag names first and previously used argument values after typing an opening parenthesis. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/80
+- Fixed unfinished tag arguments so they no longer consume subsequent Todo lines.
 - Fixed tag argument completions being offered inside inline code spans.
 - Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`, while avoiding blank lines and consecutive embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/79
 - Added opt-in automatic parent completion with `todo.autoCompleteParents`, cascading upwards when `Todo: Toggle Done` completes all nested todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/63
