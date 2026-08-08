@@ -247,6 +247,12 @@ const Time = {
 
             if (/^\s*\d+\s*$/.test(to)) return 0;
 
+            // Parse duration strings before calendar expressions so they stay relative to `from`.
+            try {
+                const milliseconds = toTime(to).milliseconds();
+                toDate = new Date(from.getTime() + milliseconds);
+            } catch (e) {}
+
             const sugar = require('sugar-date'); //TSC // Lazy import for performance
 
             if (!toDate) {
@@ -263,14 +269,6 @@ const Time = {
                 if (!_.isNaN(date.getTime())) {
                     toDate = date;
                 }
-            }
-
-            if (!toDate) {
-                // to-time
-                try {
-                    const milliseconds = toTime(to).milliseconds();
-                    toDate = new Date(from.getTime() + milliseconds);
-                } catch (e) {}
             }
         }
 

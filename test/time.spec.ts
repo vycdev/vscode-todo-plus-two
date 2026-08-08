@@ -53,6 +53,15 @@ describe('Time utilities', () => {
         expect(Time.durationSeconds(30 as any, from)).to.equal(0);
     });
 
+    it('parses natural-language durations relative to the supplied base date', () => {
+        const from = new Date('2020-01-01T00:00:00Z');
+
+        expect(Time.durationSeconds('3 hours', from)).to.equal(3 * 3600);
+        expect(Time.durationSeconds('1 week', from)).to.equal(7 * 24 * 3600);
+        expect(Time.durationSeconds('1h5m21s', from)).to.equal(3921);
+        expect(Time.durationSeconds('2020-01-02', from)).to.equal(24 * 3600);
+    });
+
     it('supports flat man-hours formatting', () => {
         const from = new Date('2020-01-01T00:00:00Z');
         const to = new Date(from.getTime() + (25 * 3600 + 15 * 60) * 1000);
