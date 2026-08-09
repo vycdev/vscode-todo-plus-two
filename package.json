@@ -303,6 +303,14 @@
                         "#000000"
                     ]
                 },
+                "todo.colors.tags.lineBackground": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Whole-line background colors for special tags, matched by todo.tags.names index. The first colored tag on a line takes precedence",
+                    "default": []
+                },
                 "todo.colors.types": {
                     "type": "object",
                     "description": "Object mapping todo types to their color",
@@ -385,6 +393,9 @@
                                 },
                                 "foreground": {
                                     "type": "array"
+                                },
+                                "lineBackground": {
+                                    "type": "array"
                                 }
                             }
                         },
@@ -452,6 +463,9 @@
                                     "type": "array"
                                 },
                                 "foreground": {
+                                    "type": "array"
+                                },
+                                "lineBackground": {
                                     "type": "array"
                                 }
                             }

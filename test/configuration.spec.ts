@@ -42,4 +42,12 @@ describe('Todo configuration schema', () => {
         expect(properties['todo.embedded.include'].items).to.deep.equal({ type: 'string' });
         expect(properties['todo.embedded.exclude'].items).to.deep.equal({ type: 'string' });
     });
+
+    it('accepts whole-line colors for special tags', () => {
+        const colors = pkg.contributes.configuration.properties['todo.colors.tags.lineBackground'];
+
+        expect(colors.type).to.equal('array');
+        expect(colors.items.type).to.equal('string');
+        expect(colors.default).to.deep.equal([]);
+    });
 });

@@ -125,6 +125,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.colors.due.later": "#a6e22e", // @due tag color for future tasks
   "todo.colors.tags.background": ["#e54545", "#e59f45", "#e5d145", "#ae81ff"], // Special tags' background colors
   "todo.colors.tags.foreground": ["#000000", "#000000", "#000000", "#000000"], // Special tags' foreground colors
+  "todo.colors.tags.lineBackground": [], // Whole-line background colors for special tags, matched by todo.tags.names index; the first colored tag wins (include "started" in todo.tags.names to highlight @started)
   "todo.colors.types": { "TODO": "#ffcc00", "FIXME": "#cc0000" ... }, // Object mapping todo types to their color
   "todo.decorations.done.strikethrough": true, // Render done todos with strikethrough
   "todo.colors.dark": { /* "done": "white", ... */ }, // Colors for dark themes
