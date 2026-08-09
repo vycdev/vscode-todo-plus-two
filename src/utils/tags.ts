@@ -5,13 +5,17 @@ function escapeRegExp(str: string) {
 }
 
 function isInsideInlineCode(text: string, offset: number): boolean {
-    const markerRuns = text.slice(0, offset).match(/`+/g) || [];
+    const markerRuns = /`+/g,
+        prefix = text.slice(0, offset);
     let delimiterLength = 0;
+    let marker: RegExpExecArray | null;
 
-    markerRuns.forEach((marker) => {
-        if (!delimiterLength) delimiterLength = marker.length;
-        else if (marker.length === delimiterLength) delimiterLength = 0;
-    });
+    while ((marker = markerRuns.exec(prefix))) {
+        const runLength = marker[0].length;
+
+        if (!delimiterLength) delimiterLength = runLength;
+        else if (runLength === delimiterLength) delimiterLength = 0;
+    }
 
     return delimiterLength > 0;
 }

@@ -56,4 +56,11 @@ describe('Tag utilities', () => {
         expect(Tags.remove(text, ['today'])).to.equal('Task ``code @today value``');
         expect(Tags.removeAll(text)).to.equal('Task ``code @today value``');
     });
+
+    it('ignores different backtick runs inside a matching code span', () => {
+        const text = 'Task ``code ` @today value`` @today';
+
+        expect(Tags.remove(text, ['today'])).to.equal('Task ``code ` @today value``');
+        expect(Tags.removeAll(text)).to.equal('Task ``code ` @today value``');
+    });
 });
