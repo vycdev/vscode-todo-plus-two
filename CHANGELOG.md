@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Fixed embedded include and exclude settings so VS Code rejects non-string glob entries.
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.

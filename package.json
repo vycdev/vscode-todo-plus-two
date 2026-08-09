@@ -734,6 +734,9 @@
                 },
                 "todo.embedded.include": {
                     "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "description": "Globs to use for including files",
                     "default": [
                         "**/*"
@@ -751,6 +754,9 @@
                 },
                 "todo.embedded.exclude": {
                     "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "description": "Globs to use for excluding files",
                     "default": [
                         "**/.*",
