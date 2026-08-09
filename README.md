@@ -145,7 +145,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.timekeeping.finished.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @done/cancelled
   "todo.timekeeping.finished.remove.tags": ["today"], // Tags to remove when a todo is marked done or cancelled
   "todo.timekeeping.elapsed.enabled": true, // Enable the @lasted/wasted tag
-  "todo.timekeeping.elapsed.format": "short-compact", // Format used for displaying time diff inside @lasted/waster
+  "todo.timekeeping.elapsed.format": "short-compact", // Format used for displaying time diff inside @lasted/wasted
   "todo.timekeeping.estimate.format": "short-compact", // Format used for the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens
   "todo.hoursPerDay": 24, // Number of hours represented by one day when formatting short time durations
   "todo.manHoursPerDay": 8, // Number of hours represented by one man-day when using man-time duration formats
