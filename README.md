@@ -95,6 +95,8 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.file.defaultContent": "\nTodo:\n  ☐ Item\n", // New todo files default content
   "todo.file.include": ["**/TODO", "**/TODO.md", ...], // Globs to use for including files
   "todo.file.exclude": ["**/.git/**", ...], // Globs to use for excluding files
+  "todo.followSymlinks": false, // Follow symbolic links when enumerating files (can cause cycles)
+  "todo.file.batchSize": 50, // Number of Todo files to process in each discovery batch
   "todo.file.view.expanded": true, // Start the tree in an expanded state
   "todo.file.view.showFinished": true, // Show done and cancelled tasks in the Todo files view
   "todo.file.view.showTags": true, // Show tags in Todo files view labels
@@ -168,6 +170,8 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.embedded.regexFlags": "gi", // Regex flags to use
   "todo.embedded.include": ["**/*"], // Globs to use for including files
   "todo.embedded.exclude": ["**/.*", "**/.*/**", ...], // Globs to use for excluding files
+  "todo.embedded.batchSize": 50, // Number of files to process in each embedded-todo discovery batch
+  "todo.embedded.showComments": false, // Show comment-only lines in the Embedded (side) view
   "todo.embedded.provider": "", // The provider to use when searching for embedded todos
   "todo.embedded.providers.ag.regex": "(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)", // Regex used by ag, requires double escaping
   "todo.embedded.providers.ag.args": ['--ignore-case'], // Extra arguments to pass to ag
