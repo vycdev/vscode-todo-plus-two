@@ -2,7 +2,6 @@
 
 import * as _ from 'lodash';
 import * as execa from 'execa';
-import stringMatches from 'string-matches';
 import Config from '../../../config';
 import Consts from '../../../consts';
 import Ackmate from '../../ackmate';
@@ -10,6 +9,7 @@ import { getGlobMatchOptions } from '../../file-globs';
 import File from '../../file';
 import Folder from '../../folder';
 import { getWorkspaceExcludeGlobs } from '../../workspace-excludes';
+import { parseEmbeddedMatches } from '../regex';
 import Abstract from './abstract';
 
 /* AG */ // The Silver Searcher //URL: https://github.com/ggreer/the_silver_searcher
@@ -115,7 +115,7 @@ class AG extends Abstract {
 
         ackmate.forEach(({ filePath, line: rawLine, lineNr }) => {
             const line = _.trimStart(rawLine),
-                matches = stringMatches(line, Consts.regexes.todoEmbedded);
+                matches = parseEmbeddedMatches(line, Consts.regexes.todoEmbedded);
 
             if (!matches.length) return;
 
@@ -123,10 +123,7 @@ class AG extends Abstract {
 
             matches.forEach((match) => {
                 const data = {
-                    todo: match[0],
-                    type: match[1].toUpperCase(),
-                    message: match[2],
-                    code: line.slice(0, line.indexOf(match[0])),
+                    ...match,
                     rawLine,
                     line,
                     lineNr,
