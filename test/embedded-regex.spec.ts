@@ -74,4 +74,10 @@ describe('Embedded todo scan pre-check', () => {
         expect(hasEmbeddedMatch(content, regex)).to.equal(true);
         expect(hasEmbeddedMatch('// TODO ignored', regex)).to.equal(false);
     });
+
+    it('recognizes embedded todos in files with classic Mac line endings', () => {
+        const regex = /^\/\/\s*(TASK):?\s*(.*)$/gi;
+
+        expect(hasEmbeddedMatch('const ready = true;\r  // TASK ship it', regex)).to.equal(true);
+    });
 });

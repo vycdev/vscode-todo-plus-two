@@ -10,6 +10,7 @@ import { getGlobMatchOptions } from '../../file-globs';
 import File from '../../file';
 import Folder from '../../folder';
 import { getWorkspaceExcludeGlobs } from '../../workspace-excludes';
+import { splitLines } from '../../line-splitting';
 import Abstract from './abstract';
 
 /* AG */ // The Silver Searcher //URL: https://github.com/ggreer/the_silver_searcher
@@ -106,7 +107,7 @@ class AG extends Abstract {
                         const content = await File.read(filePath);
 
                         if (content !== undefined) {
-                            contextLines[filePath] = content.split(/\r?\n/);
+                            contextLines[filePath] = splitLines(content);
                         }
                     }
                 )

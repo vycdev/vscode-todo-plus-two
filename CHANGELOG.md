@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Fixed embedded todo scanning and external-search result parsing for files and tool output that use classic Mac carriage-return line endings.
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
