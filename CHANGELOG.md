@@ -1,6 +1,7 @@
 ### Version 5.3.0 (Unreleased)
 
 - Fixed fulfilled promise batches so errors in optional rejection observers do not discard successful results.
+- Added a Due sidebar view that groups unfinished `@due(...)` tasks by date and expands today's group. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/68
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.

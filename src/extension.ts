@@ -15,6 +15,7 @@ import Utils from './utils';
 import DependencyIndex from './utils/dependency_index';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
+import { Due } from './views/due';
 
 /* ACTIVATE */
 
@@ -57,6 +58,24 @@ const activate = function (context: vscode.ExtensionContext) {
     Utils.statistics.tokens.updateDisabledAll();
 
     const embeddedRefreshTimers = {};
+    let dueRefreshTimer;
+    const dueRefresh = () => {
+        clearTimeout(dueRefreshTimer);
+        dueRefreshTimer = setTimeout(() => Due.refresh(), 250);
+    };
+    const refreshDueDocument = (document: vscode.TextDocument) => {
+        if (document.uri.scheme !== 'file') return;
+
+        const filePath = document.uri.fsPath.replace(/\\/g, '/'),
+            filesData = Utils.files.filesData;
+
+        if (
+            document.languageId === Consts.languageId ||
+            (filesData && filesData.hasOwnProperty(filePath))
+        ) {
+            dueRefresh();
+        }
+    };
     const refreshEmbeddedDocument = (document: vscode.TextDocument) => {
         if (document.uri.scheme !== 'file') return;
 
@@ -109,6 +128,7 @@ const activate = function (context: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeTextDocument(({ document }) =>
             refreshEmbeddedDocument(document)
         ),
+        vscode.workspace.onDidChangeTextDocument(({ document }) => refreshDueDocument(document)),
         vscode.workspace.onDidChangeWorkspaceFolders(
             () => Utils.embedded.provider && Utils.embedded.provider.unwatchPaths()
         ),
