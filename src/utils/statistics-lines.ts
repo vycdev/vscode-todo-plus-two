@@ -11,6 +11,23 @@ interface StatisticsItems<T extends StatisticsLine> {
     tags?: T[];
 }
 
+export const getStatisticsScopeEnd = <T>(
+    lines: T[],
+    startIndex: number,
+    scopeLevel: number,
+    getLevel: (line: T) => number,
+    isTag: (line: T) => boolean,
+    includeRemainingDocument = false
+): number => {
+    if (includeRemainingDocument) return lines.length;
+
+    for (let index = startIndex + 1; index < lines.length; index++) {
+        if (!isTag(lines[index]) && getLevel(lines[index]) <= scopeLevel) return index;
+    }
+
+    return lines.length;
+};
+
 const mergeSorted = <T extends StatisticsLine>(left: T[], right: T[]): T[] => {
     const merged = new Array<T>(left.length + right.length);
 

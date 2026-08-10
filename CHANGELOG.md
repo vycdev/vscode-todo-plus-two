@@ -63,6 +63,7 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
+- Added project statistics to the Archive header so estimates can be compared with elapsed time across archived tasks. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/87
 
 ### Version 5.2.0
 
