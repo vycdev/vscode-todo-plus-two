@@ -29,4 +29,16 @@ describe('Ackmate parser', () => {
             },
         ]);
     });
+
+    it('ignores match records that precede their file path', () => {
+        const output = ['2:orphan result', 'src/tasks.ts', '4:TODO real'].join('\n');
+
+        expect(Ackmate.parse(output)).to.deep.equal([
+            {
+                filePath: 'src/tasks.ts',
+                lineNr: 3,
+                line: 'TODO real',
+            },
+        ]);
+    });
 });

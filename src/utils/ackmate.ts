@@ -17,6 +17,8 @@ const Ackmate = {
         return lines
             .map((line) => {
                 if ((match = line.match(Ackmate.matchLineRe))) {
+                    if (!filePath) return;
+
                     return {
                         filePath,
                         lineNr: parseInt(match[1]) - 1, // 0-index
