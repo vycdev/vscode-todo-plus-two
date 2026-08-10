@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const pkg = require('../package.json');
 
@@ -16,6 +18,16 @@ describe('Todo configuration schema', () => {
 
         expect(priority.type).to.equal('number');
         expect(priority.default).to.be.a('number');
+    });
+
+    it('exposes an independent Files view icons setting', () => {
+        const icons = pkg.contributes.configuration.properties['todo.file.view.icons'];
+        const filesView = fs.readFileSync(path.join(__dirname, '../src/views/files.ts'), 'utf8');
+
+        expect(icons.type).to.equal('boolean');
+        expect(icons.default).to.equal(true);
+        expect(filesView).to.include('this.config.file.view.icons');
+        expect(filesView).not.to.include('this.config.embedded.view.icons');
     });
 
     it('accepts automatic embedded provider selection', () => {
