@@ -1,6 +1,5 @@
 ### Version 5.3.0 (Unreleased)
 
-- Preserved user-authored blank lines after project blocks when folding Todo documents. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/20
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
@@ -62,7 +61,7 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
-- Added clickable `file://./` and `file://../` links resolved relative to the current Todo file. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/65
+- Fixed `@done` and `@cancelled` examples inside inline code being treated as task status tags.
 
 ### Version 5.2.0
 

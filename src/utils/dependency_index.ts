@@ -7,7 +7,7 @@ import { DependencyReference, DependencyTarget, getDependencies, getIds } from '
 import { loadAvailableDocuments } from './document-loader';
 import Files from './files';
 import Folder from './folder';
-import Regex from './regex';
+import { matchesTodoStatus } from './todo-status';
 
 /* TYPES */
 
@@ -81,7 +81,7 @@ const DependencyIndex = {
     },
 
     isFinished(target: DependencyTarget) {
-        return Regex.test(Consts.regexes.todoFinished, target.text);
+        return matchesTodoStatus(target.text, Consts.regexes.todoFinished);
     },
 
     async updateDiagnostics(document?: vscode.TextDocument) {
