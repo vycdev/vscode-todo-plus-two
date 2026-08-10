@@ -16,6 +16,7 @@ import DependencyIndex from './utils/dependency_index';
 import { Comment, Project, Todo, TodoFinished } from './todo/items';
 import { unarchiveItemsFromSameFileContent } from './utils/unarchive-helpers';
 import { AutoCompleteLine, getAutoCompletableParentLines } from './utils/auto-complete';
+import { getTimerState } from './utils/timekeeping';
 import {
     DependencyReference,
     DependencyTarget,
@@ -32,6 +33,7 @@ import {
 const callTodosMethodOptions = {
     checkValidity: false,
     filter: _.identity,
+    filteredError: undefined,
     method: undefined,
     args: [],
     blockOnOpenDependencies: false,
@@ -66,8 +68,13 @@ async function callTodosMethod(options?) {
 
     let todosFiltered = todos.filter(options.filter);
 
-    if (todosFiltered.length !== todos.length)
-        vscode.window.showErrorMessage(options.errors.filtered);
+    if (todosFiltered.length !== todos.length) {
+        const error = options.filteredError
+            ? options.filteredError(todos.filter((todo) => !options.filter(todo)))
+            : options.errors.filtered;
+
+        vscode.window.showErrorMessage(error);
+    }
 
     if (!todosFiltered.length) return;
 
@@ -289,6 +296,24 @@ function toggleStart() {
 }
 
 function toggleTimer() {
+    const format = Config.getKey('timekeeping.started.format');
+
+    return callTodosMethod({
+        checkValidity: true,
+        filter: (todo) => todo.isBox() && Boolean(getTimerState(todo.text, format)),
+        filteredError: (todos) =>
+            todos.some((todo) => !todo.isBox())
+                ? 'Completed todos cannot toggle their timer'
+                : 'Start a todo before toggling its timer',
+        method: 'toggleTimer',
+        errors: {
+            invalid: 'Only todos can toggle their timer',
+            filtered: 'Only started, unfinished todos can toggle their timer',
+        },
+    });
+}
+
+function toggleStatusBarTimer() {
     Consts.timer = !Consts.timer;
 
     StatusbarTimer.updateVisibility();
@@ -755,6 +780,7 @@ export {
     toggleCancelled,
     toggleStart,
     toggleTimer,
+    toggleStatusBarTimer,
     archive,
     unarchive,
     viewOpenFile,

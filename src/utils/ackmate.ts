@@ -1,7 +1,8 @@
+import { splitLines } from './line-splitting';
+
 /* ACKMATE */
 
 const Ackmate = {
-    newLineRe: /\r?\n/g,
     filePathRe: /^:?([^]+)$/,
     matchLineRe: /^(\d+)(?:;\d+ \d+)?:([^]*)$/,
 
@@ -10,13 +11,15 @@ const Ackmate = {
     },
 
     parse(str) {
-        const lines = str.split(Ackmate.newLineRe);
+        const lines = splitLines(str);
 
         let filePath, match;
 
         return lines
             .map((line) => {
                 if ((match = line.match(Ackmate.matchLineRe))) {
+                    if (!filePath) return;
+
                     return {
                         filePath,
                         lineNr: parseInt(match[1]) - 1, // 0-index

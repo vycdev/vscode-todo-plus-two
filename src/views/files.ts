@@ -6,6 +6,7 @@ import Utils from '../utils';
 import Consts from '../consts';
 import Config from '../config';
 import { hasUnfinishedTodo, matchesFilesViewFilter } from '../utils/files-view-filter';
+import { matchesTodoStatus } from '../utils/todo-status';
 import Tags from '../utils/tags';
 import File from './items/file';
 import Item from './items/item';
@@ -140,7 +141,7 @@ class Files extends View {
 
                     return new File(val, uri);
                 } else {
-                    return new Group(val, key, this.config.embedded.view.icons);
+                    return new Group(val, key, this.config.file.view.icons);
                 }
             });
         }
@@ -155,7 +156,7 @@ class Files extends View {
     }
 
     isFinishedTodo(text: string) {
-        return !!text.match(Consts.regexes.todoFinished);
+        return matchesTodoStatus(text, Consts.regexes.todoFinished);
     }
 
     hasUnfinishedDescendant(textDocument: vscode.TextDocument, lineNr: number) {

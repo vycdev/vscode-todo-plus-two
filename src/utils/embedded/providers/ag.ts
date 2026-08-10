@@ -2,14 +2,16 @@
 
 import * as _ from 'lodash';
 import * as execa from 'execa';
-import stringMatches from 'string-matches';
 import Config from '../../../config';
 import Consts from '../../../consts';
 import Ackmate from '../../ackmate';
 import { getGlobMatchOptions } from '../../file-globs';
 import File from '../../file';
 import Folder from '../../folder';
+import { flatMapFulfilled } from '../../promises';
 import { getWorkspaceExcludeGlobs } from '../../workspace-excludes';
+import { splitLines } from '../../line-splitting';
+import { parseEmbeddedMatches } from '../regex';
 import Abstract from './abstract';
 
 /* AG */ // The Silver Searcher //URL: https://github.com/ggreer/the_silver_searcher
@@ -22,18 +24,17 @@ class AG extends Abstract {
 
         const follow = !!Config.getKey('followSymlinks');
 
-        const raw = _.flatten(
-            await Promise.all(
-                rootPaths.map((cwd) =>
-                    globby(this.include, {
-                        cwd,
-                        ignore: (this.exclude || []).concat(getWorkspaceExcludeGlobs(cwd)),
-                        ...getGlobMatchOptions(),
-                        absolute: true,
-                        followSymbolicLinks: follow,
-                    })
-                )
-            )
+        const raw = await flatMapFulfilled<string, string>(
+            rootPaths,
+            (cwd) =>
+                globby(this.include, {
+                    cwd,
+                    ignore: (this.exclude || []).concat(getWorkspaceExcludeGlobs(cwd)),
+                    ...getGlobMatchOptions(),
+                    absolute: true,
+                    followSymbolicLinks: follow,
+                }),
+            (cwd, error) => console.warn(`Todo+: Could not scan ${cwd}`, error)
         );
 
         // Deduplicate by realpath (defensive)
@@ -106,7 +107,7 @@ class AG extends Abstract {
                         const content = await File.read(filePath);
 
                         if (content !== undefined) {
-                            contextLines[filePath] = content.split(/\r?\n/);
+                            contextLines[filePath] = splitLines(content);
                         }
                     }
                 )
@@ -115,7 +116,7 @@ class AG extends Abstract {
 
         ackmate.forEach(({ filePath, line: rawLine, lineNr }) => {
             const line = _.trimStart(rawLine),
-                matches = stringMatches(line, Consts.regexes.todoEmbedded);
+                matches = parseEmbeddedMatches(line, Consts.regexes.todoEmbedded);
 
             if (!matches.length) return;
 
@@ -123,10 +124,7 @@ class AG extends Abstract {
 
             matches.forEach((match) => {
                 const data = {
-                    todo: match[0],
-                    type: match[1].toUpperCase(),
-                    message: match[2],
-                    code: line.slice(0, line.indexOf(match[0])),
+                    ...match,
                     rawLine,
                     line,
                     lineNr,

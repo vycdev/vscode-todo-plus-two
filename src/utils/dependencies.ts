@@ -20,20 +20,39 @@ export interface DependencyTodoStatus {
     isFinished(): boolean;
 }
 
+function getInlineCodeRanges(text: string): Array<{ start: number; end: number }> {
+    const ranges: Array<{ start: number; end: number }> = [];
+
+    for (let start = 0; start < text.length; start++) {
+        if (text[start] !== '`' || (start > 0 && text[start - 1] === '`')) continue;
+
+        let openingEnd = start + 1;
+        while (openingEnd < text.length && text[openingEnd] === '`') openingEnd++;
+
+        const runLength = openingEnd - start;
+
+        for (let cursor = openingEnd; cursor < text.length; cursor++) {
+            if (text[cursor] !== '`' || (cursor > 0 && text[cursor - 1] === '`')) continue;
+
+            let closingEnd = cursor + 1;
+            while (closingEnd < text.length && text[closingEnd] === '`') closingEnd++;
+
+            if (closingEnd - cursor !== runLength) continue;
+
+            ranges.push({ start, end: closingEnd });
+            start = closingEnd - 1;
+            break;
+        }
+    }
+
+    return ranges;
+}
+
 function getReferences(text: string, tag: string): DependencyReference[] {
     const regex = new RegExp(`@${tag}\\(([^\\r\\n)]*)\\)`, 'g');
-    const inlineCodeRanges: Array<{ start: number; end: number }> = [];
-    const inlineCodeRegex = /`[^\r\n`]*`/g;
+    const inlineCodeRanges = getInlineCodeRanges(text);
     const references: DependencyReference[] = [];
-    let inlineCodeMatch: RegExpExecArray;
     let match: RegExpExecArray;
-
-    while ((inlineCodeMatch = inlineCodeRegex.exec(text))) {
-        inlineCodeRanges.push({
-            start: inlineCodeMatch.index,
-            end: inlineCodeMatch.index + inlineCodeMatch[0].length,
-        });
-    }
 
     while ((match = regex.exec(text))) {
         if (match.index > 0 && /[a-zA-Z0-9`]/.test(text[match.index - 1])) continue;
