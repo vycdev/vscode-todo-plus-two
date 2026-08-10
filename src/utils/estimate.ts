@@ -1,10 +1,13 @@
 const compactEstimateUnit =
     '(?:milliseconds?|seconds?|minutes?|hours?|days?|weeks?|years?|mw|md|ms|[smhdwy])';
+const estimateBoundary = '(?=$|\\s|[.,;:!?()[\\]{}<>"\'](?=$|\\s))';
 
 export const tagEstimateRegex = new RegExp(
     '(?:^|[^a-zA-Z0-9])(?:@est\\(([^)]*)\\)|@((?:\\d+(?:\\.\\d+)?' +
         compactEstimateUnit +
-        ')+)(?=$|\\s))',
+        ')+)' +
+        estimateBoundary +
+        ')',
     'i'
 );
 

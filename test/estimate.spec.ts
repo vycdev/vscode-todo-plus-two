@@ -24,4 +24,11 @@ describe('Estimate tags', () => {
         expect(getEstimateDuration('Task @2h30m next')).to.equal('2h30m');
         expect(getEstimateDuration('release@2h next')).to.equal(undefined);
     });
+
+    it('recognizes estimates followed by terminal punctuation', () => {
+        expect(getEstimateDuration('Task @2h, next')).to.equal('2h');
+        expect(getEstimateDuration('Task @est(2h), next')).to.equal('2h');
+        expect(getEstimateDuration('Task @2h.')).to.equal('2h');
+        expect(getEstimateDuration('Task @2h.foo')).to.equal(undefined);
+    });
 });
