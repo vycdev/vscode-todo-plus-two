@@ -826,6 +826,7 @@
                 },
                 "todo.embedded.batchSize": {
                     "type": "number",
+                    "minimum": 1,
                     "description": "Batch size when scanning embedded todos (applies to JavaScript provider).",
                     "default": 50
                 },
@@ -895,6 +896,7 @@
                 },
                 "todo.file.batchSize": {
                     "type": "number",
+                    "minimum": 1,
                     "description": "Batch size when loading todo files metadata and refreshing.",
                     "default": 50
                 }
