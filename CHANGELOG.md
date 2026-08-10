@@ -1,7 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
-- Fixed the README contributing-guide link so it opens the existing `CONTRIBUTING.md` file.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
 - Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
@@ -19,7 +18,7 @@
 - Replaced Moment with the `moment-mini` package alias to reduce bundled date-library size. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/55
 - Added default `@today` cleanup when archiving or marking todos done/cancelled, configurable with `todo.archive.remove.tags` and `todo.timekeeping.finished.remove.tags`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/30, https://github.com/vycdev/vscode-todo-plus-two/issues/13
 - Added `todo.hoursPerDay` for configurable day length in short duration formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/16
-- Fixed project and special-tag decorations so color/tag settings refresh without restart, and shorter special-tag color palettes repeat across every configured name. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/24, https://github.com/vycdev/vscode-todo-plus-two/issues/2
+- Fixed project and special-tag decorations so color/tag settings refresh without restart. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/24, https://github.com/vycdev/vscode-todo-plus-two/issues/2
 - Added `@created` and `@now` completions for inserting the current date/time anywhere in todo files. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/38
 - Fixed timestamp completions being offered inside inline code spans.
 - Added configurable coloring for started todos with `todo.colors.started`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/59
@@ -31,7 +30,6 @@
 - Displayed `todo.file.defaultContent` as a multiline text area in VS Code's Settings editor. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/51
 - Applied enabled workspace `files.exclude` globs when discovering Todo files and embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/67
 - Improved tag completion to suggest unique tag names first and previously used argument values after typing an opening parenthesis. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/80
-- Fixed unfinished tag arguments so they no longer consume subsequent Todo lines.
 - Fixed tag argument completions being offered inside inline code spans.
 - Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`, while avoiding blank lines and consecutive embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/79
 - Added opt-in automatic parent completion with `todo.autoCompleteParents`, cascading upwards when `Todo: Toggle Done` completes all nested todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/63
@@ -63,7 +61,7 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
-- Fixed duration strings such as `3 hours` and `1 week` so they are calculated from the supplied base date instead of the current time.
+- Fixed `todo.tags.namesInference` so disabling it suppresses inferred tag name completions.
 
 ### Version 5.2.0
 
