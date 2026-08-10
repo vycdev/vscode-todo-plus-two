@@ -38,4 +38,29 @@ describe('Tag utilities', () => {
             "Task @todo_extra @todo-bar @todo2 @todo.bar @todo:bar @todo's @todoish"
         );
     });
+
+    it('preserves configured tags inside inline code', () => {
+        const text = 'Task `@today` and `code @today(noon)` @today';
+
+        expect(Tags.remove(text, ['today'])).to.equal('Task `@today` and `code @today(noon)`');
+    });
+
+    it('removes tags immediately after closing inline code delimiters', () => {
+        expect(Tags.remove('Task `code`@today', ['today'])).to.equal('Task `code`');
+        expect(Tags.removeAll('Task `code`@today')).to.equal('Task `code`');
+    });
+
+    it('matches inline code delimiters by backtick run length', () => {
+        const text = 'Task ``code @today value`` @today';
+
+        expect(Tags.remove(text, ['today'])).to.equal('Task ``code @today value``');
+        expect(Tags.removeAll(text)).to.equal('Task ``code @today value``');
+    });
+
+    it('ignores different backtick runs inside a matching code span', () => {
+        const text = 'Task ``code ` @today value`` @today';
+
+        expect(Tags.remove(text, ['today'])).to.equal('Task ``code ` @today value``');
+        expect(Tags.removeAll(text)).to.equal('Task ``code ` @today value``');
+    });
 });

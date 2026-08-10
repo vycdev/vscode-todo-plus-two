@@ -2,8 +2,8 @@ const escapeRegExp = (value: string): string => {
     return value.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
 };
 
-const tagArgumentOrBoundary = '(?:(?:\\([^)]*\\))|(?![a-zA-Z]))';
-const normalTag = '(@[^\\s*~(]+(?::\\/\\/[^\\s*~(:]+)?(?:(?:\\([^)]*\\))|(?![a-zA-Z])))';
+const tagArgumentOrBoundary = '(?:(?:\\([^\\r\\n)]*\\))|(?![a-zA-Z]))';
+const normalTag = '(@[^\\s*~(]+(?::\\/\\/[^\\s*~(:]+)?(?:(?:\\([^\\r\\n)]*\\))|(?![a-zA-Z])))';
 
 export const createTagRegexes = (tagNames: string[] = []) => {
     const specialNames = tagNames.map((name) => escapeRegExp(String(name || ''))).filter(Boolean);
@@ -31,7 +31,7 @@ export const createTagRegexes = (tagNames: string[] = []) => {
             'gm'
         ),
         tagNormal: new RegExp(
-            `(?:^|[^a-zA-Z0-9])@(?!${normalExclusions.join('|')})[^\\s*~(:]+(?::\\/\\/[^\\s*~(:]+)?(?:\\([^)]*\\))?`
+            `(?:^|[^a-zA-Z0-9])@(?!${normalExclusions.join('|')})[^\\s*~(:]+(?::\\/\\/[^\\s*~(:]+)?(?:\\([^\\r\\n)]*\\))?`
         ),
     };
 };
