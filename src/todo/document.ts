@@ -38,9 +38,9 @@ class Document {
             } else {
                 // => vscode.TextDocument
 
-                this.textEditor =
-                    vscode.window.visibleTextEditors.find((te) => te.document === res) ||
-                    vscode.window.activeTextEditor;
+                this.textEditor = vscode.window.visibleTextEditors.find(
+                    (te) => te.document === res
+                );
                 this.textDocument = res as vscode.TextDocument; //TSC
             }
         }
@@ -67,7 +67,11 @@ class Document {
             matches = stringMatches(matchText, regex);
 
         return matches.map((match) => {
-            return new Item(this.textEditor, undefined, match);
+            const item = new Item(this.textEditor, undefined, match);
+
+            item.textDocument = this.textDocument;
+
+            return item;
         });
     }
 
@@ -91,7 +95,11 @@ class Document {
 
         if (checkValidity && !Item.is(line.text)) return;
 
-        return new Item(this.textEditor, line);
+        const item = new Item(this.textEditor, line);
+
+        item.textDocument = this.textDocument;
+
+        return item;
     }
 
     getLines() {
@@ -143,7 +151,7 @@ class Document {
     }
 
     getTodosBox() {
-        return this.getItems(TodoBox, Consts.regexes.todoBox);
+        return this.getItems(TodoBox, Consts.regexes.todo).filter((todo) => TodoBox.is(todo.text));
     }
 
     getTodoBoxAt(lineNumber: number, checkValidity?) {
@@ -155,7 +163,9 @@ class Document {
     }
 
     getTodosDone() {
-        return this.getItems(TodoDone, Consts.regexes.todoDone);
+        return this.getItems(TodoDone, Consts.regexes.todo).filter((todo) =>
+            TodoDone.is(todo.text)
+        );
     }
 
     getTodoDoneAt(lineNumber: number, checkValidity?) {
@@ -163,7 +173,9 @@ class Document {
     }
 
     getTodosCancelled() {
-        return this.getItems(TodoCancelled, Consts.regexes.todoCancelled);
+        return this.getItems(TodoCancelled, Consts.regexes.todo).filter((todo) =>
+            TodoCancelled.is(todo.text)
+        );
     }
 
     getTodoCancelledAt(lineNumber: number, checkValidity?) {
@@ -171,7 +183,9 @@ class Document {
     }
 
     getTodosFinished() {
-        return this.getItems(TodoFinished, Consts.regexes.todoFinished);
+        return this.getItems(TodoFinished, Consts.regexes.todo).filter((todo) =>
+            TodoFinished.is(todo.text)
+        );
     }
 
     getTodoFinishedAt(lineNumber: number, checkValidity?) {

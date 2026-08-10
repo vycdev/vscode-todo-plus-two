@@ -30,6 +30,8 @@ class Item {
 
     get lineNumber(): number {
         // For performance reasons, sometimes we just don't need the entire line
+        if (!this.matchRange) return this.line ? this.line.lineNumber : -1;
+        if (!this.textDocument) return -1;
         if (!_.isUndefined(this._pos)) return this._pos.line;
         this._pos = this.textDocument.positionAt(this.matchRange.start);
         return this._pos.line;
@@ -60,7 +62,10 @@ class Item {
     get text() {
         if (!_.isUndefined(this._text)) return this._text;
         return (this._text = this.match
-            ? _.findLast(this.match, _.isString)
+            ? this.match
+                  .slice()
+                  .reverse()
+                  .find((value) => _.isString(value))
             : this.line
               ? this.line.text
               : '');
