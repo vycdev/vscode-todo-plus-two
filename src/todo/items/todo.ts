@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import Config from '../../config';
 import Consts from '../../consts';
 import Utils from '../../utils';
-import { parseStartedDate } from '../../utils/timekeeping';
+import { formatElapsedDuration, parseStartedDate } from '../../utils/timekeeping';
 import Item from './item';
 
 /* TODO */
@@ -198,7 +198,14 @@ class Todo extends Item {
 
                 if (startedDate) {
                     const elapsedFormat = Config.getKey('timekeeping.elapsed.format'),
-                        time = Utils.time.diff(new Date(), startedDate, elapsedFormat),
+                        time = formatElapsedDuration(
+                            new Date(),
+                            startedDate,
+                            elapsedFormat,
+                            Config.getKey('hoursPerDay'),
+                            Config.getKey('manHoursPerDay'),
+                            Config.getKey('manDaysPerWeek')
+                        ),
                         elapsedTag = `@${isPositive ? 'lasted' : 'wasted'}(${time})`;
 
                     this.addTag(elapsedTag);
