@@ -1,3 +1,5 @@
+import { matchesTodoStatus } from './todo-status';
+
 const makeFilter = (filter: string) =>
     new RegExp(filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 
@@ -17,6 +19,10 @@ const hasUnfinishedTodo = (
     lines: string[],
     todoPattern: RegExp,
     finishedTodoPattern: RegExp
-): boolean => lines.some((line) => !!line.match(todoPattern) && !line.match(finishedTodoPattern));
+): boolean =>
+    lines.some(
+        (line) =>
+            matchesTodoStatus(line, todoPattern) && !matchesTodoStatus(line, finishedTodoPattern)
+    );
 
 export { hasUnfinishedTodo, matchesFilesViewFilter };

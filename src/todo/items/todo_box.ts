@@ -1,14 +1,14 @@
 /* IMPORT */
 
 import Consts from '../../consts';
-import Item from './item';
+import { matchesTodoStatus } from '../../utils/todo-status';
 import Todo from './todo';
 
 /* TODO BOX */
 
 class TodoBox extends Todo {
     static is(str: string) {
-        return Item.is(str, Consts.regexes.todoBox);
+        return matchesTodoStatus(str, Consts.regexes.todoBox);
     }
 }
 

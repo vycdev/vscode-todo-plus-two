@@ -33,4 +33,13 @@ describe('Timestamp utilities', () => {
             end: 11,
         });
     });
+
+    it('matches multi-backtick code spans before offering timestamp completion', () => {
+        expect(Timestamps.getPrefix('``note @cre``', 11)).to.equal(undefined);
+        expect(Timestamps.getPrefix('``note`` @cre', 13)).to.deep.equal({
+            text: '@cre',
+            start: 9,
+            end: 13,
+        });
+    });
 });
