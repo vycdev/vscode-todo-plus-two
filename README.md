@@ -132,7 +132,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.due.soonDays": 7, // Number of days ahead that @due tags are considered due soon
   "todo.archive.name": "Archive", // Name of the special "Archive" section
   "todo.archive.remove.emptyProjects": true, // Remove projects without todos
-  "todo.archive.remove.emptyLines": 1, // Remove extra empty lines, keeping no more than `emptyLinesThreshold` consecutive empty lines
+  "todo.archive.remove.emptyLines": 1, // Remove extra empty lines, keeping no more than this many consecutive empty lines
   "todo.archive.remove.tags": ["today"], // Tags to remove from todos when archiving
   "todo.archive.project.enabled": true, // Enable the @project tag
   "todo.archive.project.separator": ".", // String used for joining multiple projects
