@@ -184,7 +184,8 @@ const Archive = {
                 content = Archive.mergeInsertItemsIntoArchiveContent(
                     content,
                     insertItems,
-                    helperConfig
+                    helperConfig,
+                    Todo.is
                 );
 
                 // Ensure the archive file is updated. If the file is open in the
@@ -210,7 +211,8 @@ const Archive = {
                 content = Archive.mergeInsertItemsIntoArchiveContent(
                     content,
                     insertItems,
-                    helperConfig
+                    helperConfig,
+                    Todo.is
                 );
 
                 await applyContentToArchiveEditor(archivePath, content);
@@ -255,7 +257,8 @@ const Archive = {
                         )
                     ),
                     normalizedInsertItems,
-                    helperConfig
+                    helperConfig,
+                    Todo.is
                 );
 
                 if (startLine <= lastLine) {
