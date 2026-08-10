@@ -78,7 +78,8 @@ export function getRemovableEmptyLineNumbers(
 export function mergeInsertItemsIntoArchiveContent(
     content: string,
     insertItems: any[],
-    config: any
+    config: any,
+    isTodoLine: (line: string) => boolean = () => false
 ) {
     const normalizedContent = content || '';
     const lineEnding = normalizedContent.includes('\r\n') ? '\r\n' : '\n';
@@ -151,7 +152,7 @@ export function mergeInsertItemsIntoArchiveContent(
 
         for (let i = 0; i < linesArr.length; i++) {
             const line = linesArr[i];
-            const match = line.match(projectParts);
+            const match = isTodoLine(line) ? null : line.match(projectParts);
 
             if (match) {
                 const indent = match[1] || '';
@@ -279,7 +280,7 @@ export function mergeInsertItemsIntoArchiveContent(
         const textLinesRaw = text.split(/\r?\n/).map((l) => l.replace(projectTagRegex, ''));
         const projectNames = new Set((obj.projects || []).map((project: string) => project.trim()));
         const textLines = textLinesRaw.filter((line) => {
-            const match = line.match(projectParts);
+            const match = isTodoLine(line) ? null : line.match(projectParts);
 
             return !match || !projectNames.has(match[2].trim());
         });

@@ -43,7 +43,7 @@
 - Added a `todo.file.view.showTags` setting for hiding tags from Todo files view labels. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/23
 - Fixed the `ag` and `rg` embedded provider argument settings to accept their documented string-array values.
 - Fixed Todo wrapper lookup so similarly prefixed sibling folders are not treated as part of the workspace root.
-- Fixed archiving so todo titles containing a colon are not mistaken for project headers and discarded.
+- Fixed archiving so todo titles containing a colon are neither discarded nor mistaken for project headers when merging nested archive projects.
 - Fixed timestamp-free `@started` tags so they no longer produce an invalid status-bar timer or an empty elapsed-time tag.
 - Kept scanning accessible workspace roots and Todo files when another path cannot be read. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/9
 - Added right-click actions to open or change the status of tasks in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/64

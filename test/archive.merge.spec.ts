@@ -133,6 +133,39 @@ describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
         expect(merged.split('\n').filter((line) => line.trim() === 'PROJECT1:')).to.have.length(1);
     });
 
+    it('does not treat colon-containing todos as nested project headers', () => {
+        const existing = [
+            'Archive:',
+            'PROJECT1:',
+            '  ✔ Existing task: clarify parser @done(2026-01-01)',
+            '    PROJECT2:',
+            '      ✔ Nested existing @done(2026-01-02)',
+        ].join('\n');
+        const insertItem = {
+            obj: {
+                text: '    ✔ New task @done(2026-01-03)',
+                projects: ['PROJECT1', 'PROJECT2'],
+            },
+            lineNumber: 42,
+        };
+        const isTodoLine = (line: string) => /^\s*✔\s/.test(line);
+
+        const merged = Archive.mergeInsertItemsIntoArchiveContent(
+            existing,
+            [insertItem],
+            { indentation: '  ' },
+            isTodoLine
+        );
+        const lines = merged.split('\n');
+
+        expect(lines.filter((line) => line.trim() === 'PROJECT2:')).to.have.length(1);
+        const newTaskIndex = lines.indexOf('      ✔ New task @done(2026-01-03)');
+        const nestedTaskIndex = lines.indexOf('      ✔ Nested existing @done(2026-01-02)');
+
+        expect(newTaskIndex).to.be.greaterThan(-1);
+        expect(nestedTaskIndex).to.be.greaterThan(newTaskIndex);
+    });
+
     it('inserts header-only projects correctly and only once', () => {
         const existing = `Archive:\n`;
 
@@ -434,12 +467,16 @@ describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
             lineNumber: 100,
         };
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '  ',
-        });
+        const merged = Archive.mergeInsertItemsIntoArchiveContent(
+            existing,
+            [insertItem],
+            { indentation: '  ' },
+            (line) => /^\s*<x>\s/.test(line)
+        );
 
         const indexOfNew = merged.indexOf('New Item');
         const indexOfOld = merged.indexOf('Old Item');
+        expect(merged.split('\n').filter((line) => line.startsWith('PROJECT1:'))).to.have.length(1);
         expect(indexOfNew).to.be.lessThan(indexOfOld);
     });
 
