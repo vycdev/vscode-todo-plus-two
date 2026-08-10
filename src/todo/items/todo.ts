@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import Config from '../../config';
 import Consts from '../../consts';
 import Utils from '../../utils';
-import { parseStartedDate } from '../../utils/timekeeping';
+import { formatElapsedDuration, getTimerState, getToggleTag } from '../../utils/timekeeping';
 import Item from './item';
 
 /* TODO */
@@ -161,10 +161,21 @@ class Todo extends Item {
         this.removeTag(Consts.regexes.tagStarted);
     }
 
+    toggleTimer() {
+        const format = Config.getKey('timekeeping.started.format');
+
+        this.addTag(getToggleTag(format));
+    }
+
     finish(isPositive?: boolean) {
         isPositive = _.isBoolean(isPositive) ? isPositive : this.isDone();
 
-        const started = this.getTag(Consts.regexes.tagStarted);
+        const started = this.getTag(Consts.regexes.tagStarted),
+            finishedDate = new Date(),
+            startedFormat = Config.getKey('timekeeping.started.format'),
+            timerState = started
+                ? getTimerState(this.lineNextText, startedFormat, finishedDate)
+                : undefined;
 
         this.removeTags(Config.getKey('timekeeping.finished.remove.tags'));
 
@@ -178,9 +189,8 @@ class Todo extends Item {
             /* FINISH */
 
             if (Config.getKey('timekeeping.finished.time')) {
-                const finishedDate = moment(),
-                    finishedFormat = Config.getKey('timekeeping.finished.format'),
-                    finishedTime = finishedDate.format(finishedFormat),
+                const finishedFormat = Config.getKey('timekeeping.finished.format'),
+                    finishedTime = moment(finishedDate).format(finishedFormat),
                     finishedTag = `@${isPositive ? 'done' : 'cancelled'}(${finishedTime})`;
 
                 this.addTag(finishedTag);
@@ -192,17 +202,22 @@ class Todo extends Item {
 
             /* ELAPSED */
 
-            if (Config.getKey('timekeeping.elapsed.enabled') && started) {
-                const startedFormat = Config.getKey('timekeeping.started.format'),
-                    startedDate = parseStartedDate(started, startedFormat);
+            if (Config.getKey('timekeeping.elapsed.enabled') && timerState) {
+                const elapsedFormat = Config.getKey('timekeeping.elapsed.format'),
+                    elapsedDate = new Date(
+                        timerState.startedDate.getTime() + timerState.elapsedMilliseconds
+                    ),
+                    time = formatElapsedDuration(
+                        elapsedDate,
+                        timerState.startedDate,
+                        elapsedFormat,
+                        Config.getKey('hoursPerDay'),
+                        Config.getKey('manHoursPerDay'),
+                        Config.getKey('manDaysPerWeek')
+                    ),
+                    elapsedTag = `@${isPositive ? 'lasted' : 'wasted'}(${time})`;
 
-                if (startedDate) {
-                    const elapsedFormat = Config.getKey('timekeeping.elapsed.format'),
-                        time = Utils.time.diff(new Date(), startedDate, elapsedFormat),
-                        elapsedTag = `@${isPositive ? 'lasted' : 'wasted'}(${time})`;
-
-                    this.addTag(elapsedTag);
-                }
+                this.addTag(elapsedTag);
             }
         }
     }

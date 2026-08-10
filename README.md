@@ -35,7 +35,7 @@ ext install vycdev.vscode-todo-plus-two
 
 ## Usage
 
-It adds 15 commands to the command palette:
+It adds 16 commands to the command palette:
 
 ```js
 'Todo: Open'; // Open or create your project's todo file
@@ -44,7 +44,8 @@ It adds 15 commands to the command palette:
 'Todo: Toggle Done'; // Toggle todo's done symbol
 'Todo: Toggle Cancelled'; // Toggle todo's cancelled symbol
 'Todo: Toggle Start'; // Toggle a todo as started
-'Todo: Toggle Timer'; // Toggle the timer
+'Todo: Toggle Timer'; // Pause or resume time tracking for the selected started task
+'Todo: Toggle Status Bar Timer'; // Toggle the timer in the status bar
 'Todo: Archive'; // Archive finished todos
 'Todo: Unarchive'; // Restore an archived task to its project list (when todo.archive.type is InSameFile)
 'Todo: Add Dependency'; // Search task IDs and add one to the selected todo
@@ -55,7 +56,7 @@ It adds 15 commands to the command palette:
 'Todo: Embedded View - Toggle View All Files'; // Toggle between viewing all files or only the current one
 ```
 
-It adds 7 shortcuts when editing a `Todo` file:
+It adds 8 shortcuts when editing a `Todo` file:
 
 ```js
 'Cmd/Ctrl+Enter'; // Triggers `Todo: Toggle Box`
@@ -63,6 +64,7 @@ It adds 7 shortcuts when editing a `Todo` file:
 'Alt+D'; // Triggers `Todo: Toggle Done`
 'Alt+C'; // Triggers `Todo: Toggle Cancelled`
 'Alt+S'; // Triggers `Todo: Toggle Start`
+'Alt+T'; // Triggers `Todo: Toggle Timer`
 'Cmd/Ctrl+Shift+A'; // Triggers  `Todo: Archive`
 'Cmd/Ctrl+Shift+U'; // Triggers `Todo: Unarchive` when todo.archive.type is InSameFile
 ```
@@ -193,6 +195,8 @@ Changing some settings (symbols, colors, providers...) requires a restart.
 An actual regex will be generated from the value of the `todo.embedded.regex` setting. It uses 2 capturing groups, the first one captures the type of the todo (`TODO`, `FIXME` etc.) and the second one captures an optional description (`TODO: description`).
 
 Dates are formatted using [moment](https://momentjs.com/docs/#/displaying/format).
+
+`Todo: Toggle Timer` pauses and resumes a started task by appending `@toggle(...)` timestamps. Paused time is excluded from the status bar timer and from the final `@lasted(...)` or `@wasted(...)` duration.
 
 ## Embedded Todos Providers
 
