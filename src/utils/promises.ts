@@ -8,7 +8,14 @@ export const mapFulfilled = async <T, R>(
             try {
                 return { fulfilled: true, value: await mapper(value) };
             } catch (error) {
-                if (onRejected) onRejected(value, error);
+                if (onRejected) {
+                    try {
+                        onRejected(value, error);
+                    } catch {
+                        // Rejection observers must not turn an ignored mapper failure
+                        // into a rejection of the aggregate operation.
+                    }
+                }
 
                 return { fulfilled: false, value: undefined };
             }
