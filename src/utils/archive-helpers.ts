@@ -6,6 +6,9 @@
 const projectParts = /^(\s*)([^:]+):(?=\s|$|@)/;
 const defaultIndentUnit = '  ';
 
+const sameProjectPath = (left: string[], right: string[]) =>
+    left.length === right.length && left.every((name, index) => name === right[index]);
+
 export function createArchiveFinishedDateGetter(
     todoFinishedRegex: RegExp,
     tagFinishedRegex: RegExp,
@@ -159,6 +162,7 @@ export function mergeInsertItemsIntoArchiveContent(
 
                 projects.push({
                     fullPath: stack.join(projectSeparator),
+                    names: stack.slice(),
                     name,
                     level,
                     start: i,
@@ -212,16 +216,11 @@ export function mergeInsertItemsIntoArchiveContent(
     function ensureProjectChain(projectsArr: string[]) {
         // Ensure project headers exist in lines; create them at end if missing
         for (let i = 0; i < projectsArr.length; i++) {
-            const projectSeparator =
-                (config &&
-                    config.archive &&
-                    config.archive.project &&
-                    config.archive.project.separator) ||
-                '.';
-            const subPath = projectsArr.slice(0, i + 1).join(projectSeparator);
             let parsed = parseProjects(lines);
             const contentIndentUnit = detectContentIndentUnit(lines) || indentUnit;
-            const existing = parsed.find((p) => p.fullPath === subPath);
+            const existing = parsed.find((p) =>
+                sameProjectPath(p.names, projectsArr.slice(0, i + 1))
+            );
             // Compute base indent level for the existing projects so any headers
             // we create match the current archive indentation and nesting levels.
             const parsedMinLevel = parsed.length
@@ -235,8 +234,9 @@ export function mergeInsertItemsIntoArchiveContent(
                 // If there's a parent project, insert this header right after
                 // the parent project's block (keeping the hierarchy). Otherwise
                 // append to the end of file.
-                const parentPath = projectsArr.slice(0, i).join(projectSeparator);
-                const parent = parsed.find((p) => p.fullPath === parentPath);
+                const parent = parsed.find((p) =>
+                    sameProjectPath(p.names, projectsArr.slice(0, i))
+                );
                 const indent = (contentIndentUnit || indentUnit).repeat(baseLevel + i);
                 const header = `${indent}${projectsArr[i]}:`;
 
@@ -286,7 +286,7 @@ export function mergeInsertItemsIntoArchiveContent(
 
             // Recompute projects map
             const parsed = parseProjects(lines);
-            const target = parsed.find((p) => p.fullPath === projectPath);
+            const target = parsed.find((p) => sameProjectPath(p.names, obj.projects));
 
             if (target) {
                 // Insert after the header, so new items appear at the top of the

@@ -82,6 +82,38 @@ describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
         );
     });
 
+    it('keeps project names containing the separator distinct from nested paths', () => {
+        const existing = [
+            'Archive:',
+            'A.B:',
+            '  ✔ Flat project task @done(2025-01-01)',
+            'A:',
+            '  B:',
+            '    ✔ Nested project task @done(2025-01-02)',
+        ].join('\n');
+        const insertItem = {
+            obj: {
+                text: '    ✔ New nested task @done(2025-01-03)',
+                projects: ['A', 'B'],
+            },
+            lineNumber: 42,
+        };
+
+        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+            indentation: '  ',
+        });
+        const lines = merged.split('\n');
+        const flatTaskIndex = lines.findIndex((line) => line.includes('Flat project task'));
+        const nestedHeaderIndex = lines.findIndex((line) => line.trim() === 'B:');
+        const newTaskIndex = lines.findIndex((line) => line.includes('New nested task'));
+        const nestedTaskIndex = lines.findIndex((line) => line.includes('Nested project task'));
+
+        expect(lines.filter((line) => line.trim() === 'A.B:')).to.have.length(1);
+        expect(newTaskIndex).to.be.greaterThan(nestedHeaderIndex);
+        expect(newTaskIndex).to.be.lessThan(nestedTaskIndex);
+        expect(newTaskIndex).to.be.greaterThan(flatTaskIndex);
+    });
+
     it('preserves comments attached to archived todos', () => {
         const existing = `Archive:\nPROJECT1:`;
 
