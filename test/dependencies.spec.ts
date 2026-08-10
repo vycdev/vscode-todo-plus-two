@@ -96,6 +96,19 @@ describe('Task dependencies', () => {
         ).to.deep.equal(['real']);
     });
 
+    it('ignores ID and dependency tags inside multi-backtick code spans', () => {
+        expect(
+            getIds('☐ Keep ``literal @id(fake)`` @id(real) and ``@id(also-fake)``').map(
+                (reference) => reference.id
+            )
+        ).to.deep.equal(['real']);
+        expect(
+            getDependencies(
+                '☐ Keep ``literal @depends(fake)`` @depends(real) and ``@depends(also-fake)``'
+            ).map((reference) => reference.id)
+        ).to.deep.equal(['real']);
+    });
+
     it('finds every dependency on a task and ignores empty references', () => {
         const dependencies = getDependencies(
             '☐ Ship @depends(api contract) @depends(release/v2) @depends()'
