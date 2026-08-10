@@ -24,3 +24,19 @@ describe('Promise helpers', () => {
         expect(results).to.deep.equal([undefined]);
     });
 });
+
+describe('Promise rejection handler', () => {
+    it('keeps fulfilled results when the rejection handler throws', async () => {
+        const results = await mapFulfilled(
+            ['first', 'blocked', 'last'],
+            async (value) => {
+                if (value === 'blocked') throw new Error('permission denied');
+                return value.toUpperCase();
+            },
+            () => {
+                throw new Error('logging failed');
+            }
+        );
+        expect(results).to.deep.equal(['FIRST', 'LAST']);
+    });
+});
