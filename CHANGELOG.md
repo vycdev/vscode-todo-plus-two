@@ -62,6 +62,7 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
+- Fixed `@done` and `@cancelled` examples inside inline code being treated as task status tags.
 
 ### Version 5.2.0
 
