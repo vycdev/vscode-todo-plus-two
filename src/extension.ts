@@ -6,6 +6,8 @@ import Config from './config';
 import Consts from './consts';
 import CompletionProvider from './providers/completion';
 import DependencyLinkProvider from './providers/dependency_links';
+import FoldingProvider from './providers/folding';
+import { FileLinkProvider } from './providers/file_links';
 import SymbolsProvider from './providers/symbols';
 import DocumentDecorator from './todo/decorators/document';
 import ChangesDecorator from './todo/decorators/changes';
@@ -94,6 +96,8 @@ const activate = function (context: vscode.ExtensionContext) {
             Consts.languageId,
             new DependencyLinkProvider()
         ),
+        vscode.languages.registerFoldingRangeProvider(Consts.languageId, new FoldingProvider()),
+        vscode.languages.registerDocumentLinkProvider(Consts.languageId, new FileLinkProvider()),
         vscode.languages.registerDocumentSymbolProvider(Consts.languageId, new SymbolsProvider()),
         vscode.window.onDidChangeActiveTextEditor(() => DocumentDecorator.update()),
         vscode.workspace.onDidChangeConfiguration(Consts.update),
