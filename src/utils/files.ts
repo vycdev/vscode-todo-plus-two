@@ -11,6 +11,7 @@ import Folder from './folder';
 import { matchesFilesViewFilter } from './files-view-filter';
 import { mapFulfilled } from './promises';
 import { getWorkspaceExcludeGlobs, getWorkspaceExcludeRules } from './workspace-excludes';
+import { getBatchSize } from './batch-size';
 
 /* FILES */
 
@@ -202,7 +203,7 @@ class Files {
 
         this.filesData = {};
 
-        const BATCH_SIZE = Math.max(1, Number(Config.get().file.batchSize) || 50);
+        const BATCH_SIZE = getBatchSize(Config.get().file.batchSize);
         for (let i = 0; i < filePaths.length; i += BATCH_SIZE) {
             const batch = filePaths.slice(i, i + BATCH_SIZE);
             await mapFulfilled(
@@ -225,7 +226,7 @@ class Files {
         const pending = Object.keys(this.filesData).filter((filePath) => !this.filesData[filePath]);
         if (!pending.length) return;
 
-        const BATCH_SIZE = Math.max(1, Number(Config.get().file.batchSize) || 50);
+        const BATCH_SIZE = getBatchSize(Config.get().file.batchSize);
         for (let i = 0; i < pending.length; i += BATCH_SIZE) {
             const batch = pending.slice(i, i + BATCH_SIZE);
             await mapFulfilled(
