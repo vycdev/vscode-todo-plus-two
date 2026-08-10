@@ -12,6 +12,7 @@ import { matchesFilesViewFilter } from './files-view-filter';
 import { mapFulfilled } from './promises';
 import { getWorkspaceExcludeGlobs, getWorkspaceExcludeRules } from './workspace-excludes';
 import { getBatchSize } from './batch-size';
+import { getUniqueRootKeys } from './file-groups';
 
 /* FILES */
 
@@ -261,16 +262,22 @@ class Files {
 
         const todos = {}, // { [ROOT] { { [FILEPATH] => [DATA] } }
             filePaths = Object.keys(this.filesData);
+        const visibleFiles = filePaths
+            .map((filePath) => ({ filePath, data: this.filesData[filePath] }))
+            .filter(({ filePath, data }) => {
+                if (!data) return false;
+                return matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()]);
+            });
+        const rootKeys = getUniqueRootKeys(
+            visibleFiles.map(({ data }) => ({ root: data.root, rootPath: data.rootPath }))
+        );
 
-        filePaths.forEach((filePath) => {
-            const data = this.filesData[filePath];
+        visibleFiles.forEach(({ filePath, data }, index) => {
+            const root = rootKeys[index];
 
-            if (!data) return;
-            if (!matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()])) return;
+            if (!todos[root]) todos[root] = {};
 
-            if (!todos[data.root]) todos[data.root] = {};
-
-            todos[data.root][filePath] = data;
+            todos[root][filePath] = data;
         });
 
         return this.simplifyTodos(todos);

@@ -1,10 +1,15 @@
 // Do not import Consts or Config since they require the VSCode API. Keep the
 // helper pure so tests can import it.
+import { maskInlineCode } from './todo-status';
+
 // Match project header lines only, not lines that happen to contain a colon
 // such as timestamps in todo tags. Ensure colon is followed by whitespace, end
 // of line, or an @ tag (like @done).
 const projectParts = /^(\s*)([^:]+):(?=\s|$|@)/;
 const defaultIndentUnit = '  ';
+
+const sameProjectPath = (left: string[], right: string[]) =>
+    left.length === right.length && left.every((name, index) => name === right[index]);
 
 export function createArchiveFinishedDateGetter(
     todoFinishedRegex: RegExp,
@@ -14,11 +19,13 @@ export function createArchiveFinishedDateGetter(
     let previousFinishedDate: number | Date = -1;
 
     return (line: string) => {
+        const statusText = maskInlineCode(line);
+
         // Global regular expressions retain their last match position. Reset it
         // so adjacent finished todos are both classified independently.
         todoFinishedRegex.lastIndex = 0;
-        if (todoFinishedRegex.test(line)) {
-            const match = line.match(tagFinishedRegex);
+        if (todoFinishedRegex.test(statusText)) {
+            const match = statusText.match(tagFinishedRegex);
             previousFinishedDate = match ? parseDate(match[1]) : -1;
         }
 
@@ -74,7 +81,8 @@ export function getRemovableEmptyLineNumbers(
 export function mergeInsertItemsIntoArchiveContent(
     content: string,
     insertItems: any[],
-    config: any
+    config: any,
+    isTodoLine: (line: string) => boolean = () => false
 ) {
     const normalizedContent = content || '';
     const lineEnding = normalizedContent.includes('\r\n') ? '\r\n' : '\n';
@@ -147,7 +155,7 @@ export function mergeInsertItemsIntoArchiveContent(
 
         for (let i = 0; i < linesArr.length; i++) {
             const line = linesArr[i];
-            const match = line.match(projectParts);
+            const match = isTodoLine(line) ? null : line.match(projectParts);
 
             if (match) {
                 const indent = match[1] || '';
@@ -159,6 +167,7 @@ export function mergeInsertItemsIntoArchiveContent(
 
                 projects.push({
                     fullPath: stack.join(projectSeparator),
+                    names: stack.slice(),
                     name,
                     level,
                     start: i,
@@ -212,16 +221,11 @@ export function mergeInsertItemsIntoArchiveContent(
     function ensureProjectChain(projectsArr: string[]) {
         // Ensure project headers exist in lines; create them at end if missing
         for (let i = 0; i < projectsArr.length; i++) {
-            const projectSeparator =
-                (config &&
-                    config.archive &&
-                    config.archive.project &&
-                    config.archive.project.separator) ||
-                '.';
-            const subPath = projectsArr.slice(0, i + 1).join(projectSeparator);
             let parsed = parseProjects(lines);
             const contentIndentUnit = detectContentIndentUnit(lines) || indentUnit;
-            const existing = parsed.find((p) => p.fullPath === subPath);
+            const existing = parsed.find((p) =>
+                sameProjectPath(p.names, projectsArr.slice(0, i + 1))
+            );
             // Compute base indent level for the existing projects so any headers
             // we create match the current archive indentation and nesting levels.
             const parsedMinLevel = parsed.length
@@ -235,8 +239,9 @@ export function mergeInsertItemsIntoArchiveContent(
                 // If there's a parent project, insert this header right after
                 // the parent project's block (keeping the hierarchy). Otherwise
                 // append to the end of file.
-                const parentPath = projectsArr.slice(0, i).join(projectSeparator);
-                const parent = parsed.find((p) => p.fullPath === parentPath);
+                const parent = parsed.find((p) =>
+                    sameProjectPath(p.names, projectsArr.slice(0, i))
+                );
                 const indent = (contentIndentUnit || indentUnit).repeat(baseLevel + i);
                 const header = `${indent}${projectsArr[i]}:`;
 
@@ -275,7 +280,7 @@ export function mergeInsertItemsIntoArchiveContent(
         const textLinesRaw = text.split(/\r?\n/).map((l) => l.replace(projectTagRegex, ''));
         const projectNames = new Set((obj.projects || []).map((project: string) => project.trim()));
         const textLines = textLinesRaw.filter((line) => {
-            const match = line.match(projectParts);
+            const match = isTodoLine(line) ? null : line.match(projectParts);
 
             return !match || !projectNames.has(match[2].trim());
         });
@@ -286,7 +291,7 @@ export function mergeInsertItemsIntoArchiveContent(
 
             // Recompute projects map
             const parsed = parseProjects(lines);
-            const target = parsed.find((p) => p.fullPath === projectPath);
+            const target = parsed.find((p) => sameProjectPath(p.names, obj.projects));
 
             if (target) {
                 // Insert after the header, so new items appear at the top of the

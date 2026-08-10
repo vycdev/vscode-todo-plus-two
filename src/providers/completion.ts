@@ -9,7 +9,7 @@ import DependencyIndex from '../utils/dependency_index';
 import {
     getTagArgumentCompletions,
     getTagArgumentPrefix,
-    getTagNames,
+    getTagNameCompletions,
 } from '../utils/tag_completions';
 import Timestamps from '../utils/timestamps';
 
@@ -92,7 +92,10 @@ class Completion implements vscode.CompletionItemProvider {
 
             /* SMART */
 
-            const tagsSmart = getTagNames(tagsFiltered).map((text) => {
+            const tagsSmart = getTagNameCompletions(
+                tagsFiltered,
+                Config.getKey('tags.namesInference') !== false
+            ).map((text) => {
                 const item = new vscode.CompletionItem(text);
 
                 item.filterText = text;

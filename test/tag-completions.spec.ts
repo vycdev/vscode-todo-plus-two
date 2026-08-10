@@ -3,6 +3,7 @@ import {
     getTagArgumentCompletions,
     getTagArgumentPrefix,
     getTagArguments,
+    getTagNameCompletions,
     getTagNames,
 } from '../src/utils/tag_completions';
 
@@ -11,6 +12,13 @@ describe('Tag completion utilities', () => {
         expect(
             getTagNames(['@note(one)', '@note(two)', '@now', '@NOTE(three)', '@note(one)'])
         ).to.deep.equal(['@note', '@now']);
+    });
+
+    it('respects disabled tag name inference', () => {
+        expect(getTagNameCompletions(['@custom', '@custom(value)'], false)).to.deep.equal([]);
+        expect(getTagNameCompletions(['@custom', '@custom(value)'], true)).to.deep.equal([
+            '@custom',
+        ]);
     });
 
     it('returns argument values only for the active tag name', () => {

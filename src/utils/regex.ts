@@ -1,7 +1,5 @@
 /* IMPORT */
 
-import * as _ from 'lodash';
-
 /* REGEX */
 
 const Regex = {
@@ -21,8 +19,11 @@ const Regex = {
 
     match2range(match: RegExpMatchArray) {
         const first = match[0],
-            last = _.findLast(match, (txt) => txt && txt.length) as string, //TSC
-            start = match.index + first.indexOf(last),
+            last = match
+                .slice()
+                .reverse()
+                .find((txt) => !!(txt && txt.length)) as string, //TSC
+            start = match.index + first.lastIndexOf(last),
             end = start + last.length;
 
         return { start, end };
