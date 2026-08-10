@@ -2,6 +2,7 @@
 
 import * as vscode from 'vscode';
 import Consts from '../../consts';
+import { getTagPaletteColor } from '../../utils/tag-colors';
 import TagItem from '../items/tag';
 import Line from './line';
 
@@ -50,34 +51,35 @@ function ensureDecorationTypes() {
 
     disposeDecorationTypes([...SPECIAL_TAGS, TAG, ID, DEPENDENCY]);
 
-    SPECIAL_TAGS = Consts.tags.names.map((name, index) =>
-        vscode.window.createTextEditorDecorationType({
-            backgroundColor: Consts.colors.tags.background[index],
-            color: Consts.colors.tags.foreground[index] || Consts.colors.tag,
+    SPECIAL_TAGS = Consts.tags.names.map((name, index) => {
+        const background = getTagPaletteColor(Consts.colors.tags.background, index);
+        const foreground = getTagPaletteColor(Consts.colors.tags.foreground, index);
+
+        return vscode.window.createTextEditorDecorationType({
+            backgroundColor: background,
+            color: foreground || Consts.colors.tag,
             borderRadius: '2px',
             rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
             dark: {
                 backgroundColor:
-                    Consts.colors.dark.tags.background[index] ||
-                    Consts.colors.tags.background[index],
+                    getTagPaletteColor(Consts.colors.dark.tags.background, index) || background,
                 color:
-                    Consts.colors.dark.tags.foreground[index] ||
-                    Consts.colors.tags.foreground[index] ||
+                    getTagPaletteColor(Consts.colors.dark.tags.foreground, index) ||
+                    foreground ||
                     Consts.colors.dark.tag ||
                     Consts.colors.tag,
             },
             light: {
                 backgroundColor:
-                    Consts.colors.light.tags.background[index] ||
-                    Consts.colors.tags.background[index],
+                    getTagPaletteColor(Consts.colors.light.tags.background, index) || background,
                 color:
-                    Consts.colors.light.tags.foreground[index] ||
-                    Consts.colors.tags.foreground[index] ||
+                    getTagPaletteColor(Consts.colors.light.tags.foreground, index) ||
+                    foreground ||
                     Consts.colors.light.tag ||
                     Consts.colors.tag,
             },
-        })
-    );
+        });
+    });
 
     TAG = vscode.window.createTextEditorDecorationType({
         color: Consts.colors.tag,
