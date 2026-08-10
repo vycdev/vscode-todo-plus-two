@@ -32,6 +32,19 @@ describe('Archive finished-date sorting helper', () => {
 
         expect(commentDate).to.equal(todoDate);
     });
+
+    it('ignores finished tags inside inline code when carrying dates forward', () => {
+        const getFinishedDate = createArchiveFinishedDateGetter(
+            /^\s*(?:✔|☐ .*@done).*$/gm,
+            /@done\(([^)]*)\)/,
+            (value) => new Date(`${value}T00:00:00Z`)
+        );
+
+        const todoDate = getFinishedDate('  ✔ Done @done(2025-01-01)');
+        const inlineExampleDate = getFinishedDate('  ☐ Explain `@done(2026-01-01)`');
+
+        expect(inlineExampleDate).to.equal(todoDate);
+    });
 });
 
 describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
