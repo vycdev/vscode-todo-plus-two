@@ -29,4 +29,12 @@ describe('Ackmate parser', () => {
             },
         ]);
     });
+
+    it('matches provider results when included paths use Windows separators', () => {
+        const ackmate = [{ filePath: 'C:/workspace/todos.ts' }];
+
+        expect((Ackmate as any).filterIncluded(ackmate, ['C:\\workspace\\todos.ts'])).to.deep.equal(
+            ackmate
+        );
+    });
 });

@@ -1,5 +1,11 @@
 /* ACKMATE */
 
+interface AckmateMatch {
+    filePath: string;
+    lineNr: number;
+    line: string;
+}
+
 const Ackmate = {
     newLineRe: /\r?\n/g,
     filePathRe: /^:?([^]+)$/,
@@ -7,6 +13,12 @@ const Ackmate = {
 
     normalizePath(filePath) {
         return filePath.replace(/\\/g, '/');
+    },
+
+    filterIncluded(ackmate: AckmateMatch[], includedFilePaths: string[]) {
+        const includedPaths = new Set(includedFilePaths.map(Ackmate.normalizePath));
+
+        return ackmate.filter(({ filePath }) => includedPaths.has(Ackmate.normalizePath(filePath)));
     },
 
     parse(str) {

@@ -93,7 +93,7 @@ class AG extends Abstract {
         const filePaths = _.uniq(ackmate.map((obj) => obj.filePath)),
             includedFilePaths = this.getIncluded(filePaths);
 
-        return ackmate.filter((obj) => includedFilePaths.includes(obj.filePath));
+        return Ackmate.filterIncluded(ackmate, includedFilePaths);
     }
 
     async ackmate2data(ackmate) {
