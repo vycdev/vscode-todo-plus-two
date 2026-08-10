@@ -116,7 +116,7 @@ const activate = function (context: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeWorkspaceFolders(Utils.folder.initRootsRe)
     );
 
-    Utils.init.views();
+    Utils.init.views(context);
 
     DocumentDecorator.update();
 
