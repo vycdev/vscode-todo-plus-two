@@ -1,6 +1,7 @@
 ### Version 5.3.0 (Unreleased)
 
-- Added direct Open commands to Todo file tree items so selecting a file opens it in the editor. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/71
+- Corrected the README command palette documentation so it no longer claims an outdated command count and includes the dependency-opening commands.
+
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
@@ -62,7 +63,6 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
-- Fixed repeated identical embedded todo markers on one line so each entry keeps its own source-code prefix.
 
 ### Version 5.2.0
 
