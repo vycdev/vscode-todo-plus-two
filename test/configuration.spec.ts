@@ -23,4 +23,11 @@ describe('Todo configuration schema', () => {
 
         expect(provider.enum).to.include(provider.default);
     });
+
+    it('validates embedded include and exclude entries as glob strings', () => {
+        const properties = pkg.contributes.configuration.properties;
+
+        expect(properties['todo.embedded.include'].items).to.deep.equal({ type: 'string' });
+        expect(properties['todo.embedded.exclude'].items).to.deep.equal({ type: 'string' });
+    });
 });
