@@ -18,6 +18,7 @@
         "onCommand:todo.toggleCancelled",
         "onCommand:todo.toggleStart",
         "onCommand:todo.toggleTimer",
+        "onCommand:todo.toggleStatusBarTimer",
         "onCommand:todo.archive",
         "onCommand:todo.openDependency",
         "onCommand:todo.openDependencyAtCursor",
@@ -929,6 +930,10 @@
                 "title": "Todo: Toggle Timer"
             },
             {
+                "command": "todo.toggleStatusBarTimer",
+                "title": "Todo: Toggle Status Bar Timer"
+            },
+            {
                 "command": "todo.archive",
                 "title": "Todo: Archive"
             },
@@ -1157,6 +1162,11 @@
                 "when": "editorTextFocus && editorLangId == todo"
             },
             {
+                "command": "todo.toggleTimer",
+                "key": "Alt+t",
+                "when": "editorTextFocus && editorLangId == todo"
+            },
+            {
                 "command": "todo.archive",
                 "key": "Shift+Ctrl+a",
                 "mac": "Shift+Cmd+a",
@@ -1216,6 +1226,10 @@
                 },
                 {
                     "command": "todo.toggleStart",
+                    "when": "editorLangId == todo"
+                },
+                {
+                    "command": "todo.toggleTimer",
                     "when": "editorLangId == todo"
                 },
                 {
