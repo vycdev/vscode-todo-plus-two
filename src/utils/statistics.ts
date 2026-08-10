@@ -7,7 +7,7 @@ import Consts from '../consts';
 import { Comment, Project, Tag, TodoBox, TodoDone, TodoCancelled } from '../todo/items';
 import AST from './ast';
 import { getEstimateDuration } from './estimate';
-import { getStatisticsLines } from './statistics-lines';
+import { getStatisticsLines, getStatisticsScopeEnd } from './statistics-lines';
 import Tokens from './statistics_tokens';
 import Time from './time';
 
@@ -224,29 +224,50 @@ const Statistics = {
 
             if (!items.projects) return;
 
-            const lines = getStatisticsLines(items);
+            const lines = getStatisticsLines(items),
+                archiveLineNumber = items.archive && items.archive.lineNumber;
 
             items.projects.forEach((project) => {
                 Statistics.tokens.updateProject(
                     textDocument,
                     project,
                     lines,
-                    lines.indexOf(project)
+                    lines.indexOf(project),
+                    archiveLineNumber
                 );
             });
         },
 
-        updateProject(textDocument: vscode.TextDocument, project, lines, lineNr: number) {
+        updateProject(
+            textDocument: vscode.TextDocument,
+            project,
+            lines,
+            lineNr: number,
+            archiveLineNumber?: number
+        ) {
             if (Statistics.tokens.projects[project.lineNumber])
                 return Statistics.tokens.projects[project.lineNumber];
 
             project.level = project.level || AST.getLevel(textDocument, project.line.text);
 
-            const tokens = new Tokens();
+            const tokens = new Tokens(),
+                includeRemainingDocument = project.lineNumber === archiveLineNumber,
+                scopeEnd = getStatisticsScopeEnd(
+                    lines,
+                    lineNr,
+                    project.level,
+                    (item: any) => {
+                        item.level = item.level || AST.getLevel(textDocument, item.line.text);
+
+                        return item.level;
+                    },
+                    (item) => item instanceof Tag,
+                    includeRemainingDocument
+                );
 
             let wasPending = false;
 
-            for (let i = lineNr + 1, l = lines.length; i < l; i++) {
+            for (let i = lineNr + 1; i < scopeEnd; i++) {
                 const nextItem = lines[i];
 
                 if (nextItem instanceof Tag) {
@@ -262,8 +283,6 @@ const Statistics = {
                     nextItem.level =
                         nextItem.level || AST.getLevel(textDocument, nextItem.line.text);
 
-                    if (nextItem.level <= project.level) break;
-
                     wasPending = nextItem instanceof TodoBox;
 
                     if (nextItem instanceof Project) {
@@ -271,7 +290,8 @@ const Statistics = {
                             textDocument,
                             nextItem,
                             lines,
-                            i
+                            i,
+                            archiveLineNumber
                         );
 
                         tokens.comments += nextTokens.comments;
