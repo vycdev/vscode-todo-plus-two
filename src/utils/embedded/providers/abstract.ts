@@ -13,6 +13,9 @@ import { hasConditionalExcludeGlobs, isFileIncluded } from '../../file-globs';
 import { getWorkspaceExcludeRules } from '../../workspace-excludes';
 import { getFollowingContext } from '../context';
 import { updateEmbeddedDocumentCache } from '../document-cache';
+import { matchesEmbeddedFilter } from '../filter';
+import { splitLines } from '../../line-splitting';
+import { parseEmbeddedMatches } from '../regex';
 
 /* ABSTRACT */
 
@@ -200,7 +203,7 @@ class Abstract {
 
     parseContent(filePath: string, content: string) {
         const data = [],
-            lines = content.split(/\r?\n/);
+            lines = splitLines(content);
 
         if (!content) return data;
 
@@ -208,7 +211,7 @@ class Abstract {
 
         lines.forEach((rawLine, lineNr) => {
             const line = _.trimStart(rawLine),
-                matches = stringMatches(line, Consts.regexes.todoEmbedded);
+                matches = parseEmbeddedMatches(line, Consts.regexes.todoEmbedded);
 
             if (!matches.length) return;
 
@@ -218,10 +221,7 @@ class Abstract {
 
             matches.forEach((match) => {
                 data.push({
-                    todo: match[0],
-                    type: match[1].toUpperCase(),
-                    message: match[2],
-                    code: line.slice(0, line.indexOf(match[0])),
+                    ...match,
                     rawLine,
                     line,
                     lineNr,
@@ -293,7 +293,7 @@ class Abstract {
             const filePathGroup = groupByFile ? filePath : '';
 
             data.forEach((datum) => {
-                if (filterRe && !filterRe.test(datum.line) && !filterRe.test(filePath)) return;
+                if (!matchesEmbeddedFilter(filterRe, filePath, datum.line, datum.context)) return;
 
                 const rootGroup = groupByRoot ? datum.root : '';
 
