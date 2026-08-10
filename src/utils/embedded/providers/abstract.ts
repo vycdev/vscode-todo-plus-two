@@ -12,6 +12,7 @@ import Consts from '../../../consts';
 import { hasConditionalExcludeGlobs, isFileIncluded } from '../../file-globs';
 import { getWorkspaceExcludeRules } from '../../workspace-excludes';
 import { getFollowingContext } from '../context';
+import { updateEmbeddedDocumentCache } from '../document-cache';
 
 /* ABSTRACT */
 
@@ -252,20 +253,10 @@ class Abstract {
         if (!this.isIncluded(filePath)) return;
 
         const cachedFilePath = this.getCachedFilePath(filePath),
-            hadData =
-                this.filesData.hasOwnProperty(cachedFilePath) ||
-                this.nonEmptyFiles.has(cachedFilePath),
             data = this.parseContent(cachedFilePath, textDocument.getText());
 
-        if (!data.length && !hadData) return;
-
-        if (data.length) {
-            this.filesData[cachedFilePath] = data;
-            this.nonEmptyFiles.add(cachedFilePath);
-        } else {
-            delete this.filesData[cachedFilePath];
-            this.nonEmptyFiles.delete(cachedFilePath);
-        }
+        if (!updateEmbeddedDocumentCache(this.filesData, this.nonEmptyFiles, cachedFilePath, data))
+            return;
 
         return cachedFilePath;
     }
