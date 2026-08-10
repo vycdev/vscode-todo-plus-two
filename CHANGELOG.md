@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Fixed the statistics status bar to apply `todo.statistics.statusbar.alignment` and `todo.statistics.statusbar.priority` changes without requiring an extension reload.
 - Fixed fulfilled promise batches so errors in optional rejection observers do not discard successful results.
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
