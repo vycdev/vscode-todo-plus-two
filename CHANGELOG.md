@@ -1,5 +1,7 @@
 ### Version 5.3.0 (Unreleased)
 
+- Guarded embedded and Todo-file batch settings against zero, negative, fractional, and non-finite values that could stall scanning or produce invalid batches.
+
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.

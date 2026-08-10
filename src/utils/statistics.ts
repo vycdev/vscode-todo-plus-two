@@ -43,16 +43,21 @@ const Statistics = {
         elapseds: {},
 
         parseElapsed(tag: string) {
-            if (Statistics.timeTags.elapseds[tag]) return Statistics.timeTags.elapseds[tag];
+            const manHoursPerDay = Config.getKey('manHoursPerDay'),
+                manDaysPerWeek = Config.getKey('manDaysPerWeek'),
+                cacheKey = `${tag}:${manHoursPerDay}:${manDaysPerWeek}`;
+
+            if (Statistics.timeTags.elapseds[cacheKey])
+                return Statistics.timeTags.elapseds[cacheKey];
 
             const match = tag.match(Consts.regexes.tagElapsed);
 
             if (!match) return 0;
 
             const time = match[1],
-                seconds = Time.durationSeconds(time);
+                seconds = Time.durationSeconds(time, undefined, manHoursPerDay, manDaysPerWeek);
 
-            Statistics.timeTags.elapseds[tag] = seconds;
+            Statistics.timeTags.elapseds[cacheKey] = seconds;
 
             return seconds;
         },
@@ -60,15 +65,20 @@ const Statistics = {
         estimates: {}, // It assumes that all estimates are relative to `now`
 
         parseEstimate(tag: string, from?: Date) {
-            if (Statistics.timeTags.estimates[tag]) return Statistics.timeTags.estimates[tag];
+            const manHoursPerDay = Config.getKey('manHoursPerDay'),
+                manDaysPerWeek = Config.getKey('manDaysPerWeek'),
+                cacheKey = `${tag}:${manHoursPerDay}:${manDaysPerWeek}`;
+
+            if (Statistics.timeTags.estimates[cacheKey])
+                return Statistics.timeTags.estimates[cacheKey];
 
             const time = getEstimateDuration(tag);
 
             if (!time) return 0;
 
-            const seconds = Time.durationSeconds(time, from);
+            const seconds = Time.durationSeconds(time, from, manHoursPerDay, manDaysPerWeek);
 
-            Statistics.timeTags.estimates[tag] = seconds;
+            Statistics.timeTags.estimates[cacheKey] = seconds;
 
             return seconds;
         },

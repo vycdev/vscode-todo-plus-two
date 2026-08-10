@@ -18,6 +18,7 @@
         "onCommand:todo.toggleCancelled",
         "onCommand:todo.toggleStart",
         "onCommand:todo.toggleTimer",
+        "onCommand:todo.toggleStatusBarTimer",
         "onCommand:todo.archive",
         "onCommand:todo.openDependency",
         "onCommand:todo.openDependencyAtCursor",
@@ -734,6 +735,9 @@
                 },
                 "todo.embedded.include": {
                     "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "description": "Globs to use for including files",
                     "default": [
                         "**/*"
@@ -751,6 +755,9 @@
                 },
                 "todo.embedded.exclude": {
                     "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "description": "Globs to use for excluding files",
                     "default": [
                         "**/.*",
@@ -819,6 +826,7 @@
                 },
                 "todo.embedded.batchSize": {
                     "type": "number",
+                    "minimum": 1,
                     "description": "Batch size when scanning embedded todos (applies to JavaScript provider).",
                     "default": 50
                 },
@@ -888,6 +896,7 @@
                 },
                 "todo.file.batchSize": {
                     "type": "number",
+                    "minimum": 1,
                     "description": "Batch size when loading todo files metadata and refreshing.",
                     "default": 50
                 }
@@ -921,6 +930,10 @@
             {
                 "command": "todo.toggleTimer",
                 "title": "Todo: Toggle Timer"
+            },
+            {
+                "command": "todo.toggleStatusBarTimer",
+                "title": "Todo: Toggle Status Bar Timer"
             },
             {
                 "command": "todo.archive",
@@ -1151,6 +1164,11 @@
                 "when": "editorTextFocus && editorLangId == todo"
             },
             {
+                "command": "todo.toggleTimer",
+                "key": "Alt+t",
+                "when": "editorTextFocus && editorLangId == todo"
+            },
+            {
                 "command": "todo.archive",
                 "key": "Shift+Ctrl+a",
                 "mac": "Shift+Cmd+a",
@@ -1210,6 +1228,10 @@
                 },
                 {
                     "command": "todo.toggleStart",
+                    "when": "editorLangId == todo"
+                },
+                {
+                    "command": "todo.toggleTimer",
                     "when": "editorLangId == todo"
                 },
                 {
