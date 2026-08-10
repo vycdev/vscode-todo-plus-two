@@ -71,16 +71,12 @@ class Statistics {
         let template = this.config.statistics.statusbar.tooltip,
             tooltip = Utils.statistics.template.render(template, this.tokens);
 
-        if (!tooltip) return;
-
         this._setItemProp('tooltip', tooltip);
     }
 
     updateText() {
         let template = this.config.statistics.statusbar.text,
             text = Utils.statistics.template.render(template, this.tokens);
-
-        if (!text) return;
 
         this._setItemProp('text', text);
     }

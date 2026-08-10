@@ -1,5 +1,5 @@
 const compactEstimateUnit =
-    '(?:milliseconds?|seconds?|minutes?|hours?|days?|weeks?|years?|ms|[smhdwy])';
+    '(?:milliseconds?|seconds?|minutes?|hours?|days?|weeks?|years?|mw|md|ms|[smhdwy])';
 const estimateBoundary = '(?=$|\\s|[.,;:!?()[\\]{}<>"\'](?=$|\\s))';
 
 export const tagEstimateRegex = new RegExp(

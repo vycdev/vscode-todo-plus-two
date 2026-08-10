@@ -12,6 +12,9 @@ describe('Estimate tags', () => {
     it('recognizes compact and explicit estimates', () => {
         expect(getEstimateDuration('@1h')).to.equal('1h');
         expect(getEstimateDuration('@1h20m')).to.equal('1h20m');
+        expect(getEstimateDuration('@1md')).to.equal('1md');
+        expect(getEstimateDuration('@2mw')).to.equal('2mw');
+        expect(getEstimateDuration('@1mw2md3h')).to.equal('1mw2md3h');
         expect(getEstimateDuration('@1.5hours')).to.equal('1.5hours');
         expect(getEstimateDuration('@est(3 hours)')).to.equal('3 hours');
     });
