@@ -1,6 +1,5 @@
 ### Version 5.3.0 (Unreleased)
 
-- Fixed embedded include and exclude settings so VS Code rejects non-string glob entries.
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
@@ -62,7 +61,7 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
-- Fixed `todo.tags.namesInference` so disabling it suppresses inferred tag name completions.
+- Fixed background Todo document parsing so items are not bound to an unrelated active editor.
 
 ### Version 5.2.0
 

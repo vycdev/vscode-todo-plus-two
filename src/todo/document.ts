@@ -38,9 +38,9 @@ class Document {
             } else {
                 // => vscode.TextDocument
 
-                this.textEditor =
-                    vscode.window.visibleTextEditors.find((te) => te.document === res) ||
-                    vscode.window.activeTextEditor;
+                this.textEditor = vscode.window.visibleTextEditors.find(
+                    (te) => te.document === res
+                );
                 this.textDocument = res as vscode.TextDocument; //TSC
             }
         }
@@ -67,7 +67,11 @@ class Document {
             matches = stringMatches(matchText, regex);
 
         return matches.map((match) => {
-            return new Item(this.textEditor, undefined, match);
+            const item = new Item(this.textEditor, undefined, match);
+
+            item.textDocument = this.textDocument;
+
+            return item;
         });
     }
 
@@ -91,7 +95,11 @@ class Document {
 
         if (checkValidity && !Item.is(line.text)) return;
 
-        return new Item(this.textEditor, line);
+        const item = new Item(this.textEditor, line);
+
+        item.textDocument = this.textDocument;
+
+        return item;
     }
 
     getLines() {
