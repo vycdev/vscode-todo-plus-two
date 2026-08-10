@@ -7,6 +7,7 @@ import { DependencyReference, DependencyTarget, getDependencies, getIds } from '
 import { loadAvailableDocuments } from './document-loader';
 import Files from './files';
 import Folder from './folder';
+import Regex from './regex';
 import { matchesTodoStatus } from './todo-status';
 
 /* TYPES */
@@ -57,6 +58,8 @@ const DependencyIndex = {
         documents.forEach((candidate) => {
             for (let lineNumber = 0; lineNumber < candidate.lineCount; lineNumber++) {
                 const text = candidate.lineAt(lineNumber).text;
+                if (!Regex.test(Consts.regexes.todo, text)) continue;
+
                 const makeLocation = (reference: DependencyReference): DependencyTarget => ({
                     ...reference,
                     filePath: candidate.uri.fsPath,
