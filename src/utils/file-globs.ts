@@ -21,7 +21,10 @@ const normalizePath = (filePath: string): string =>
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export const getRootPathsRegExp = (rootPaths: string[]): RegExp | undefined => {
+export const getRootPathsRegExp = (
+    rootPaths: string[],
+    platform: string = process.platform
+): RegExp | undefined => {
     const roots = rootPaths.filter((rootPath) => !!rootPath);
 
     if (!roots.length) return;
@@ -36,23 +39,35 @@ export const getRootPathsRegExp = (rootPaths: string[]): RegExp | undefined => {
             return /\/$/.test(normalizedRootPath) ? pattern : `${pattern}(?=$|[\\\\/])`;
         });
 
-    return new RegExp(`^(${patterns.join('|')})(.*)$`);
-};
-
-export const isPathWithinRoot = (filePath: string, rootPath: string): boolean => {
-    const normalizedPath = normalizePath(filePath);
-    const normalizedRootPath = normalizePath(rootPath);
-
-    return (
-        normalizedPath === normalizedRootPath || normalizedPath.startsWith(`${normalizedRootPath}/`)
+    return new RegExp(
+        `^(${patterns.join('|')})(.*)$`,
+        getGlobMatchOptions(platform).nocase ? 'i' : ''
     );
 };
 
-export const findClosestRootPath = (basePath: string, rootPaths: string[]): string | undefined => {
+export const isPathWithinRoot = (
+    filePath: string,
+    rootPath: string,
+    platform: string = process.platform
+): boolean => {
+    const { nocase } = getGlobMatchOptions(platform);
+    const normalizedPath = normalizePath(filePath);
+    const normalizedRootPath = normalizePath(rootPath);
+    const matchPath = nocase ? normalizedPath.toLowerCase() : normalizedPath;
+    const matchRootPath = nocase ? normalizedRootPath.toLowerCase() : normalizedRootPath;
+
+    return matchPath === matchRootPath || matchPath.startsWith(`${matchRootPath}/`);
+};
+
+export const findClosestRootPath = (
+    basePath: string,
+    rootPaths: string[],
+    platform: string = process.platform
+): string | undefined => {
     return rootPaths
         .slice()
         .sort((a, b) => b.length - a.length)
-        .find((rootPath) => isPathWithinRoot(basePath, rootPath));
+        .find((rootPath) => isPathWithinRoot(basePath, rootPath, platform));
 };
 
 export const getEnabledExcludeGlobs = (exclude: ExcludeGlobs = {}): string[] =>
