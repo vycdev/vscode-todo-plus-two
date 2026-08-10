@@ -29,4 +29,19 @@ describe('Ackmate parser', () => {
             },
         ]);
     });
+
+    it('parses records separated by classic Mac line endings', () => {
+        expect(Ackmate.parse('TODO.md\r2:TODO first\r3:FIXME second')).to.deep.equal([
+            {
+                filePath: 'TODO.md',
+                lineNr: 1,
+                line: 'TODO first',
+            },
+            {
+                filePath: 'TODO.md',
+                lineNr: 2,
+                line: 'FIXME second',
+            },
+        ]);
+    });
 });

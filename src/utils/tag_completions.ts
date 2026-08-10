@@ -41,6 +41,10 @@ export const getTagNames = (tags: string[]): string[] => {
     }, []);
 };
 
+export const getTagNameCompletions = (tags: string[], namesInference: boolean): string[] => {
+    return namesInference ? getTagNames(tags) : [];
+};
+
 export const getTagArguments = (tags: string[], name: string): string[] => {
     const nameLower = name.toLowerCase();
 
