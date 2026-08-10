@@ -52,6 +52,7 @@
 - Fixed the `todo.timer.statusbar.priority` configuration schema so numeric priorities can be configured.
 - Fixed dependency parsing so `@id(...)` and `@depends(...)` directly attached to words or backticks are not treated as task links.
 - Fixed dependency parsing so `@id(...)` and `@depends(...)` inside inline code are not treated as task links.
+- Fixed dependency parsing so `@id(...)` and `@depends(...)` inside matching multi-backtick code spans are not treated as task links.
 - Fixed shorthand estimates directly attached to words, such as `release@2h`, being counted as task estimates.
 - Fixed the status bar timer configuration schema so its boolean enabled and disabled values are accepted.
 - Fixed the Todo files view so hiding finished tasks keeps finished parents that contain unfinished descendants.
@@ -61,6 +62,7 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
+- Fixed decoration-line caching so editors no longer depend on VS Code's undocumented private IDs for isolated snapshots.
 
 ### Version 5.2.0
 
