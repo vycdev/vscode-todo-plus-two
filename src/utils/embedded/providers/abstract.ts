@@ -12,6 +12,7 @@ import Consts from '../../../consts';
 import { hasConditionalExcludeGlobs, isFileIncluded } from '../../file-globs';
 import { getWorkspaceExcludeRules } from '../../workspace-excludes';
 import { getFollowingContext } from '../context';
+import { parseEmbeddedMatches } from '../regex';
 
 /* ABSTRACT */
 
@@ -207,7 +208,7 @@ class Abstract {
 
         lines.forEach((rawLine, lineNr) => {
             const line = _.trimStart(rawLine),
-                matches = stringMatches(line, Consts.regexes.todoEmbedded);
+                matches = parseEmbeddedMatches(line, Consts.regexes.todoEmbedded);
 
             if (!matches.length) return;
 
@@ -217,10 +218,7 @@ class Abstract {
 
             matches.forEach((match) => {
                 data.push({
-                    todo: match[0],
-                    type: match[1].toUpperCase(),
-                    message: match[2],
-                    code: line.slice(0, line.indexOf(match[0])),
+                    ...match,
                     rawLine,
                     line,
                     lineNr,
