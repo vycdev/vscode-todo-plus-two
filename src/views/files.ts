@@ -141,7 +141,7 @@ class Files extends View {
 
                     return new File(val, uri);
                 } else {
-                    return new Group(val, key, this.config.embedded.view.icons);
+                    return new Group(val, key, this.config.file.view.icons);
                 }
             });
         }

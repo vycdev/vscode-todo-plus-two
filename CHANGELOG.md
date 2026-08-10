@@ -1,6 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
-- Fixed embedded todo result parsing so orphaned line records emitted before their file heading are ignored instead of creating results without a file path.
+- Added `todo.file.view.icons` so Files-view group icons can be configured independently from the Embedded view.
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
