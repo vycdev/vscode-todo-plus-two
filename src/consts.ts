@@ -4,6 +4,7 @@ import * as _ from 'lodash';
 import Config from './config';
 import { tagEstimateRegex } from './utils/estimate';
 import { createTagRegexes } from './utils/tag-regexes';
+import { formattingRegexes } from './utils/formatting';
 
 /* CONSTS */
 
@@ -156,12 +157,7 @@ const Consts = {
             tagEstimate: tagEstimateRegex,
             tagId: /@id\([^\r\n)]*\)/,
             tagDependency: /@depends\([^\r\n)]*\)/,
-            formatted:
-                /(?:^|[^a-zA-Z0-9])(?:(`[^\n`]*`)|(\*[^\n*]+\*)|(_[^\n_]+_)|(~[^\n~]+~))(?![a-zA-Z])/gm,
-            formattedCode: /(?:^|[^a-zA-Z0-9])(`[^\n`]*`)(?![a-zA-Z])/gm,
-            formattedBold: /(?:^|[^a-zA-Z0-9])(\*[^\n*]+\*)(?![a-zA-Z])/gm,
-            formattedItalic: /(?:^|[^a-zA-Z0-9])(_[^\n_]+_)(?![a-zA-Z])/gm,
-            formattedStrikethrough: /(?:^|[^a-zA-Z0-9])(~[^\n~]+~)(?![a-zA-Z])/gm,
+            ...formattingRegexes,
         };
 
         return {

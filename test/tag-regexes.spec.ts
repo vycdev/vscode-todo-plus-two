@@ -24,4 +24,17 @@ describe('Tag regexes', () => {
         expect(regexes.tagNormal.test('@high')).to.equal(false);
         expect(regexes.tagNormal.test('@custom')).to.equal(true);
     });
+
+    it('keeps unfinished tag arguments on their current line', () => {
+        const text = 'Task @custom(value\nProject:\n  ☐ child)';
+        const regexes = createTagRegexes(['high']);
+        const matches = stringMatches(text, regexes.tagSpecialNormal);
+        const normalMatch = regexes.tagNormal.exec(text);
+        const specialMatch = regexes.tagSpecial.exec(text.replace('@custom', '@high'));
+
+        expect(matches.map(matchedTag)).to.deep.equal(['@custom']);
+        expect(matches[0][0]).not.to.match(/[\r\n]/);
+        expect(normalMatch && normalMatch[0]).not.to.match(/[\r\n]/);
+        expect(specialMatch && specialMatch[0]).not.to.match(/[\r\n]/);
+    });
 });

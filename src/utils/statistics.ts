@@ -7,7 +7,7 @@ import Consts from '../consts';
 import { Comment, Project, Tag, TodoBox, TodoDone, TodoCancelled } from '../todo/items';
 import AST from './ast';
 import { getEstimateDuration } from './estimate';
-import { getStatisticsLines } from './statistics-lines';
+import { getStatisticsLines, getStatisticsScopeEnd } from './statistics-lines';
 import Tokens from './statistics_tokens';
 import Time from './time';
 
@@ -43,16 +43,21 @@ const Statistics = {
         elapseds: {},
 
         parseElapsed(tag: string) {
-            if (Statistics.timeTags.elapseds[tag]) return Statistics.timeTags.elapseds[tag];
+            const manHoursPerDay = Config.getKey('manHoursPerDay'),
+                manDaysPerWeek = Config.getKey('manDaysPerWeek'),
+                cacheKey = `${tag}:${manHoursPerDay}:${manDaysPerWeek}`;
+
+            if (Statistics.timeTags.elapseds[cacheKey])
+                return Statistics.timeTags.elapseds[cacheKey];
 
             const match = tag.match(Consts.regexes.tagElapsed);
 
             if (!match) return 0;
 
             const time = match[1],
-                seconds = Time.durationSeconds(time);
+                seconds = Time.durationSeconds(time, undefined, manHoursPerDay, manDaysPerWeek);
 
-            Statistics.timeTags.elapseds[tag] = seconds;
+            Statistics.timeTags.elapseds[cacheKey] = seconds;
 
             return seconds;
         },
@@ -60,15 +65,20 @@ const Statistics = {
         estimates: {}, // It assumes that all estimates are relative to `now`
 
         parseEstimate(tag: string, from?: Date) {
-            if (Statistics.timeTags.estimates[tag]) return Statistics.timeTags.estimates[tag];
+            const manHoursPerDay = Config.getKey('manHoursPerDay'),
+                manDaysPerWeek = Config.getKey('manDaysPerWeek'),
+                cacheKey = `${tag}:${manHoursPerDay}:${manDaysPerWeek}`;
+
+            if (Statistics.timeTags.estimates[cacheKey])
+                return Statistics.timeTags.estimates[cacheKey];
 
             const time = getEstimateDuration(tag);
 
             if (!time) return 0;
 
-            const seconds = Time.durationSeconds(time, from);
+            const seconds = Time.durationSeconds(time, from, manHoursPerDay, manDaysPerWeek);
 
-            Statistics.timeTags.estimates[tag] = seconds;
+            Statistics.timeTags.estimates[cacheKey] = seconds;
 
             return seconds;
         },
@@ -224,29 +234,50 @@ const Statistics = {
 
             if (!items.projects) return;
 
-            const lines = getStatisticsLines(items);
+            const lines = getStatisticsLines(items),
+                archiveLineNumber = items.archive && items.archive.lineNumber;
 
             items.projects.forEach((project) => {
                 Statistics.tokens.updateProject(
                     textDocument,
                     project,
                     lines,
-                    lines.indexOf(project)
+                    lines.indexOf(project),
+                    archiveLineNumber
                 );
             });
         },
 
-        updateProject(textDocument: vscode.TextDocument, project, lines, lineNr: number) {
+        updateProject(
+            textDocument: vscode.TextDocument,
+            project,
+            lines,
+            lineNr: number,
+            archiveLineNumber?: number
+        ) {
             if (Statistics.tokens.projects[project.lineNumber])
                 return Statistics.tokens.projects[project.lineNumber];
 
             project.level = project.level || AST.getLevel(textDocument, project.line.text);
 
-            const tokens = new Tokens();
+            const tokens = new Tokens(),
+                includeRemainingDocument = project.lineNumber === archiveLineNumber,
+                scopeEnd = getStatisticsScopeEnd(
+                    lines,
+                    lineNr,
+                    project.level,
+                    (item: any) => {
+                        item.level = item.level || AST.getLevel(textDocument, item.line.text);
+
+                        return item.level;
+                    },
+                    (item) => item instanceof Tag,
+                    includeRemainingDocument
+                );
 
             let wasPending = false;
 
-            for (let i = lineNr + 1, l = lines.length; i < l; i++) {
+            for (let i = lineNr + 1; i < scopeEnd; i++) {
                 const nextItem = lines[i];
 
                 if (nextItem instanceof Tag) {
@@ -262,8 +293,6 @@ const Statistics = {
                     nextItem.level =
                         nextItem.level || AST.getLevel(textDocument, nextItem.line.text);
 
-                    if (nextItem.level <= project.level) break;
-
                     wasPending = nextItem instanceof TodoBox;
 
                     if (nextItem instanceof Project) {
@@ -271,7 +300,8 @@ const Statistics = {
                             textDocument,
                             nextItem,
                             lines,
-                            i
+                            i,
+                            archiveLineNumber
                         );
 
                         tokens.comments += nextTokens.comments;
