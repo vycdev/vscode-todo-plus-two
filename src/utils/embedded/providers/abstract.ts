@@ -12,6 +12,7 @@ import Consts from '../../../consts';
 import { hasConditionalExcludeGlobs, isFileIncluded } from '../../file-globs';
 import { getWorkspaceExcludeRules } from '../../workspace-excludes';
 import { getFollowingContext } from '../context';
+import { matchesEmbeddedFilter } from '../filter';
 import { splitLines } from '../../line-splitting';
 import { parseEmbeddedMatches } from '../regex';
 
@@ -301,7 +302,7 @@ class Abstract {
             const filePathGroup = groupByFile ? filePath : '';
 
             data.forEach((datum) => {
-                if (filterRe && !filterRe.test(datum.line) && !filterRe.test(filePath)) return;
+                if (!matchesEmbeddedFilter(filterRe, filePath, datum.line, datum.context)) return;
 
                 const rootGroup = groupByRoot ? datum.root : '';
 

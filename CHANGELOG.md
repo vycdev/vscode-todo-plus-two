@@ -3,6 +3,7 @@
 - Fixed embedded todo scanning and external-search result parsing for files and tool output that use classic Mac carriage-return line endings.
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
+- Embedded view filters now also search visible context lines when context display is enabled.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
 - Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
 - Added embedded todo detection for inline Liquid `{% comment %} ... {% endcomment %}` tags. Addresses: https://github.com/vycdev/vscode-todo-plus-two/issues/46
