@@ -2,6 +2,7 @@
 
 - Fixed decoration ranges so repeated captured text highlights the final captured segment instead of an earlier duplicate.
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
+- Fixed archive project matching when a project name contains the configured project-path separator.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
 - Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
