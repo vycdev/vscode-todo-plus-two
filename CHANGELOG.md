@@ -1,7 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
-- Guarded embedded and Todo-file batch settings against zero, negative, fractional, and non-finite values that could stall scanning or produce invalid batches.
-
+- Fixed embedded todo result parsing so orphaned line records emitted before their file heading are ignored instead of creating results without a file path.
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
@@ -63,7 +62,6 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
-- Added project statistics to the Archive header so estimates can be compared with elapsed time across archived tasks. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/87
 
 ### Version 5.2.0
 
