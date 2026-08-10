@@ -84,6 +84,18 @@ describe('Workspace file excludes', () => {
         expect(slashRootRe!.exec('C:\\workspace\\TODO')![1]).to.equal('C:\\workspace');
     });
 
+    it('matches workspace root regular expression casing according to the filesystem', () => {
+        expect(getRootPathsRegExp(['C:/Workspace'], 'win32')!.test('c:/workspace/TODO')).to.equal(
+            true
+        );
+        expect(getRootPathsRegExp(['/Users/Alice'], 'darwin')!.test('/users/alice/TODO')).to.equal(
+            true
+        );
+        expect(getRootPathsRegExp(['/Workspace'], 'linux')!.test('/workspace/TODO')).to.equal(
+            false
+        );
+    });
+
     it('does not treat similarly prefixed siblings as children of a workspace root', () => {
         expect(isPathWithinRoot('C:/workspace/project/TODO', 'C:\\workspace')).to.equal(true);
         expect(isPathWithinRoot('C:/workspace-other/TODO', 'C:\\workspace')).to.equal(false);
@@ -96,6 +108,18 @@ describe('Workspace file excludes', () => {
             rootPaths[1]
         );
         expect(findClosestRootPath('C:/workspace-other/TODO', [rootPaths[0]])).to.equal(undefined);
+    });
+
+    it('compares workspace root path casing according to the filesystem', () => {
+        const rootPaths = ['C:\\Workspace', 'C:\\Workspace\\Packages\\App'];
+
+        expect(isPathWithinRoot('c:/workspace/TODO', rootPaths[0], 'win32')).to.equal(true);
+        expect(findClosestRootPath('c:/workspace/packages/app/TODO', rootPaths, 'win32')).to.equal(
+            rootPaths[1]
+        );
+        expect(isPathWithinRoot('/users/alice/TODO', '/Users/Alice', 'darwin')).to.equal(true);
+        expect(isPathWithinRoot('/Workspace/TODO', '/workspace', 'linux')).to.equal(false);
+        expect(findClosestRootPath('/Workspace/TODO', ['/workspace'], 'linux')).to.equal(undefined);
     });
 
     it('uses only enabled files.exclude patterns', () => {

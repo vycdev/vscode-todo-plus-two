@@ -8,7 +8,7 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Easy to use**: you're just a few shortcuts away from becoming a master
 - **Portable**: being a plain text format you can read and edit it using any editor
 - **Custom symbols**: you can replace the default symbols with any symbol you want
-- **Custom symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes by default.
+- **Supported symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes by default.
     - **Box**: `☐` or Markdown `- [ ]`
     - **Done**: `✔` or Markdown `- [x]`
     - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
@@ -35,7 +35,7 @@ ext install vycdev.vscode-todo-plus-two
 
 ## Usage
 
-It adds 15 commands to the command palette:
+It adds 16 commands to the command palette:
 
 ```js
 'Todo: Open'; // Open or create your project's todo file
@@ -44,7 +44,8 @@ It adds 15 commands to the command palette:
 'Todo: Toggle Done'; // Toggle todo's done symbol
 'Todo: Toggle Cancelled'; // Toggle todo's cancelled symbol
 'Todo: Toggle Start'; // Toggle a todo as started
-'Todo: Toggle Timer'; // Toggle the timer
+'Todo: Toggle Timer'; // Pause or resume time tracking for the selected started task
+'Todo: Toggle Status Bar Timer'; // Toggle the timer in the status bar
 'Todo: Archive'; // Archive finished todos
 'Todo: Unarchive'; // Restore an archived task to its project list (when todo.archive.type is InSameFile)
 'Todo: Add Dependency'; // Search task IDs and add one to the selected todo
@@ -55,7 +56,7 @@ It adds 15 commands to the command palette:
 'Todo: Embedded View - Toggle View All Files'; // Toggle between viewing all files or only the current one
 ```
 
-It adds 7 shortcuts when editing a `Todo` file:
+It adds 8 shortcuts when editing a `Todo` file:
 
 ```js
 'Cmd/Ctrl+Enter'; // Triggers `Todo: Toggle Box`
@@ -63,6 +64,7 @@ It adds 7 shortcuts when editing a `Todo` file:
 'Alt+D'; // Triggers `Todo: Toggle Done`
 'Alt+C'; // Triggers `Todo: Toggle Cancelled`
 'Alt+S'; // Triggers `Todo: Toggle Start`
+'Alt+T'; // Triggers `Todo: Toggle Timer`
 'Cmd/Ctrl+Shift+A'; // Triggers  `Todo: Archive`
 'Cmd/Ctrl+Shift+U'; // Triggers `Todo: Unarchive` when todo.archive.type is InSameFile
 ```
@@ -156,7 +158,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.timer.statusbar.priority": -10, // The priority of this item. Higher value means the item should be shown more to the left
   "todo.statistics.project.enabled": "global.projects < 100", // Show statistics next to a project, boolean or JS expression
   "todo.statistics.project.text": "([pending]) [est]", // Template used for rendering the text
-  "todo.statistics.statusbar.enabled": "global.projects < 100 && project.all > 0", // Show statistics in the statusbar, boolean or JS expression
+  "todo.statistics.statusbar.enabled": "global.all > 0", // Show statistics in the statusbar, boolean or JS expression
   "todo.statistics.statusbar.ignoreArchive": true, // Ignore the archive when rendering statistics in the statusbar
   "todo.statistics.statusbar.alignment": "left", // Should the item be placed to the left or right?
   "todo.statistics.statusbar.color": "", // The foreground color for this item
@@ -179,7 +181,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.embedded.file.groupByFile": true, // Group embedded todos by file
   "todo.embedded.view.wholeLine": false, // Show the whole line
   "todo.embedded.view.showContext": false, // Show the following source line when it is non-blank and not another embedded todo
-  "todo.embedded.view.sortBy": "line", // Sort todos either by label or by source line
+  "todo.embedded.view.sort": "line", // Sort todos either by label or by source line
   "todo.embedded.view.groupByRoot": true, // Group embedded todos by workspace root
   "todo.embedded.view.groupByType": true, // Group embedded todos by type
   "todo.embedded.view.groupByFile": true, // Group embedded todos by file
@@ -193,6 +195,8 @@ Changing some settings (symbols, colors, providers...) requires a restart.
 An actual regex will be generated from the value of the `todo.embedded.regex` setting. It uses 2 capturing groups, the first one captures the type of the todo (`TODO`, `FIXME` etc.) and the second one captures an optional description (`TODO: description`).
 
 Dates are formatted using [moment](https://momentjs.com/docs/#/displaying/format).
+
+`Todo: Toggle Timer` pauses and resumes a started task by appending `@toggle(...)` timestamps. Paused time is excluded from the status bar timer and from the final `@lasted(...)` or `@wasted(...)` duration.
 
 ## Embedded Todos Providers
 
