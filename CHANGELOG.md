@@ -61,7 +61,7 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
-- Fixed the statistics status bar retaining stale text or tooltip content when a configured template renders empty.
+- Fixed repeated identical embedded todo markers on one line so each entry keeps its own source-code prefix.
 
 ### Version 5.2.0
 
