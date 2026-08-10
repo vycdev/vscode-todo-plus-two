@@ -50,4 +50,16 @@ describe('Files view filter', () => {
             )
         ).to.equal(false);
     });
+
+    it('treats finished-tag examples inside inline code as unfinished', () => {
+        const todoPattern = /^\s*☐\s/;
+        const finishedTodoPattern = /^\s*☐\s.*@(?:done|cancelled)/;
+
+        expect(
+            hasUnfinishedTodo(['  ☐ explain `@done`'], todoPattern, finishedTodoPattern)
+        ).to.equal(true);
+        expect(
+            hasUnfinishedTodo(['  ☐ real status @done'], todoPattern, finishedTodoPattern)
+        ).to.equal(false);
+    });
 });
