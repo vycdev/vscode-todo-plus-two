@@ -6,6 +6,8 @@ import Config from '../../../config';
 import Consts from '../../../consts';
 import File from '../../file';
 import { getGlobMatchOptions } from '../../file-globs';
+import { getBatchSize } from '../../batch-size';
+import { flatMapFulfilled } from '../../promises';
 import { getWorkspaceExcludeGlobs } from '../../workspace-excludes';
 import { hasEmbeddedMatch } from '../regex';
 import Abstract from './abstract';
@@ -40,18 +42,17 @@ class JS extends Abstract {
 
         const follow = !!Config.getKey('followSymlinks');
 
-        const raw = _.flatten(
-            await Promise.all(
-                rootPaths.map((cwd) =>
-                    globby(this.include, {
-                        cwd,
-                        ignore: (this.exclude || []).concat(getWorkspaceExcludeGlobs(cwd)),
-                        ...getGlobMatchOptions(),
-                        absolute: true,
-                        followSymbolicLinks: follow,
-                    })
-                )
-            )
+        const raw = await flatMapFulfilled<string, string>(
+            rootPaths,
+            (cwd) =>
+                globby(this.include, {
+                    cwd,
+                    ignore: (this.exclude || []).concat(getWorkspaceExcludeGlobs(cwd)),
+                    ...getGlobMatchOptions(),
+                    absolute: true,
+                    followSymbolicLinks: follow,
+                }),
+            (cwd, error) => console.warn(`Todo+: Could not scan ${cwd}`, error)
         );
 
         // Deduplicate by realpath (defensive)
@@ -83,7 +84,7 @@ class JS extends Abstract {
 
         this.filesData = {};
 
-        const BATCH_SIZE = Math.max(1, Number(Config.get().embedded.batchSize) || 50);
+        const BATCH_SIZE = getBatchSize(Config.get().embedded.batchSize);
         const doneRef = { count: 0 };
         await this.forEachInBatches(
             filePaths,
@@ -110,7 +111,7 @@ class JS extends Abstract {
         const pending = Object.keys(this.filesData).filter((fp) => !this.filesData[fp]);
         if (!pending.length) return;
 
-        const BATCH_SIZE = Math.max(1, Number(Config.get().embedded.batchSize) || 50);
+        const BATCH_SIZE = getBatchSize(Config.get().embedded.batchSize);
         const doneRef = { count: 0 };
         await this.forEachInBatches(
             pending,

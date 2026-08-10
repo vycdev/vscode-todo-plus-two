@@ -11,6 +11,8 @@ import Folder from './folder';
 import { matchesFilesViewFilter } from './files-view-filter';
 import { mapFulfilled } from './promises';
 import { getWorkspaceExcludeGlobs, getWorkspaceExcludeRules } from './workspace-excludes';
+import { getBatchSize } from './batch-size';
+import { getUniqueRootKeys } from './file-groups';
 
 /* FILES */
 
@@ -202,7 +204,7 @@ class Files {
 
         this.filesData = {};
 
-        const BATCH_SIZE = Math.max(1, Number(Config.get().file.batchSize) || 50);
+        const BATCH_SIZE = getBatchSize(Config.get().file.batchSize);
         for (let i = 0; i < filePaths.length; i += BATCH_SIZE) {
             const batch = filePaths.slice(i, i + BATCH_SIZE);
             await mapFulfilled(
@@ -225,7 +227,7 @@ class Files {
         const pending = Object.keys(this.filesData).filter((filePath) => !this.filesData[filePath]);
         if (!pending.length) return;
 
-        const BATCH_SIZE = Math.max(1, Number(Config.get().file.batchSize) || 50);
+        const BATCH_SIZE = getBatchSize(Config.get().file.batchSize);
         for (let i = 0; i < pending.length; i += BATCH_SIZE) {
             const batch = pending.slice(i, i + BATCH_SIZE);
             await mapFulfilled(
@@ -260,16 +262,22 @@ class Files {
 
         const todos = {}, // { [ROOT] { { [FILEPATH] => [DATA] } }
             filePaths = Object.keys(this.filesData);
+        const visibleFiles = filePaths
+            .map((filePath) => ({ filePath, data: this.filesData[filePath] }))
+            .filter(({ filePath, data }) => {
+                if (!data) return false;
+                return matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()]);
+            });
+        const rootKeys = getUniqueRootKeys(
+            visibleFiles.map(({ data }) => ({ root: data.root, rootPath: data.rootPath }))
+        );
 
-        filePaths.forEach((filePath) => {
-            const data = this.filesData[filePath];
+        visibleFiles.forEach(({ filePath, data }, index) => {
+            const root = rootKeys[index];
 
-            if (!data) return;
-            if (!matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()])) return;
+            if (!todos[root]) todos[root] = {};
 
-            if (!todos[data.root]) todos[data.root] = {};
-
-            todos[data.root][filePath] = data;
+            todos[root][filePath] = data;
         });
 
         return this.simplifyTodos(todos);

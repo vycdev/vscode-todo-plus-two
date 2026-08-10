@@ -5,7 +5,7 @@ import Config from '../config';
 import Consts from '../consts';
 import Document from '../todo/document';
 import Utils from '../utils';
-import { parseStartedDate } from '../utils/timekeeping';
+import { getTimerState } from '../utils/timekeeping';
 
 /* TIMER */
 
@@ -64,10 +64,16 @@ class Timer {
 
     updateData(doc: Document) {
         const startedFormat = this.config.timekeeping.started.format,
+            timestampOffset = startedFormat.indexOf('s') >= 0 ? 0 : Date.now() % 60000,
             todo = doc.getTodosBoxStarted().find((candidate) => {
-                const startedTag = candidate['getTag'](Consts.regexes.tagStarted); //TSC
+                const state = getTimerState(
+                    candidate.text,
+                    startedFormat,
+                    new Date(),
+                    timestampOffset
+                );
 
-                return Boolean(parseStartedDate(startedTag, startedFormat));
+                return Boolean(state && state.active);
             });
 
         if (!todo) {
@@ -75,16 +81,15 @@ class Timer {
 
             this.data = {};
         } else {
-            if (this.data.text === todo.text) return false;
+            if (
+                this.data.text === todo.text &&
+                this.data.line &&
+                this.data.line.lineNumber === todo.line.lineNumber
+            ) {
+                return false;
+            }
 
-            const startedTag = todo['getTag'](Consts.regexes.tagStarted), //TSC
-                parsedStartedDate = parseStartedDate(startedTag, startedFormat),
-                startedMilliseconds =
-                    startedFormat.indexOf('s') >= 0
-                        ? parsedStartedDate.getTime()
-                        : Math.floor(parsedStartedDate.getTime() / 60000) * 60000 +
-                          (Date.now() % 60000), // Syncing the seconds with the current time if they are not provided
-                startedDate = new Date(startedMilliseconds);
+            const startedTag = todo['getTag'](Consts.regexes.tagStarted); //TSC
 
             if (
                 this.data.line &&
@@ -105,7 +110,8 @@ class Timer {
                 line: todo.line,
                 text: todo.text,
                 startedTag,
-                startedDate,
+                startedFormat,
+                timestampOffset,
             };
 
             const estTag = todo['getTag'](Consts.regexes.tagEstimate); //TSC
@@ -114,9 +120,7 @@ class Timer {
                 const estSeconds = Utils.statistics.timeTags.parseEstimate(estTag);
 
                 if (estSeconds) {
-                    this.data.estDate = new Date(
-                        this.data.startedDate.getTime() + estSeconds * 1000
-                    );
+                    this.data.estMilliseconds = estSeconds * 1000;
                 }
             }
         }
@@ -144,13 +148,21 @@ class Timer {
     }
 
     updateText() {
-        const fromDate = this.data.estDate
-                ? new Date(
-                      this.data.startedDate.getTime() +
-                          (Date.now() - this.data.startedDate.getTime())
-                  )
-                : this.data.startedDate,
-            toDate = this.data.estDate ? this.data.estDate : new Date(),
+        const state = getTimerState(
+            this.data.text,
+            this.data.startedFormat,
+            new Date(),
+            this.data.timestampOffset
+        );
+
+        if (!state) return;
+
+        const fromDate = this.data.estMilliseconds
+                ? new Date(state.elapsedMilliseconds)
+                : new Date(0),
+            toDate = this.data.estMilliseconds
+                ? new Date(this.data.estMilliseconds)
+                : new Date(state.elapsedMilliseconds),
             clock = Utils.time.diffClock(toDate, fromDate);
 
         this._setItemProp('text', clock);
@@ -160,7 +172,7 @@ class Timer {
         const condition = Consts.timer,
             visibility =
                 this.data.text &&
-                (condition === true || (condition === 'estimate' && this.data.estDate));
+                (condition === true || (condition === 'estimate' && this.data.estMilliseconds));
 
         if (this._setItemProp('visibility', visibility)) {
             this.item[visibility ? 'show' : 'hide']();
