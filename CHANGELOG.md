@@ -1,6 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
-- Corrected the README command palette documentation so it no longer claims an outdated command count and includes the dependency-opening commands.
+- Serialized embedded view file refreshes so overlapping filesystem and editor updates cannot duplicate search results.
 
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.

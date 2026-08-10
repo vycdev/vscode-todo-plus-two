@@ -3,6 +3,7 @@
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Utils from '../utils';
+import { enqueueEmbeddedRefresh } from '../utils/embedded/provider-lifecycle';
 import File from './items/file';
 import Item from './items/item';
 import Group from './items/group';
@@ -22,6 +23,7 @@ class Embedded extends View {
     filter: string | false = false;
     filePathRe = /^(?!~).*(?:\\|\/)/;
     private fileItems: Map<string, Item> = new Map();
+    private refreshFileQueue = { current: Promise.resolve() };
 
     constructor() {
         super();
@@ -119,7 +121,11 @@ class Embedded extends View {
         super.refresh();
     }
 
-    async refreshFile(filePath: string) {
+    refreshFile(filePath: string) {
+        return enqueueEmbeddedRefresh(this.refreshFileQueue, () => this.refreshFileNow(filePath));
+    }
+
+    private async refreshFileNow(filePath: string) {
         try {
             await Utils.embedded.initProvider();
 
