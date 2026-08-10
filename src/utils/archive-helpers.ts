@@ -1,5 +1,7 @@
 // Do not import Consts or Config since they require the VSCode API. Keep the
 // helper pure so tests can import it.
+import { maskInlineCode } from './todo-status';
+
 // Match project header lines only, not lines that happen to contain a colon
 // such as timestamps in todo tags. Ensure colon is followed by whitespace, end
 // of line, or an @ tag (like @done).
@@ -14,11 +16,13 @@ export function createArchiveFinishedDateGetter(
     let previousFinishedDate: number | Date = -1;
 
     return (line: string) => {
+        const statusText = maskInlineCode(line);
+
         // Global regular expressions retain their last match position. Reset it
         // so adjacent finished todos are both classified independently.
         todoFinishedRegex.lastIndex = 0;
-        if (todoFinishedRegex.test(line)) {
-            const match = line.match(tagFinishedRegex);
+        if (todoFinishedRegex.test(statusText)) {
+            const match = statusText.match(tagFinishedRegex);
             previousFinishedDate = match ? parseDate(match[1]) : -1;
         }
 
@@ -74,7 +78,8 @@ export function getRemovableEmptyLineNumbers(
 export function mergeInsertItemsIntoArchiveContent(
     content: string,
     insertItems: any[],
-    config: any
+    config: any,
+    isTodoLine: (line: string) => boolean = () => false
 ) {
     const normalizedContent = content || '';
     const lineEnding = normalizedContent.includes('\r\n') ? '\r\n' : '\n';
@@ -147,7 +152,7 @@ export function mergeInsertItemsIntoArchiveContent(
 
         for (let i = 0; i < linesArr.length; i++) {
             const line = linesArr[i];
-            const match = line.match(projectParts);
+            const match = isTodoLine(line) ? null : line.match(projectParts);
 
             if (match) {
                 const indent = match[1] || '';
@@ -275,7 +280,7 @@ export function mergeInsertItemsIntoArchiveContent(
         const textLinesRaw = text.split(/\r?\n/).map((l) => l.replace(projectTagRegex, ''));
         const projectNames = new Set((obj.projects || []).map((project: string) => project.trim()));
         const textLines = textLinesRaw.filter((line) => {
-            const match = line.match(projectParts);
+            const match = isTodoLine(line) ? null : line.match(projectParts);
 
             return !match || !projectNames.has(match[2].trim());
         });
