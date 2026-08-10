@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { hasEmbeddedMatch } from '../src/utils/embedded/regex';
+import { hasEmbeddedMatch, parseEmbeddedMatches } from '../src/utils/embedded/regex';
 
 const pkg = require('../package.json');
 
@@ -73,5 +73,19 @@ describe('Embedded todo scan pre-check', () => {
 
         expect(hasEmbeddedMatch(content, regex)).to.equal(true);
         expect(hasEmbeddedMatch('// TODO ignored', regex)).to.equal(false);
+    });
+});
+
+describe('Embedded todo line parsing', () => {
+    it('uses each match position when identical markers repeat on one line', () => {
+        const properties = pkg.contributes.configuration.properties,
+            pattern = properties['todo.embedded.regex'].default,
+            flags = properties['todo.embedded.regexFlags'].default,
+            regex = new RegExp(pattern, flags),
+            line = '// TODO same // TODO same',
+            matches = parseEmbeddedMatches(line, regex);
+
+        expect(matches).to.have.length(2);
+        expect(matches.map((match) => match.code)).to.deep.equal(['', '// TODO same ']);
     });
 });
