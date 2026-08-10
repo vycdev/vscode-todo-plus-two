@@ -14,40 +14,11 @@ import TodoDue from './todo_due';
 import TodoDone from './todo_done';
 import TodoCancelled from './todo_cancelled';
 import TodoStarted from './todo_started';
+import { DocumentLinesCache } from './document-lines-cache';
 
 /* DOCUMENTS LINES CACHE */
 
-const DocumentsLinesCache = {
-    lines: {},
-
-    get(textEditor: vscode.TextEditor, lineNr?: number) {
-        const id = textEditor['id'],
-            lines = DocumentsLinesCache.lines[id];
-
-        return lines && _.isNumber(lineNr) ? lines[lineNr] : lines;
-    },
-
-    update(textEditor: vscode.TextEditor) {
-        const id = textEditor['id'];
-
-        DocumentsLinesCache.lines[id] = textEditor.document.getText().split('\n');
-    },
-
-    didChange(doc: DocumentModule) {
-        // Check if the document actually changed
-
-        const prevLines = DocumentsLinesCache.get(doc.textEditor);
-
-        if (prevLines) {
-            const prevText = prevLines.join('\n'),
-                currText = doc.textDocument.getText();
-
-            if (prevText === currText) return false;
-        }
-
-        return true;
-    },
-};
+const DocumentsLinesCache = new DocumentLinesCache();
 
 /* DOCUMENT */
 
@@ -67,7 +38,7 @@ const Document = {
             if (doc.isSupported()) {
                 // if ( !force && !DocumentsLinesCache.didChange ( doc ) ) return; //FIXME: Decorations might get trashed, so we can't skip this work //URL: https://github.com/Microsoft/vscode/issues/50415
 
-                DocumentsLinesCache.update(doc.textEditor);
+                DocumentsLinesCache.update(doc.textDocument);
 
                 const items = Document.getItems(doc);
 
@@ -114,7 +85,7 @@ const Document = {
 
         if (!doc.isSupported()) return;
 
-        const prevLines = DocumentsLinesCache.get(doc.textEditor);
+        const prevLines = DocumentsLinesCache.get(doc.textDocument);
 
         if (prevLines && prevLines.length === doc.textDocument.lineCount) {
             lineNrs = _.uniq(lineNrs); // Multiple cursors on the same line
