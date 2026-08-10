@@ -45,7 +45,7 @@
 - Fixed Todo wrapper lookup so similarly prefixed sibling folders are not treated as part of the workspace root.
 - Fixed archiving so todo titles containing a colon are not mistaken for project headers and discarded.
 - Fixed timestamp-free `@started` tags so they no longer produce an invalid status-bar timer or an empty elapsed-time tag.
-- Kept scanning accessible workspace roots and Todo files when another path cannot be read. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/9
+- Kept scanning accessible workspace roots for Todo files and embedded todos when another path cannot be read. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/9
 - Added right-click actions to open or change the status of tasks in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/64
 - Fixed configured tag cleanup so shorter names do not corrupt longer tags containing digits or punctuation.
 - Fixed configured tag cleanup when a tag is followed by terminal punctuation.
