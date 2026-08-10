@@ -7,6 +7,7 @@ import * as Commands from '../commands';
 import Config from '../config';
 import Views from '../views';
 import { getAutomaticSymbolRule } from './automatic_symbol';
+import { registerViews } from './view-lifecycle';
 
 /* INIT */
 
@@ -76,14 +77,13 @@ const Init = {
         });
     },
 
-    views() {
-        Views.forEach((View) => {
-            vscode.window.registerTreeDataProvider(View.id, View);
-        });
-
-        vscode.workspace.onDidChangeConfiguration(() => {
-            Views.forEach((View) => View.refresh());
-        });
+    views(context: vscode.ExtensionContext) {
+        registerViews(
+            context,
+            Views,
+            (id, view) => vscode.window.registerTreeDataProvider(id, view),
+            (listener) => vscode.workspace.onDidChangeConfiguration(listener)
+        );
     },
 };
 

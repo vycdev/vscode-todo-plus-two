@@ -18,7 +18,7 @@ const Time = {
         manHoursPerDay: number = 8,
         manDaysPerWeek: number = 5
     ) {
-        const toSeconds = Time.diffSeconds(to, from),
+        const toSeconds = Time.diffSeconds(to, from, manHoursPerDay, manDaysPerWeek),
             toDate = new Date(from.getTime() + toSeconds * 1000);
 
         switch (format) {
@@ -159,7 +159,7 @@ const Time = {
             manParts.push(`${times}${token}`);
         });
 
-        return `${sign < 0 ? '-' : ''}${manParts.join(' ')}`;
+        return manParts.length ? `${sign < 0 ? '-' : ''}${manParts.join(' ')}` : '0s';
     },
 
     diffManHours(to: Date, from?: Date) {
@@ -184,7 +184,7 @@ const Time = {
             remaining -= seconds * times;
         });
 
-        return `${sign < 0 ? '-' : ''}${manParts.join('')}`;
+        return manParts.length ? `${sign < 0 ? '-' : ''}${manParts.join('')}` : '0s';
     },
 
     diffClock(to: Date, from?: Date) {
@@ -204,7 +204,12 @@ const Time = {
         return `${sign < 0 ? '-' : ''}${clockParts.length ? clockParts.join(':') : '0'}`;
     },
 
-    durationSeconds(to: string, from: Date = new Date()) {
+    durationSeconds(
+        to: string,
+        from: Date = new Date(),
+        manHoursPerDay: number = 8,
+        manDaysPerWeek: number = 5
+    ) {
         if (!_.isString(to)) return 0;
 
         const normalized = to.trim();
@@ -226,17 +231,37 @@ const Time = {
             return sign * parts.reduce((seconds, part, index) => seconds + part * units[index], 0);
         }
 
-        return Time.diffSeconds(to, from);
+        return Time.diffSeconds(to, from, manHoursPerDay, manDaysPerWeek);
     },
 
-    diffSeconds(to: Date | string | number, from: Date = new Date()) {
-        let toDate;
+    diffSeconds(
+        to: Date | string | number,
+        from: Date = new Date(),
+        manHoursPerDay: number = 8,
+        manDaysPerWeek: number = 5
+    ) {
+        let toDate,
+            durationSign = 1;
 
         if (to instanceof Date) {
             toDate = to;
         } else if (_.isNumber(to)) {
             toDate = new Date(to);
         } else {
+            const normalizedHoursPerDay = Math.max(1, Number(manHoursPerDay) || 8),
+                normalizedDaysPerWeek = Math.max(1, Number(manDaysPerWeek) || 5);
+
+            if (/^\s*-\s*\d/.test(to) && /\d+(?:\.\d+)?\s*m[dw](?=\d|\W|$)/i.test(to)) {
+                durationSign = -1;
+                to = to.replace(/^\s*-\s*/, '');
+            }
+
+            to = to.replace(/(\d+(?:\.\d+)?)\s*mw(?=\d|\W|$)/gi, (match, weeks) => {
+                return `${Number(weeks) * normalizedHoursPerDay * normalizedDaysPerWeek}h`;
+            });
+            to = to.replace(/(\d+(?:\.\d+)?)\s*md(?=\d|\W|$)/gi, (match, days) => {
+                return `${Number(days) * normalizedHoursPerDay}h`;
+            });
             to = to.replace(/ and /gi, ' ');
             // Normalize compact durations like "1h5m21s" into a tokenized form that `to-time` can parse reliably.
             // Insert a space after any time unit (ms|s|m|h|d|w|y) when followed immediately by a digit.
@@ -246,6 +271,12 @@ const Time = {
             to = to.replace(/\s+/g, ' ').trim();
 
             if (/^\s*\d+\s*$/.test(to)) return 0;
+
+            // Parse duration strings before calendar expressions so they stay relative to `from`.
+            try {
+                const milliseconds = toTime(to).milliseconds();
+                toDate = new Date(from.getTime() + milliseconds);
+            } catch (e) {}
 
             const sugar = require('sugar-date'); //TSC // Lazy import for performance
 
@@ -264,17 +295,9 @@ const Time = {
                     toDate = date;
                 }
             }
-
-            if (!toDate) {
-                // to-time
-                try {
-                    const milliseconds = toTime(to).milliseconds();
-                    toDate = new Date(from.getTime() + milliseconds);
-                } catch (e) {}
-            }
         }
 
-        return toDate ? Math.round((toDate.getTime() - from.getTime()) / 1000) : 0;
+        return toDate ? durationSign * Math.round((toDate.getTime() - from.getTime()) / 1000) : 0;
     },
 
     diffHours(to: Date, from: Date = new Date()) {
