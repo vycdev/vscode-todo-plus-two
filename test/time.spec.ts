@@ -60,6 +60,14 @@ describe('Time utilities', () => {
         expect(Time.diff(to, from, 'man-hours')).to.equal('25h15m');
     });
 
+    it('renders zero man-time durations as 0s', () => {
+        const instant = new Date('2020-01-01T00:00:00Z');
+
+        expect(Time.diff(instant, instant, 'man-hours')).to.equal('0s');
+        expect(Time.diff(instant, instant, 'man-days')).to.equal('0s');
+        expect(Time.diff(instant, instant, 'man-weeks')).to.equal('0s');
+    });
+
     it('supports man-days formatting', () => {
         const from = new Date('2020-01-01T00:00:00Z');
         const to = new Date(from.getTime() + 25 * 3600 * 1000);
@@ -79,5 +87,48 @@ describe('Time utilities', () => {
         const to = new Date(from.getTime() + 36 * 3600 * 1000);
 
         expect(Time.diff(to, from, 'man-weeks', 24, 6, 3)).to.equal('2mw');
+    });
+
+    it('parses man-time durations using the configured sizes', () => {
+        const from = new Date('2020-01-01T00:00:00Z');
+
+        expect(Time.diffSeconds('1md 2h', from, 8, 5)).to.equal(10 * 3600);
+        expect(Time.diffSeconds('2mw 1md', from, 6, 3)).to.equal(42 * 3600);
+        expect(Time.diffSeconds('1mw1md', from, 8, 5)).to.equal(48 * 3600);
+        expect(Time.durationSeconds('2mw 1md', from, 6, 3)).to.equal(42 * 3600);
+    });
+
+    it('round-trips formatted man-time durations', () => {
+        const from = new Date('2020-01-01T00:00:00Z');
+        const to = new Date(from.getTime() + 42 * 3600 * 1000);
+        const formatted = Time.diff(to, from, 'man-weeks', 24, 6, 3);
+
+        expect(Time.diffSeconds(formatted, from, 6, 3)).to.equal(42 * 3600);
+        expect(Time.diff(formatted, from, 'man-weeks', 24, 6, 3)).to.equal(formatted);
+    });
+
+    it('applies a leading sign to complete man-time durations', () => {
+        const from = new Date('2020-01-01T00:00:00Z'),
+            negativeManDay = Time.diff(
+                new Date(from.getTime() - 10 * 3600 * 1000),
+                from,
+                'man-days',
+                24,
+                8,
+                5
+            ),
+            negativeManWeek = Time.diff(
+                new Date(from.getTime() - 50 * 3600 * 1000),
+                from,
+                'man-weeks',
+                24,
+                8,
+                5
+            );
+
+        expect(negativeManDay).to.equal('-1md 2h');
+        expect(Time.diffSeconds(negativeManDay, from, 8, 5)).to.equal(-10 * 3600);
+        expect(negativeManWeek).to.equal('-1mw 1md 2h');
+        expect(Time.diffSeconds(negativeManWeek, from, 8, 5)).to.equal(-50 * 3600);
     });
 });

@@ -143,7 +143,7 @@ class Document {
     }
 
     getTodosBox() {
-        return this.getItems(TodoBox, Consts.regexes.todoBox);
+        return this.getItems(TodoBox, Consts.regexes.todo).filter((todo) => TodoBox.is(todo.text));
     }
 
     getTodoBoxAt(lineNumber: number, checkValidity?) {
@@ -155,7 +155,9 @@ class Document {
     }
 
     getTodosDone() {
-        return this.getItems(TodoDone, Consts.regexes.todoDone);
+        return this.getItems(TodoDone, Consts.regexes.todo).filter((todo) =>
+            TodoDone.is(todo.text)
+        );
     }
 
     getTodoDoneAt(lineNumber: number, checkValidity?) {
@@ -163,7 +165,9 @@ class Document {
     }
 
     getTodosCancelled() {
-        return this.getItems(TodoCancelled, Consts.regexes.todoCancelled);
+        return this.getItems(TodoCancelled, Consts.regexes.todo).filter((todo) =>
+            TodoCancelled.is(todo.text)
+        );
     }
 
     getTodoCancelledAt(lineNumber: number, checkValidity?) {
@@ -171,7 +175,9 @@ class Document {
     }
 
     getTodosFinished() {
-        return this.getItems(TodoFinished, Consts.regexes.todoFinished);
+        return this.getItems(TodoFinished, Consts.regexes.todo).filter((todo) =>
+            TodoFinished.is(todo.text)
+        );
     }
 
     getTodoFinishedAt(lineNumber: number, checkValidity?) {

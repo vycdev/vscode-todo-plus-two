@@ -7,7 +7,7 @@ import { DependencyReference, DependencyTarget, getDependencies, getIds } from '
 import { loadAvailableDocuments } from './document-loader';
 import Files from './files';
 import Folder from './folder';
-import Regex from './regex';
+import { matchesTodoStatus } from './todo-status';
 
 /* TYPES */
 
@@ -20,6 +20,7 @@ interface DependencyIndex {
 
 const DependencyIndex = {
     diagnostics: <vscode.DiagnosticCollection>undefined,
+    diagnosticsGeneration: 0,
 
     initialize(context: vscode.ExtensionContext) {
         if (DependencyIndex.diagnostics) return;
@@ -31,10 +32,14 @@ const DependencyIndex = {
 
         context.subscriptions.push(
             DependencyIndex.diagnostics,
+            { dispose: () => updateDiagnostics.cancel() },
             vscode.workspace.onDidChangeTextDocument(({ document }) => {
                 if (document.languageId === Consts.languageId) updateDiagnostics();
             }),
             vscode.workspace.onDidOpenTextDocument((document) => {
+                if (document.languageId === Consts.languageId) updateDiagnostics();
+            }),
+            vscode.workspace.onDidCloseTextDocument((document) => {
                 if (document.languageId === Consts.languageId) updateDiagnostics();
             }),
             vscode.workspace.onDidChangeWorkspaceFolders(updateDiagnostics),
@@ -81,13 +86,17 @@ const DependencyIndex = {
     },
 
     isFinished(target: DependencyTarget) {
-        return Regex.test(Consts.regexes.todoFinished, target.text);
+        return matchesTodoStatus(target.text, Consts.regexes.todoFinished);
     },
 
     async updateDiagnostics(document?: vscode.TextDocument) {
         if (!DependencyIndex.diagnostics) return;
 
+        const generation = ++DependencyIndex.diagnosticsGeneration;
         const index = await DependencyIndex.get(document);
+
+        if (generation !== DependencyIndex.diagnosticsGeneration) return;
+
         const diagnostics: { [filePath: string]: vscode.Diagnostic[] } = {};
 
         Object.keys(index.dependencies).forEach((id) => {
