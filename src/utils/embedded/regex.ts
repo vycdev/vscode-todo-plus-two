@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 import stringMatches from 'string-matches';
+import { splitLines } from '../line-splitting';
 
 export const parseEmbeddedMatches = (line: string, regex: RegExp) =>
     stringMatches(line, regex).map((match) => ({
@@ -12,7 +13,7 @@ export const parseEmbeddedMatches = (line: string, regex: RegExp) =>
 export const hasEmbeddedMatch = (content: string, regex: RegExp): boolean => {
     const matcher = new RegExp(regex.source, regex.flags);
 
-    return content.split(/\r?\n/).some((line) => {
+    return splitLines(content).some((line) => {
         matcher.lastIndex = 0;
 
         return matcher.test(_.trimStart(line));

@@ -12,6 +12,7 @@ import Consts from '../../../consts';
 import { hasConditionalExcludeGlobs, isFileIncluded } from '../../file-globs';
 import { getWorkspaceExcludeRules } from '../../workspace-excludes';
 import { getFollowingContext } from '../context';
+import { splitLines } from '../../line-splitting';
 import { parseEmbeddedMatches } from '../regex';
 
 /* ABSTRACT */
@@ -200,7 +201,7 @@ class Abstract {
 
     parseContent(filePath: string, content: string) {
         const data = [],
-            lines = content.split(/\r?\n/);
+            lines = splitLines(content);
 
         if (!content) return data;
 

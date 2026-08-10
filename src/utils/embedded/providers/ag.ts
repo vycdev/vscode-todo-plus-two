@@ -10,6 +10,7 @@ import File from '../../file';
 import Folder from '../../folder';
 import { flatMapFulfilled } from '../../promises';
 import { getWorkspaceExcludeGlobs } from '../../workspace-excludes';
+import { splitLines } from '../../line-splitting';
 import { parseEmbeddedMatches } from '../regex';
 import Abstract from './abstract';
 
@@ -106,7 +107,7 @@ class AG extends Abstract {
                         const content = await File.read(filePath);
 
                         if (content !== undefined) {
-                            contextLines[filePath] = content.split(/\r?\n/);
+                            contextLines[filePath] = splitLines(content);
                         }
                     }
                 )
