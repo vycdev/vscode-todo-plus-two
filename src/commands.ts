@@ -17,6 +17,7 @@ import { Comment, Project, Todo, TodoFinished } from './todo/items';
 import { unarchiveItemsFromSameFileContent } from './utils/unarchive-helpers';
 import { AutoCompleteLine, getAutoCompletableParentLines } from './utils/auto-complete';
 import { getTimerState } from './utils/timekeeping';
+import { HtmlExportLine, renderTodoHtml } from './utils/html-export';
 import {
     DependencyReference,
     DependencyTarget,
@@ -265,6 +266,77 @@ async function openEmbedded() {
     if (!content) return vscode.window.showInformationMessage('No embedded todos found');
 
     Utils.editor.open(content);
+}
+
+async function exportHtml() {
+    const textEditor = vscode.window.activeTextEditor;
+
+    if (!textEditor) {
+        return vscode.window.showInformationMessage('This command works only in Todo files');
+    }
+
+    const doc = new Document(textEditor);
+
+    if (!doc.isSupported()) {
+        return vscode.window.showInformationMessage('This command works only in Todo files');
+    }
+
+    const textDocument = textEditor.document,
+        lines = _.range(textDocument.lineCount).reduce((result: HtmlExportLine[], lineNumber) => {
+            const raw = textDocument.lineAt(lineNumber).text;
+
+            if (!raw.trim()) return result;
+
+            const todo = doc.getTodoAt(lineNumber, true) as Todo,
+                project = doc.getProjectAt(lineNumber, true) as Project,
+                level = Utils.ast.getLevel(textDocument, raw);
+
+            if (todo) {
+                const status = todo.getStatus(),
+                    text = raw.replace(Consts.regexes.todoSymbol, '').trim();
+
+                result.push({
+                    kind: 'todo',
+                    level,
+                    text,
+                    status: status.done ? 'done' : status.cancelled ? 'cancelled' : 'pending',
+                });
+            } else if (project) {
+                const match = raw.match(Consts.regexes.projectParts),
+                    title = match ? match[2].trim() : raw.trim(),
+                    tags = match && match[3] ? match[3].trim() : '';
+
+                result.push({
+                    kind: 'project',
+                    level,
+                    text: tags ? `${title} ${tags}` : title,
+                });
+            } else {
+                result.push({ kind: 'comment', level, text: raw.trim() });
+            }
+
+            return result;
+        }, []),
+        sourceName = path.basename(textDocument.fileName) || 'Todo',
+        sourceExtension = path.extname(sourceName),
+        exportName = `${path.basename(sourceName, sourceExtension) || 'Todo'}.html`,
+        defaultUri = textDocument.isUntitled
+            ? undefined
+            : vscode.Uri.file(path.join(path.dirname(textDocument.fileName), exportName)),
+        destination = await vscode.window.showSaveDialog({
+            defaultUri,
+            filters: { HTML: ['html'] },
+            saveLabel: 'Export',
+        });
+
+    if (!destination) return;
+
+    try {
+        await Utils.file.write(destination.fsPath, renderTodoHtml(sourceName, lines));
+        return vscode.window.showInformationMessage(`Exported ${sourceName} to HTML`);
+    } catch (error) {
+        return vscode.window.showErrorMessage(`Unable to export HTML: ${error.message || error}`);
+    }
 }
 
 function toggleBox() {
@@ -775,6 +847,7 @@ function viewEmbeddedShowActiveFile() {
 export {
     open,
     openEmbedded,
+    exportHtml,
     toggleBox,
     toggleDone,
     toggleCancelled,
