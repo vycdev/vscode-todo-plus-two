@@ -8,6 +8,7 @@ import CompletionProvider from './providers/completion';
 import DependencyLinkProvider from './providers/dependency_links';
 import FoldingProvider from './providers/folding';
 import { FileLinkProvider } from './providers/file_links';
+import EmbeddedDiagnostics from './providers/embedded_diagnostics';
 import SymbolsProvider from './providers/symbols';
 import DocumentDecorator from './todo/decorators/document';
 import ChangesDecorator from './todo/decorators/changes';
@@ -53,6 +54,7 @@ const activate = function (context: vscode.ExtensionContext) {
     Utils.context = context;
     Utils.folder.initRootsRe();
     DependencyIndex.initialize(context);
+    new EmbeddedDiagnostics(Utils.embedded).initialize(context);
     Utils.init.language(context);
     Utils.statistics.tokens.updateDisabledAll();
 

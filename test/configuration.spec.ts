@@ -42,4 +42,17 @@ describe('Todo configuration schema', () => {
         expect(properties['todo.embedded.include'].items).to.deep.equal({ type: 'string' });
         expect(properties['todo.embedded.exclude'].items).to.deep.equal({ type: 'string' });
     });
+
+    it('accepts embedded Problems view severity mappings', () => {
+        const problems = pkg.contributes.configuration.properties['todo.embedded.problems'];
+
+        expect(problems.type).to.equal('object');
+        expect(problems.default).to.deep.equal({});
+        expect(problems.additionalProperties.enum).to.deep.equal([
+            'error',
+            'warning',
+            'info',
+            'hint',
+        ]);
+    });
 });
