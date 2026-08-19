@@ -419,6 +419,23 @@ describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
         );
     });
 
+    it('uses the source CRLF line ending when creating a new archive file', () => {
+        const insertItem = {
+            obj: {
+                text: '  <o> TASK1 @done(2025-11-21 11:01:14 pm)',
+                projects: ['PROJECT1'],
+            },
+            lineNumber: 1,
+        };
+
+        const merged = Archive.mergeInsertItemsIntoArchiveContent('', [insertItem], {
+            indentation: '  ',
+            lineEnding: '\r\n',
+        });
+
+        expect(merged).to.equal('PROJECT1:\r\n  <o> TASK1 @done(2025-11-21 11:01:14 pm)');
+    });
+
     it('inserts child project items under the existing project header after previously adding parent project items', () => {
         const existing = [
             'PROJECT1:',
