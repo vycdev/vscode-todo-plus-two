@@ -62,6 +62,7 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
+- Fixed embedded todo type icons so changes to `todo.colors.types` apply without restarting VS Code.
 
 ### Version 5.2.0
 
