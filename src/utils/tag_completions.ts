@@ -7,13 +7,29 @@ export interface TagArgumentPrefix {
 
 const getTagName = (tag: string): string => tag.replace(/\([^)]*\)$/, '');
 
+const isInsideInlineCode = (line: string, character: number): boolean => {
+    const markerRuns = /`+/g,
+        prefix = line.slice(0, character);
+    let delimiterLength = 0;
+    let marker: RegExpExecArray | null;
+
+    while ((marker = markerRuns.exec(prefix))) {
+        const runLength = marker[0].length;
+
+        if (!delimiterLength) delimiterLength = runLength;
+        else if (runLength === delimiterLength) delimiterLength = 0;
+    }
+
+    return delimiterLength > 0;
+};
+
 export const getTagArgumentPrefix = (
     line: string,
     character: number
 ): TagArgumentPrefix | undefined => {
     const beforeCursor = line.substring(0, character);
 
-    if ((beforeCursor.match(/`/g) || []).length % 2) return;
+    if (isInsideInlineCode(line, character)) return;
 
     const match = beforeCursor.match(/(?:^|[^a-zA-Z0-9`])(@[^\s*~(`]+\([^`)]*)$/);
 
