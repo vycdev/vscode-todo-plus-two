@@ -11,6 +11,7 @@
         "onLanguage:todo",
         "onView:todo.views.1files",
         "onView:todo.views.2embedded",
+        "onView:todo.views.3due",
         "onCommand:todo.open",
         "onCommand:todo.openEmbedded",
         "onCommand:todo.toggleBox",
@@ -86,7 +87,7 @@
             {
                 "language": "todo",
                 "scopeName": "text.todo",
-                "path": "./syntax/grammar.tmLanguage"
+                "path": "./syntax/grammar.tmLanguage.json"
             }
         ],
         "configurationDefaults": {
@@ -303,6 +304,14 @@
                         "#000000"
                     ]
                 },
+                "todo.colors.tags.lineBackground": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Whole-line background colors for special tags, matched by todo.tags.names index. The first colored tag on a line takes precedence",
+                    "default": []
+                },
                 "todo.colors.types": {
                     "type": "object",
                     "description": "Object mapping todo types to their color",
@@ -385,6 +394,9 @@
                                 },
                                 "foreground": {
                                     "type": "array"
+                                },
+                                "lineBackground": {
+                                    "type": "array"
                                 }
                             }
                         },
@@ -452,6 +464,9 @@
                                     "type": "array"
                                 },
                                 "foreground": {
+                                    "type": "array"
+                                },
+                                "lineBackground": {
                                     "type": "array"
                                 }
                             }
@@ -737,6 +752,20 @@
                     "type": "string",
                     "description": "Regex flags to use",
                     "default": "gi"
+                },
+                "todo.embedded.problems": {
+                    "type": "object",
+                    "description": "Map embedded todo markers to severities in the Problems view",
+                    "default": {},
+                    "additionalProperties": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "warning",
+                            "info",
+                            "hint"
+                        ]
+                    }
                 },
                 "todo.embedded.include": {
                     "type": "array",
@@ -1205,6 +1234,10 @@
                 {
                     "id": "todo.views.2embedded",
                     "name": "Embedded"
+                },
+                {
+                    "id": "todo.views.3due",
+                    "name": "Due"
                 }
             ]
         },
@@ -1466,27 +1499,27 @@
                 },
                 {
                     "command": "todo.viewRevealTodo",
-                    "when": "view == todo.views.1files && viewItem == todo",
+                    "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
                     "group": "navigation@1"
                 },
                 {
                     "command": "todo.viewToggleBox",
-                    "when": "view == todo.views.1files && viewItem == todo",
+                    "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
                     "group": "1_status@1"
                 },
                 {
                     "command": "todo.viewToggleDone",
-                    "when": "view == todo.views.1files && viewItem == todo",
+                    "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
                     "group": "1_status@2"
                 },
                 {
                     "command": "todo.viewToggleCancelled",
-                    "when": "view == todo.views.1files && viewItem == todo",
+                    "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
                     "group": "1_status@3"
                 },
                 {
                     "command": "todo.viewToggleStart",
-                    "when": "view == todo.views.1files && viewItem == todo",
+                    "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
                     "group": "1_status@4"
                 }
             ]

@@ -8,6 +8,7 @@ import CompletionProvider from './providers/completion';
 import DependencyLinkProvider from './providers/dependency_links';
 import FoldingProvider from './providers/folding';
 import { FileLinkProvider } from './providers/file_links';
+import EmbeddedDiagnostics from './providers/embedded_diagnostics';
 import SymbolsProvider from './providers/symbols';
 import DocumentDecorator from './todo/decorators/document';
 import ChangesDecorator from './todo/decorators/changes';
@@ -15,6 +16,7 @@ import Utils from './utils';
 import DependencyIndex from './utils/dependency_index';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
+import { Due } from './views/due';
 
 /* ACTIVATE */
 
@@ -53,10 +55,29 @@ const activate = function (context: vscode.ExtensionContext) {
     Utils.context = context;
     Utils.folder.initRootsRe();
     DependencyIndex.initialize(context);
+    new EmbeddedDiagnostics(Utils.embedded).initialize(context);
     Utils.init.language(context);
     Utils.statistics.tokens.updateDisabledAll();
 
     const embeddedRefreshTimers = {};
+    let dueRefreshTimer;
+    const dueRefresh = () => {
+        clearTimeout(dueRefreshTimer);
+        dueRefreshTimer = setTimeout(() => Due.refresh(), 250);
+    };
+    const refreshDueDocument = (document: vscode.TextDocument) => {
+        if (document.uri.scheme !== 'file') return;
+
+        const filePath = document.uri.fsPath.replace(/\\/g, '/'),
+            filesData = Utils.files.filesData;
+
+        if (
+            document.languageId === Consts.languageId ||
+            (filesData && filesData.hasOwnProperty(filePath))
+        ) {
+            dueRefresh();
+        }
+    };
     const refreshEmbeddedDocument = (document: vscode.TextDocument) => {
         if (document.uri.scheme !== 'file') return;
 
@@ -109,6 +130,7 @@ const activate = function (context: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeTextDocument(({ document }) =>
             refreshEmbeddedDocument(document)
         ),
+        vscode.workspace.onDidChangeTextDocument(({ document }) => refreshDueDocument(document)),
         vscode.workspace.onDidChangeWorkspaceFolders(
             () => Utils.embedded.provider && Utils.embedded.provider.unwatchPaths()
         ),
