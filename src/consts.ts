@@ -3,7 +3,11 @@
 import * as _ from 'lodash';
 import Config from './config';
 import { tagEstimateRegex } from './utils/estimate';
-import { createTagRegexes } from './utils/tag-regexes';
+import {
+    capturedReservedTagArgumentOrBoundary,
+    createTagRegexes,
+    reservedTagArgumentOrBoundary,
+} from './utils/tag-regexes';
 import { formattingRegexes } from './utils/formatting';
 
 /* CONSTS */
@@ -88,13 +92,17 @@ const Consts = {
             todoBox: new RegExp(
                 '^[^\\S\\n]*((?!--|––|——)(?:' +
                     boxPattern +
-                    ')\\s(?![^\\n]*[^a-zA-Z0-9]@(?:done|cancelled)(?:(?:\\([^)]*\\))|(?![a-zA-Z])))[^\\n]*)',
+                    ')\\s(?![^\\n]*[^a-zA-Z0-9]@(?:done|cancelled)' +
+                    reservedTagArgumentOrBoundary +
+                    ')[^\\n]*)',
                 'gm'
             ),
             todoBoxStarted: new RegExp(
                 '^[^\\S\\n]*((?!--|––|——)(?:' +
                     boxPattern +
-                    ')\\s(?=[^\\n]*[^a-zA-Z0-9]@started(?:(?:\\([^)]*\\))|(?![a-zA-Z])))[^\\n]*)',
+                    ')\\s(?=[^\\n]*[^a-zA-Z0-9]@started' +
+                    reservedTagArgumentOrBoundary +
+                    ')[^\\n]*)',
                 'gm'
             ),
             todoDone: new RegExp(
@@ -102,7 +110,9 @@ const Consts = {
                     donePattern +
                     ')\\s[^\\n]*)|(?:(?:' +
                     boxPattern +
-                    ')\\s[^\\n]*[^a-zA-Z0-9]@done(?:(?:\\([^)]*\\))|(?![a-zA-Z]))[^\\n]*)))',
+                    ')\\s[^\\n]*[^a-zA-Z0-9]@done' +
+                    reservedTagArgumentOrBoundary +
+                    '[^\\n]*)))',
                 'gm'
             ),
             todoCancelled: new RegExp(
@@ -110,7 +120,9 @@ const Consts = {
                     cancelledPattern +
                     ')\\s[^\\n]*)|(?:(?:' +
                     boxPattern +
-                    ')\\s[^\\n]*[^a-zA-Z0-9]@cancelled(?:(?:\\([^)]*\\))|(?![a-zA-Z]))[^\\n]*)))',
+                    ')\\s[^\\n]*[^a-zA-Z0-9]@cancelled' +
+                    reservedTagArgumentOrBoundary +
+                    '[^\\n]*)))',
                 'gm'
             ),
             todoFinished: new RegExp(
@@ -120,7 +132,9 @@ const Consts = {
                     cancelledPattern +
                     ')\\s[^\\n]*)|(?:(?:' +
                     boxPattern +
-                    ')\\s[^\\n]*[^a-zA-Z0-9]@(?:done|cancelled)(?:(?:\\([^)]*\\))|(?![a-zA-Z]))[^\\n]*)))',
+                    ')\\s[^\\n]*[^a-zA-Z0-9]@(?:done|cancelled)' +
+                    reservedTagArgumentOrBoundary +
+                    '[^\\n]*)))',
                 'gm'
             ),
             todoEmbedded: embeddedRegex ? new RegExp(embeddedRegex, embeddedFlags) : /(?=a)b/g,
@@ -149,11 +163,19 @@ const Consts = {
             tagSpecial: tagRegexes.tagSpecial,
             tagSpecialNormal: tagRegexes.tagSpecialNormal,
             tagNormal: tagRegexes.tagNormal,
-            tagCreated: /(?:^|[^a-zA-Z0-9])@created(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
+            tagCreated: new RegExp(
+                `(?:^|[^a-zA-Z0-9])@created${capturedReservedTagArgumentOrBoundary}`
+            ),
             tagDue: /(?:^|[^a-zA-Z0-9])(@due\([^)]*\))/gim,
-            tagStarted: /(?:^|[^a-zA-Z0-9])@started(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
-            tagFinished: /(?:^|[^a-zA-Z0-9])@(?:done|cancelled)(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
-            tagElapsed: /(?:^|[^a-zA-Z0-9])@(?:lasted|wasted)(?:(?:\(([^)]*)\))|(?![a-zA-Z]))/,
+            tagStarted: new RegExp(
+                `(?:^|[^a-zA-Z0-9])@started${capturedReservedTagArgumentOrBoundary}`
+            ),
+            tagFinished: new RegExp(
+                `(?:^|[^a-zA-Z0-9])@(?:done|cancelled)${capturedReservedTagArgumentOrBoundary}`
+            ),
+            tagElapsed: new RegExp(
+                `(?:^|[^a-zA-Z0-9])@(?:lasted|wasted)${capturedReservedTagArgumentOrBoundary}`
+            ),
             tagEstimate: tagEstimateRegex,
             tagId: /@id\([^\r\n)]*\)/,
             tagDependency: /@depends\([^\r\n)]*\)/,
