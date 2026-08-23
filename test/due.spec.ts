@@ -18,4 +18,8 @@ describe('Due utilities', () => {
     it('supports the existing short timestamp format', () => {
         expect(Due.status('26-07-02 10:30', today, 7)).to.equal('today');
     });
+
+    it('rejects impossible formatted calendar dates', () => {
+        expect(Due.parse('2026-02-30')).to.equal(undefined);
+    });
 });

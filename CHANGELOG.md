@@ -1,6 +1,12 @@
 ### Version 5.3.0 (Unreleased)
 
+- Preserved CRLF line endings when creating new archive files.
+- Added a command to export the active Todo file as a standalone HTML document, preserving task hierarchy, status, comments, and inline formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/85
+- Fixed the statistics status bar to apply `todo.statistics.statusbar.alignment` and `todo.statistics.statusbar.priority` changes without requiring an extension reload.
+- Added opt-in Problems view diagnostics for embedded markers through `todo.embedded.problems`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/60
 - Fixed fulfilled promise batches so errors in optional rejection observers do not discard successful results.
+- Fixed dependency indexing so `@id` and `@depends` references in non-task comment lines are ignored.
+- Added a Due sidebar view that groups unfinished `@due(...)` tasks by date and expands today's group. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/68
 - Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
@@ -31,6 +37,7 @@
 - Displayed `todo.file.defaultContent` as a multiline text area in VS Code's Settings editor. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/51
 - Applied enabled workspace `files.exclude` globs when discovering Todo files and embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/67
 - Improved tag completion to suggest unique tag names first and previously used argument values after typing an opening parenthesis. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/80
+- Fixed smart tag completion so normal tags beginning with reserved or configured tag names remain suggested.
 - Fixed tag argument completions being offered inside inline code spans.
 - Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`, while avoiding blank lines and consecutive embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/79
 - Added opt-in automatic parent completion with `todo.autoCompleteParents`, cascading upwards when `Todo: Toggle Done` completes all nested todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/63
@@ -63,6 +70,8 @@
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
 - Fixed embedded todo type icons so changes to `todo.colors.types` apply without restarting VS Code.
+- Added optional whole-line background colors for configured special tags with `todo.colors.tags.lineBackground`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/93
+- Added TextMate syntax scopes so Todo projects, standard statuses, tags, and formatting are visible in the editor minimap. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/70
 
 ### Version 5.2.0
 
