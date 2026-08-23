@@ -8,7 +8,7 @@ const loadDependencyIndex = (vscodeStub) => {
 
     NodeModule._load = function (request: string, parent, isMain: boolean) {
         if (request === 'vscode') return vscodeStub;
-        if (parent && parent.filename.endsWith('/dependency_index.ts')) {
+        if (parent && parent.filename.replace(/\\/g, '/').endsWith('/dependency_index.ts')) {
             if (request === '../consts') {
                 return { default: { languageId: 'todo', regexes: { todo: /^\s*☐/ } } };
             }
