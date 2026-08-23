@@ -67,4 +67,17 @@ describe('Tag completion utilities', () => {
             end: 16,
         });
     });
+
+    it('ignores tag argument prefixes inside multi-backtick code', () => {
+        const inlineCode = '``Task `example` @note(con``';
+        const afterInlineCode = '``Task `example` done`` @note(con';
+
+        expect(getTagArgumentPrefix(inlineCode, inlineCode.length - 2)).to.equal(undefined);
+        expect(getTagArgumentPrefix(afterInlineCode, afterInlineCode.length)).to.deep.equal({
+            text: '@note(con',
+            name: '@note',
+            start: 24,
+            end: 33,
+        });
+    });
 });
