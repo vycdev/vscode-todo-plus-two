@@ -738,6 +738,20 @@
                     "description": "Regex flags to use",
                     "default": "gi"
                 },
+                "todo.embedded.problems": {
+                    "type": "object",
+                    "description": "Map embedded todo markers to severities in the Problems view",
+                    "default": {},
+                    "additionalProperties": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "warning",
+                            "info",
+                            "hint"
+                        ]
+                    }
+                },
                 "todo.embedded.include": {
                     "type": "array",
                     "items": {

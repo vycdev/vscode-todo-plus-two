@@ -172,6 +172,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.statistics.statusbar.tooltip": "[pending] Pending - [done] Done - [cancelled] Cancelled", // Template used for rendering the tooltip
   "todo.embedded.regex": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *\\{%-? *endcomment *-?%\\}| *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|((?: +[^\\n@]*?)(?= *(?:\\{%-? *endcomment *-?%\\}|-->|\\*/|!}|--}}|}}|[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))", // Regex used for finding embedded todos, requires double escaping
   "todo.embedded.regexFlags": "gi", // Regex flags to use
+  "todo.embedded.problems": {"TODO": "warning", "FIXME": "error"}, // Map embedded markers to Problems view severities (disabled by default)
   "todo.embedded.include": ["**/*"], // Globs to use for including files
   "todo.embedded.exclude": ["**/.*", "**/.*/**", ...], // Globs to use for excluding files
   "todo.embedded.batchSize": 50, // Number of files to process in each embedded-todo discovery batch
@@ -203,6 +204,8 @@ An actual regex will be generated from the value of the `todo.embedded.regex` se
 Dates are formatted using [moment](https://momentjs.com/docs/#/displaying/format).
 
 `Todo: Toggle Timer` pauses and resumes a started task by appending `@toggle(...)` timestamps. Paused time is excluded from the status bar timer and from the final `@lasted(...)` or `@wasted(...)` duration.
+
+To contribute embedded markers to VS Code's Problems view, map each marker to an `error`, `warning`, `info`, or `hint` severity with `todo.embedded.problems`. Only configured markers are reported. Diagnostics are populated when Todo+2 is active, for example after opening the Embedded Todos view.
 
 ## Embedded Todos Providers
 
