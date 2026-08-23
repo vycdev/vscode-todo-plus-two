@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import * as path from 'path';
 
 const withView = (colors, run) => {
     const NodeModule = require('module'),
@@ -61,8 +62,8 @@ describe('View type icons', () => {
 
             expect(secondIcon).not.to.equal(firstIcon);
             expect(writtenPaths).to.deep.equal([
-                '/storage/type-color-hash-#ff0000.svg',
-                '/storage/type-color-hash-#0000ff.svg',
+                path.join('/storage', 'type-color-hash-#ff0000.svg'),
+                path.join('/storage', 'type-color-hash-#0000ff.svg'),
             ]);
         });
     });
