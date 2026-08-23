@@ -4,6 +4,7 @@ import { splitLines } from '../line-splitting';
 
 export const parseEmbeddedMatches = (line: string, regex: RegExp) =>
     stringMatches(line, regex).map((match) => ({
+        column: match.index,
         todo: match[0],
         type: match[1].toUpperCase(),
         message: match[2],
