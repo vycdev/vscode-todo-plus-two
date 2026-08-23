@@ -64,6 +64,7 @@
 - Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
+- Added optional whole-line background colors for configured special tags with `todo.colors.tags.lineBackground`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/93
 - Added TextMate syntax scopes so Todo projects, standard statuses, tags, and formatting are visible in the editor minimap. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/70
 
 ### Version 5.2.0

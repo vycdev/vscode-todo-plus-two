@@ -39,6 +39,7 @@ const Consts = {
                 tags: {
                     background: _.get(config, `${root}.tags.background`, []),
                     foreground: _.get(config, `${root}.tags.foreground`, []),
+                    lineBackground: _.get(config, `${root}.tags.lineBackground`, []),
                 },
                 types: _.transform(
                     _.get(config, `${root}.types`, {}),
