@@ -33,6 +33,9 @@ describe('Todo TextMate grammar', () => {
         expect(scopeForLine('☐ done wins @done @cancelled')).to.equal('markup.inserted.todo');
         expect(scopeForLine('✘ cancelled')).to.equal('markup.deleted.todo');
         expect(scopeForLine('☐ pending @donefoo')).to.equal('markup.list.unchecked.todo');
+        expect(scopeForLine('☐ pending @done2')).to.equal('markup.list.unchecked.todo');
+        expect(scopeForLine('☐ pending @cancelled2')).to.equal('markup.list.unchecked.todo');
+        expect(scopeForLine('☐ pending @started2')).to.equal('markup.list.unchecked.todo');
         expect(scopeForLine('☐ explain `@done`')).to.equal('markup.list.unchecked.todo');
         expect(scopeForLine('☐ explain `@cancelled`')).to.equal('markup.list.unchecked.todo');
         expect(scopeForLine('☐ explain `@started`')).to.equal('markup.list.unchecked.todo');
