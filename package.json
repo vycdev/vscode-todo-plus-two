@@ -86,7 +86,7 @@
             {
                 "language": "todo",
                 "scopeName": "text.todo",
-                "path": "./syntax/grammar.tmLanguage"
+                "path": "./syntax/grammar.tmLanguage.json"
             }
         ],
         "configurationDefaults": {
