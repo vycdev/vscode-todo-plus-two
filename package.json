@@ -11,6 +11,7 @@
         "onLanguage:todo",
         "onView:todo.views.1files",
         "onView:todo.views.2embedded",
+        "onView:todo.views.3due",
         "onCommand:todo.open",
         "onCommand:todo.openEmbedded",
         "onCommand:todo.toggleBox",
@@ -1233,6 +1234,10 @@
                 {
                     "id": "todo.views.2embedded",
                     "name": "Embedded"
+                },
+                {
+                    "id": "todo.views.3due",
+                    "name": "Due"
                 }
             ]
         },
@@ -1494,27 +1499,27 @@
                 },
                 {
                     "command": "todo.viewRevealTodo",
-                    "when": "view == todo.views.1files && viewItem == todo",
+                    "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
                     "group": "navigation@1"
                 },
                 {
                     "command": "todo.viewToggleBox",
-                    "when": "view == todo.views.1files && viewItem == todo",
+                    "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
                     "group": "1_status@1"
                 },
                 {
                     "command": "todo.viewToggleDone",
-                    "when": "view == todo.views.1files && viewItem == todo",
+                    "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
                     "group": "1_status@2"
                 },
                 {
                     "command": "todo.viewToggleCancelled",
-                    "when": "view == todo.views.1files && viewItem == todo",
+                    "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
                     "group": "1_status@3"
                 },
                 {
                     "command": "todo.viewToggleStart",
-                    "when": "view == todo.views.1files && viewItem == todo",
+                    "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
                     "group": "1_status@4"
                 }
             ]
