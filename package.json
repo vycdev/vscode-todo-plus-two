@@ -21,6 +21,7 @@
         "onCommand:todo.toggleTimer",
         "onCommand:todo.toggleStatusBarTimer",
         "onCommand:todo.archive",
+        "onCommand:todo.exportHtml",
         "onCommand:todo.openDependency",
         "onCommand:todo.openDependencyAtCursor",
         "onCommand:todo.addDependency",
@@ -976,6 +977,10 @@
             {
                 "command": "todo.unarchive",
                 "title": "Todo: Unarchive"
+            },
+            {
+                "command": "todo.exportHtml",
+                "title": "Todo: Export to HTML"
             },
             {
                 "command": "todo.openDependency",
