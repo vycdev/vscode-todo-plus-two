@@ -10,6 +10,7 @@ import Line from './line';
 
 let DECORATIONS_SIGNATURE: string;
 let SPECIAL_TAGS: vscode.TextEditorDecorationType[] = [];
+let SPECIAL_TAG_LINES: { index: number; type: vscode.TextEditorDecorationType }[] = [];
 let TAG: vscode.TextEditorDecorationType;
 let ID: vscode.TextEditorDecorationType;
 let DEPENDENCY: vscode.TextEditorDecorationType;
@@ -46,10 +47,22 @@ function ensureDecorationTypes() {
     const signature = getDecorationSignature();
 
     if (signature === DECORATIONS_SIGNATURE) {
-        return { special: SPECIAL_TAGS, tag: TAG, id: ID, dependency: DEPENDENCY };
+        return {
+            special: SPECIAL_TAGS,
+            lines: SPECIAL_TAG_LINES,
+            tag: TAG,
+            id: ID,
+            dependency: DEPENDENCY,
+        };
     }
 
-    disposeDecorationTypes([...SPECIAL_TAGS, TAG, ID, DEPENDENCY]);
+    disposeDecorationTypes([
+        ...SPECIAL_TAGS,
+        ...SPECIAL_TAG_LINES.map(({ type }) => type),
+        TAG,
+        ID,
+        DEPENDENCY,
+    ]);
 
     SPECIAL_TAGS = Consts.tags.names.map((name, index) => {
         const background = getTagPaletteColor(Consts.colors.tags.background, index);
@@ -78,6 +91,32 @@ function ensureDecorationTypes() {
                     Consts.colors.light.tag ||
                     Consts.colors.tag,
             },
+        });
+    });
+
+    SPECIAL_TAG_LINES = [];
+    Consts.tags.names.forEach((name, index) => {
+        const backgroundColor = getTagPaletteColor(Consts.colors.tags.lineBackground, index);
+
+        if (!backgroundColor) return;
+
+        SPECIAL_TAG_LINES.push({
+            index,
+            type: vscode.window.createTextEditorDecorationType({
+                backgroundColor,
+                isWholeLine: true,
+                rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+                dark: {
+                    backgroundColor:
+                        getTagPaletteColor(Consts.colors.dark.tags.lineBackground, index) ||
+                        backgroundColor,
+                },
+                light: {
+                    backgroundColor:
+                        getTagPaletteColor(Consts.colors.light.tags.lineBackground, index) ||
+                        backgroundColor,
+                },
+            }),
         });
     });
 
@@ -117,7 +156,13 @@ function ensureDecorationTypes() {
 
     DECORATIONS_SIGNATURE = signature;
 
-    return { special: SPECIAL_TAGS, tag: TAG, id: ID, dependency: DEPENDENCY };
+    return {
+        special: SPECIAL_TAGS,
+        lines: SPECIAL_TAG_LINES,
+        tag: TAG,
+        id: ID,
+        dependency: DEPENDENCY,
+    };
 }
 
 /* TAG */
@@ -128,7 +173,13 @@ class Tag extends Line {
 
         const types = ensureDecorationTypes();
 
-        this.TYPES = [...types.special, types.id, types.dependency, types.tag];
+        this.TYPES = [
+            ...types.lines.map(({ type }) => type),
+            ...types.special,
+            types.id,
+            types.dependency,
+            types.tag,
+        ];
     }
 
     getItemRanges(tag: TagItem) {
@@ -141,6 +192,31 @@ class Tag extends Line {
             normal = tag.isNormal() && !id && !dependency && tag.range;
 
         return [...special, id, dependency, normal];
+    }
+
+    getDecorations(tags: TagItem[]) {
+        const types = ensureDecorationTypes(),
+            lineRanges = types.lines.map(() => []),
+            decoratedLines = {};
+
+        tags.forEach((tag) => {
+            if (decoratedLines[tag.lineNumber]) return;
+
+            const lineTypeIndex = types.lines.findIndex(({ index }) => !!tag.match[index + 1]);
+
+            if (lineTypeIndex < 0) return;
+
+            lineRanges[lineTypeIndex].push(tag.range);
+            decoratedLines[tag.lineNumber] = true;
+        });
+
+        const tagRanges = super.getItemsRanges(tags),
+            ranges = [...lineRanges, ...tagRanges];
+
+        return this.TYPES.map((type, index) => ({
+            type,
+            ranges: ranges[index] || [],
+        }));
     }
 }
 
