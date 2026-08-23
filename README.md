@@ -48,6 +48,7 @@ It adds the following commonly used commands to the command palette:
 'Todo: Toggle Status Bar Timer'; // Toggle the timer in the status bar
 'Todo: Archive'; // Archive finished todos
 'Todo: Unarchive'; // Restore an archived task to its project list (when todo.archive.type is InSameFile)
+'Todo: Export to HTML'; // Export the active Todo file as a standalone HTML document
 'Todo: Open Dependency'; // Search task IDs and open a referenced task
 'Todo: Open Dependency at Cursor'; // Open the dependency under the cursor
 'Todo: Add Dependency'; // Search task IDs and add one to the selected todo
@@ -125,6 +126,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.colors.due.later": "#a6e22e", // @due tag color for future tasks
   "todo.colors.tags.background": ["#e54545", "#e59f45", "#e5d145", "#ae81ff"], // Special tags' background colors
   "todo.colors.tags.foreground": ["#000000", "#000000", "#000000", "#000000"], // Special tags' foreground colors
+  "todo.colors.tags.lineBackground": [], // Whole-line background colors for special tags, matched by todo.tags.names index; the first colored tag wins (include "started" in todo.tags.names to highlight @started)
   "todo.colors.types": { "TODO": "#ffcc00", "FIXME": "#cc0000" ... }, // Object mapping todo types to their color
   "todo.decorations.done.strikethrough": true, // Render done todos with strikethrough
   "todo.colors.dark": { /* "done": "white", ... */ }, // Colors for dark themes
@@ -172,6 +174,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.statistics.statusbar.tooltip": "[pending] Pending - [done] Done - [cancelled] Cancelled", // Template used for rendering the tooltip
   "todo.embedded.regex": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *\\{%-? *endcomment *-?%\\}| *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|((?: +[^\\n@]*?)(?= *(?:\\{%-? *endcomment *-?%\\}|-->|\\*/|!}|--}}|}}|[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))", // Regex used for finding embedded todos, requires double escaping
   "todo.embedded.regexFlags": "gi", // Regex flags to use
+  "todo.embedded.problems": {"TODO": "warning", "FIXME": "error"}, // Map embedded markers to Problems view severities (disabled by default)
   "todo.embedded.include": ["**/*"], // Globs to use for including files
   "todo.embedded.exclude": ["**/.*", "**/.*/**", ...], // Globs to use for excluding files
   "todo.embedded.batchSize": 50, // Number of files to process in each embedded-todo discovery batch
@@ -203,6 +206,8 @@ An actual regex will be generated from the value of the `todo.embedded.regex` se
 Dates are formatted using [moment](https://momentjs.com/docs/#/displaying/format).
 
 `Todo: Toggle Timer` pauses and resumes a started task by appending `@toggle(...)` timestamps. Paused time is excluded from the status bar timer and from the final `@lasted(...)` or `@wasted(...)` duration.
+
+To contribute embedded markers to VS Code's Problems view, map each marker to an `error`, `warning`, `info`, or `hint` severity with `todo.embedded.problems`. Only configured markers are reported. Diagnostics are populated when Todo+2 is active, for example after opening the Embedded Todos view.
 
 ## Embedded Todos Providers
 

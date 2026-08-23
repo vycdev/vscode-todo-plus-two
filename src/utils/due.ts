@@ -33,6 +33,11 @@ const Due = {
 
         if (parsed.isValid()) return parsed.toDate();
 
+        const formattedDateRe =
+            /^(?:\d{4}[-/]\d{2}[-/]\d{2}|\d{2}-\d{2}-\d{2}|\d{2}\/\d{2}\/(?:\d{2}|\d{4}))(?: \d{2}:\d{2})?$/;
+
+        if (formattedDateRe.test(value)) return;
+
         const sugar = require('sugar-date'); // Lazy import for natural dates
         const date = sugar.Date.create(value);
 

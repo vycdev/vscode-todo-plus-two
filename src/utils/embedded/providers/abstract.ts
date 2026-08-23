@@ -25,9 +25,13 @@ class Abstract {
     exclude = undefined;
     rootPaths = undefined;
     configSignature = undefined;
+    dataRefreshQueue: Promise<any> = Promise.resolve();
+    fileDataRevisions: { [filePath: string]: number } = {};
     filesData = undefined; // { [filePath]: todo[] | undefined }
     nonEmptyFiles: Set<string> = new Set(); // Tracks only files with at least one embedded todo
     watchers: vscode.FileSystemWatcher[] = [];
+    onDidChangeDataEvent = new vscode.EventEmitter<string | undefined>();
+    onDidChangeData = this.onDidChangeDataEvent.event;
 
     async get(
         rootPaths = Folder.getAllRootPaths(),
@@ -101,43 +105,72 @@ class Abstract {
 
         const refreshAll = _.debounce(() => EmbeddedView.refresh(), 250);
         const rescan = _.debounce(() => {
-            this.configSignature = undefined;
-            EmbeddedView.refresh();
+            this.dataRefreshQueue = this.dataRefreshQueue.then(() => {
+                if (this.disposed) return;
+
+                this.configSignature = undefined;
+                this.onDidChangeDataEvent.fire(undefined);
+                EmbeddedView.refresh();
+            });
         }, 250);
+        const queueFileChange = (filePath: string, update: boolean) => {
+            const revision = (this.fileDataRevisions[filePath] || 0) + 1;
+
+            this.fileDataRevisions[filePath] = revision;
+            this.dataRefreshQueue = this.dataRefreshQueue
+                .then(async () => {
+                    if (
+                        this.disposed ||
+                        !this.filesData ||
+                        revision !== this.fileDataRevisions[filePath]
+                    )
+                        return;
+
+                    if (update) {
+                        this.filesData[filePath] = undefined;
+                        await this.updateFilesData();
+                    } else {
+                        delete this.filesData[filePath];
+                        this.nonEmptyFiles.delete(filePath);
+                    }
+
+                    if (this.disposed || revision !== this.fileDataRevisions[filePath]) return;
+
+                    this.onDidChangeDataEvent.fire(filePath);
+
+                    if (update && typeof EmbeddedView.refreshFile === 'function') {
+                        EmbeddedView.refreshFile(filePath);
+                    } else {
+                        refreshAll();
+                    }
+                })
+                .catch((error) => {
+                    if (!this.disposed) refreshAll();
+                });
+        };
 
         const add = (event) => {
             if (!this.filesData) return;
             const filePath = pathNormalizer(event.fsPath);
-            if (this.filesData.hasOwnProperty(filePath)) return;
             if (!this.isIncluded(filePath)) return;
-            this.filesData[filePath] = undefined;
-            refreshAll();
+            queueFileChange(filePath, true);
         };
 
         const change = (event) => {
             if (!this.filesData) return;
             const filePath = pathNormalizer(event.fsPath);
             if (!this.isIncluded(filePath)) {
-                delete this.filesData[filePath];
-                this.nonEmptyFiles.delete(filePath);
-                refreshAll();
+                queueFileChange(filePath, false);
                 return;
             }
-            this.filesData[filePath] = undefined;
             // Targeted refresh: update only the file node if it's visible; this avoids a full tree rebuild
-            if (typeof EmbeddedView.refreshFile === 'function') {
-                EmbeddedView.refreshFile(filePath);
-            } else {
-                refreshAll();
-            }
+            queueFileChange(filePath, true);
         };
 
         const unlink = (event) => {
             if (!this.filesData) return;
             const filePath = pathNormalizer(event.fsPath);
-            delete this.filesData[filePath];
-            this.nonEmptyFiles.delete(filePath);
-            refreshAll();
+            queueFileChange(filePath, false);
         };
 
         /* WATCHING */
@@ -172,6 +205,7 @@ class Abstract {
     dispose() {
         this.disposed = true;
         this.unwatchPaths();
+        this.onDidChangeDataEvent.dispose();
     }
 
     getIncluded(filePaths) {
@@ -222,6 +256,7 @@ class Abstract {
             matches.forEach((match) => {
                 data.push({
                     ...match,
+                    column: rawLine.length - line.length + match.column,
                     rawLine,
                     line,
                     lineNr,
@@ -257,6 +292,8 @@ class Abstract {
 
         if (!updateEmbeddedDocumentCache(this.filesData, this.nonEmptyFiles, cachedFilePath, data))
             return;
+
+        this.onDidChangeDataEvent.fire(cachedFilePath);
 
         return cachedFilePath;
     }

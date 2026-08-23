@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as pify from 'pify';
 import Config from '../config';
 import FilesView from '../views/files';
+import { Due } from '../views/due';
 import { getGlobMatchOptions, hasConditionalExcludeGlobs, isFileIncluded } from './file-globs';
 import Folder from './folder';
 import { matchesFilesViewFilter } from './files-view-filter';
@@ -67,10 +68,14 @@ class Files {
 
         /* HANDLERS */
 
-        const refresh = _.debounce(() => FilesView.refresh(), 250);
+        const refresh = _.debounce(() => {
+            FilesView.refresh();
+            Due.refresh();
+        }, 250);
         const rescan = _.debounce(() => {
             this.configSignature = undefined;
             FilesView.refresh();
+            Due.refresh();
         }, 250);
 
         const add = (event) => {
