@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Fixed the statistics status bar to apply `todo.statistics.statusbar.alignment` and `todo.statistics.statusbar.priority` changes without requiring an extension reload.
 - Added opt-in Problems view diagnostics for embedded markers through `todo.embedded.problems`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/60
 - Fixed fulfilled promise batches so errors in optional rejection observers do not discard successful results.
 - Fixed dependency indexing so `@id` and `@depends` references in non-task comment lines are ignored.
