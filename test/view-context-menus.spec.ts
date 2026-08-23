@@ -2,7 +2,7 @@ import { expect } from 'chai';
 
 const pkg = require('../package.json');
 
-describe('Todo files view context menus', () => {
+describe('Todo task view context menus', () => {
     const commands = [
         'todo.viewRevealTodo',
         'todo.viewToggleBox',
@@ -11,7 +11,7 @@ describe('Todo files view context menus', () => {
         'todo.viewToggleStart',
     ];
 
-    it('contributes task actions for Todo files view items', () => {
+    it('contributes task actions for Todo files and Due view items', () => {
         const contributedCommands = pkg.contributes.commands.map(({ command }) => command);
         const contextMenus = pkg.contributes.menus['view/item/context'];
 
@@ -20,7 +20,7 @@ describe('Todo files view context menus', () => {
             expect(contributedCommands).to.include(command);
             expect(contextMenus).to.deep.include({
                 command,
-                when: 'view == todo.views.1files && viewItem == todo',
+                when: 'view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo',
                 group:
                     command === 'todo.viewRevealTodo'
                         ? 'navigation@1'
@@ -35,7 +35,9 @@ describe('Todo files view context menus', () => {
         commands.slice(1).forEach((command) => {
             const menu = contextMenus.find((candidate) => candidate.command === command);
 
-            expect(menu.when).to.equal('view == todo.views.1files && viewItem == todo');
+            expect(menu.when).to.equal(
+                'view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo'
+            );
         });
     });
 });

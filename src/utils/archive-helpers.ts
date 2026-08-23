@@ -85,7 +85,12 @@ export function mergeInsertItemsIntoArchiveContent(
     isTodoLine: (line: string) => boolean = () => false
 ) {
     const normalizedContent = content || '';
-    const lineEnding = normalizedContent.includes('\r\n') ? '\r\n' : '\n';
+    const sourceLineEnding = config && config.lineEnding === '\r\n' ? '\r\n' : '\n';
+    const lineEnding = normalizedContent
+        ? normalizedContent.includes('\r\n')
+            ? '\r\n'
+            : '\n'
+        : sourceLineEnding;
     const projectTagRegex = /\s*@project\([^)]*\)/g;
     const rootIndentLevel =
         config && typeof config.rootIndentLevel === 'number' ? config.rootIndentLevel : 0;

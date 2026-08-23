@@ -11,6 +11,10 @@ class Statistics {
     itemProps;
     config;
     tokens;
+    layout: {
+        alignment: vscode.StatusBarAlignment;
+        priority: number;
+    };
 
     constructor() {
         this.item = this._initItem();
@@ -19,14 +23,39 @@ class Statistics {
         this.update();
     }
 
-    _initItem() {
-        const alignment =
+    _getLayout() {
+        return {
+            alignment:
                 Config.getKey('statistics.statusbar.alignment') === 'right'
                     ? vscode.StatusBarAlignment.Right
                     : vscode.StatusBarAlignment.Left,
-            priority = Config.getKey('statistics.statusbar.priority');
+            priority: Config.getKey('statistics.statusbar.priority'),
+        };
+    }
 
-        return vscode.window.createStatusBarItem(alignment, priority);
+    _initItem() {
+        const layout = this._getLayout();
+
+        this.layout = layout;
+
+        return vscode.window.createStatusBarItem(layout.alignment, layout.priority);
+    }
+
+    _updateLayout() {
+        const layout = this._getLayout();
+
+        if (
+            this.layout &&
+            this.layout.alignment === layout.alignment &&
+            this.layout.priority === layout.priority
+        )
+            return;
+
+        const previousItem = this.item;
+
+        this.item = this._initItem();
+        this.itemProps = {};
+        if (previousItem) previousItem.dispose();
     }
 
     _setItemProp(prop, value, _set = true) {
@@ -42,6 +71,7 @@ class Statistics {
     }
 
     update() {
+        this._updateLayout();
         this.config = Config.get();
         this.tokens = Utils.statistics.tokens.global;
 

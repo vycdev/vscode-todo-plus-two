@@ -2,8 +2,10 @@ const escapeRegExp = (value: string): string => {
     return value.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
 };
 
-const tagArgumentOrBoundary = '(?:(?:\\([^\\r\\n)]*\\))|(?![a-zA-Z]))';
-const normalTag = '(@[^\\s*~(]+(?::\\/\\/[^\\s*~(:]+)?(?:(?:\\([^\\r\\n)]*\\))|(?![a-zA-Z])))';
+const tagArgumentOrBoundary = '(?:(?:\\([^\\r\\n)]*\\))|(?![a-zA-Z0-9]))';
+export const reservedTagArgumentOrBoundary = '(?:(?:\\([^)]*\\))|(?![a-zA-Z0-9]))';
+export const capturedReservedTagArgumentOrBoundary = '(?:(?:\\(([^)]*)\\))|(?![a-zA-Z0-9]))';
+const normalTag = `(@[^\\s*~(]+(?::\\/\\/[^\\s*~(:]+)?${tagArgumentOrBoundary})`;
 
 export const createTagRegexes = (tagNames: string[] = []) => {
     const specialNames = tagNames.map((name) => escapeRegExp(String(name || ''))).filter(Boolean);
@@ -16,8 +18,10 @@ export const createTagRegexes = (tagNames: string[] = []) => {
         'lasted',
         'wasted',
         'est',
-        '\\d',
     ]);
+    const excludedNormalTags = normalExclusions
+        .map((name) => `${name}${tagArgumentOrBoundary}`)
+        .concat('\\d');
 
     return {
         tagSpecial: specialNames.length
@@ -31,7 +35,7 @@ export const createTagRegexes = (tagNames: string[] = []) => {
             'gm'
         ),
         tagNormal: new RegExp(
-            `(?:^|[^a-zA-Z0-9])@(?!${normalExclusions.join('|')})[^\\s*~(:]+(?::\\/\\/[^\\s*~(:]+)?(?:\\([^\\r\\n)]*\\))?`
+            `(?:^|[^a-zA-Z0-9])@(?!${excludedNormalTags.join('|')})[^\\s*~(:]+(?::\\/\\/[^\\s*~(:]+)?(?:\\([^\\r\\n)]*\\))?`
         ),
     };
 };

@@ -149,6 +149,8 @@ const Archive = {
             const config = Config.get();
             // Create helperConfig and set indentation based on the document/editor.
             const helperConfig = Object.assign({}, config);
+            helperConfig.lineEnding =
+                doc.textDocument.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
             try {
                 // Prefer the editor's indentation settings (tabSize/insertSpaces) when available
                 if (doc.textEditor && doc.textEditor.options) {

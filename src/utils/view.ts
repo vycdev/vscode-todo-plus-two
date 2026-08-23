@@ -30,14 +30,16 @@ const View = {
     getTypeIcon(type) {
         //TODO: Add support for light/dark colors
 
-        if (View.icons[type]) return View.icons[type];
+        const color = Consts.colors.types[type];
 
-        if (!Consts.colors.types[type]) return;
+        if (!color) return;
 
         const { context } = require('.').default, // Avoiding a cyclic dependency
-            color = Consts.colors.types[type],
             colorHash = sha1(color),
-            iconPath = path.join(context.storagePath, `type-color-${colorHash}.svg`);
+            iconPath = path.join(context.storagePath, `type-color-${colorHash}.svg`),
+            iconKey = `${type}:${colorHash}`;
+
+        if (View.icons[iconKey]) return View.icons[iconKey];
 
         mkdirp.sync(context.storagePath);
 
@@ -47,7 +49,7 @@ const View = {
             fs.writeFileSync(iconPath, image);
         }
 
-        View.icons[type] = iconPath;
+        View.icons[iconKey] = iconPath;
 
         return iconPath;
     },

@@ -42,4 +42,25 @@ describe('Todo configuration schema', () => {
         expect(properties['todo.embedded.include'].items).to.deep.equal({ type: 'string' });
         expect(properties['todo.embedded.exclude'].items).to.deep.equal({ type: 'string' });
     });
+
+    it('accepts whole-line colors for special tags', () => {
+        const colors = pkg.contributes.configuration.properties['todo.colors.tags.lineBackground'];
+
+        expect(colors.type).to.equal('array');
+        expect(colors.items.type).to.equal('string');
+        expect(colors.default).to.deep.equal([]);
+    });
+
+    it('accepts embedded Problems view severity mappings', () => {
+        const problems = pkg.contributes.configuration.properties['todo.embedded.problems'];
+
+        expect(problems.type).to.equal('object');
+        expect(problems.default).to.deep.equal({});
+        expect(problems.additionalProperties.enum).to.deep.equal([
+            'error',
+            'warning',
+            'info',
+            'hint',
+        ]);
+    });
 });
