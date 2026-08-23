@@ -15,6 +15,10 @@ class Timer {
     config;
     data;
     intervalId;
+    layout: {
+        alignment: vscode.StatusBarAlignment;
+        priority: number;
+    };
 
     constructor() {
         this.item = this._initItem();
@@ -22,14 +26,41 @@ class Timer {
         this.data = {};
     }
 
-    _initItem() {
-        const alignment =
+    _getLayout() {
+        return {
+            alignment:
                 Config.getKey('timer.statusbar.alignment') === 'right'
                     ? vscode.StatusBarAlignment.Right
                     : vscode.StatusBarAlignment.Left,
-            priority = Config.getKey('timer.statusbar.priority');
+            priority: Config.getKey('timer.statusbar.priority'),
+        };
+    }
 
-        return vscode.window.createStatusBarItem(alignment, priority);
+    _initItem() {
+        const layout = this._getLayout();
+
+        this.layout = layout;
+
+        return vscode.window.createStatusBarItem(layout.alignment, layout.priority);
+    }
+
+    _updateLayout() {
+        const layout = this._getLayout();
+
+        if (
+            this.layout &&
+            this.layout.alignment === layout.alignment &&
+            this.layout.priority === layout.priority
+        )
+            return false;
+
+        const previousItem = this.item;
+
+        this.item = this._initItem();
+        this.itemProps = {};
+        if (previousItem) previousItem.dispose();
+
+        return true;
     }
 
     _setItemProp(prop, value, _set = true) {
@@ -45,11 +76,13 @@ class Timer {
     }
 
     update(doc: Document) {
+        const layoutUpdated = this._updateLayout();
+
         this.config = Config.get();
 
         const updated = this.updateData(doc);
 
-        if (!updated) return;
+        if (!updated && !layoutUpdated) return;
 
         this.updateVisibility();
         this.updateTimer();
