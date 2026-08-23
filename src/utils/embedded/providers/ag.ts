@@ -125,6 +125,7 @@ class AG extends Abstract {
             matches.forEach((match) => {
                 const data = {
                     ...match,
+                    column: rawLine.length - line.length + match.column,
                     rawLine,
                     line,
                     lineNr,
