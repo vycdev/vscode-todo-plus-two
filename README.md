@@ -104,6 +104,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.file.batchSize": 50, // Number of Todo files to process in each discovery batch
   "todo.file.view.expanded": true, // Start the tree in an expanded state
   "todo.file.view.showFinished": true, // Show done and cancelled tasks in the Todo files view
+  "todo.file.view.showComments": false, // Show comment-only lines in the Todo files view
   "todo.file.view.showTags": true, // Show tags in Todo files view labels
   "todo.file.view.icons": true, // Show icons next to groups in the Todo files view
   "todo.automaticSymbol": false, // Insert a new todo box after pressing Enter at the end of a non-empty todo
