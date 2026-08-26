@@ -74,7 +74,7 @@ It adds 8 shortcuts when editing a `Todo` file:
 
 ### Task priorities
 
-Use special tags to assign visible priorities without changing the plain-text task format. The default `todo.tags.names` setting includes `critical`, `high`, and `low`, so these tags are highlighted automatically:
+Use special tags as visual priority labels without changing the plain-text task format. The default `todo.tags.names` setting includes `critical`, `high`, and `low`, so these tags are highlighted automatically:
 
 ```todo
 Release:
@@ -83,7 +83,7 @@ Release:
   ☐ Update internal notes @low
 ```
 
-Customize the priority names and their matching colors with `todo.tags.names`, `todo.colors.tags.background`, and `todo.colors.tags.foreground`. To highlight the entire task line, set corresponding entries in `todo.colors.tags.lineBackground`. Palette entries match tag names by array position.
+Customize the special-tag names and their matching colors with `todo.tags.names`, `todo.colors.tags.background`, and `todo.colors.tags.foreground`. To highlight the entire task line, set corresponding entries in `todo.colors.tags.lineBackground`. Palette entries match tag names by array position. These labels do not sort tasks or otherwise change task behavior.
 
 ### Task dependencies
 
