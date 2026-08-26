@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Added an independent `todo.file.view.showComments` setting for optionally showing note lines in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/15
 - Fixed live timer status bar alignment and priority changes so they apply without reloading VS Code.
 - Preserved CRLF line endings when creating new archive files.
 - Added a command to export the active Todo file as a standalone HTML document, preserving task hierarchy, status, comments, and inline formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/85

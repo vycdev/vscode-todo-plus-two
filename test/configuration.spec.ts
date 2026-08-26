@@ -30,6 +30,17 @@ describe('Todo configuration schema', () => {
         expect(filesView).not.to.include('this.config.embedded.view.icons');
     });
 
+    it('exposes independent comment visibility for the Files view', () => {
+        const showComments =
+            pkg.contributes.configuration.properties['todo.file.view.showComments'];
+        const filesView = fs.readFileSync(path.join(__dirname, '../src/views/files.ts'), 'utf8');
+
+        expect(showComments.type).to.equal('boolean');
+        expect(showComments.default).to.equal(false);
+        expect(filesView).to.include('this.config.file.view.showComments');
+        expect(filesView).not.to.include("Config.getKey('embedded.showComments')");
+    });
+
     it('accepts automatic embedded provider selection', () => {
         const provider = pkg.contributes.configuration.properties['todo.embedded.provider'];
 

@@ -4,7 +4,6 @@ import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Utils from '../utils';
 import Consts from '../consts';
-import Config from '../config';
 import { hasUnfinishedTodo, matchesFilesViewFilter } from '../utils/files-view-filter';
 import { matchesTodoStatus } from '../utils/todo-status';
 import Tags from '../utils/tags';
@@ -82,8 +81,7 @@ class Files extends View {
                     return false;
                 });
 
-                // Respect comment visibility setting for Todo files
-                const showComments = !!Config.getKey('embedded.showComments');
+                const showComments = this.config.file.view.showComments === true;
                 const isCommentLine = !!(
                     Consts &&
                     Consts.regexes &&
