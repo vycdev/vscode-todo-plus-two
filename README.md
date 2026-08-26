@@ -72,6 +72,19 @@ It adds 8 shortcuts when editing a `Todo` file:
 'Cmd/Ctrl+Shift+U'; // Triggers `Todo: Unarchive` when todo.archive.type is InSameFile
 ```
 
+### Task priorities
+
+Use special tags to assign visible priorities without changing the plain-text task format. The default `todo.tags.names` setting includes `critical`, `high`, and `low`, so these tags are highlighted automatically:
+
+```todo
+Release:
+  ☐ Fix the production outage @critical
+  ☐ Review the migration plan @high
+  ☐ Update internal notes @low
+```
+
+Customize the priority names and their matching colors with `todo.tags.names`, `todo.colors.tags.background`, and `todo.colors.tags.foreground`. To highlight the entire task line, set corresponding entries in `todo.colors.tags.lineBackground`. Palette entries match tag names by array position.
+
 ### Task dependencies
 
 Task identities are plain text, so they remain intact when you copy, move, or archive tasks. Add a non-empty `@id(...)` to a task and reference it with `@depends(...)` elsewhere in the workspace:
