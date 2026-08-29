@@ -3,18 +3,21 @@ export interface ProjectCopyLine {
     level: number;
 }
 
-const renderProjectHeader = (header: string, statistics: string): string => {
-    const match = header.match(/^(\s*)(.+):(.*)$/);
+const renderProjectHeader = (
+    header: string,
+    statistics: string,
+    projectHeaderEnd: number
+): string => {
+    if (projectHeaderEnd <= 0 || header[projectHeaderEnd - 1] !== ':') return header;
 
-    if (!match) return header;
-
-    return `${match[1]}${match[2]}: ${statistics}${match[3]}`;
+    return `${header.slice(0, projectHeaderEnd)} ${statistics}${header.slice(projectHeaderEnd)}`;
 };
 
 export const renderProjectCopy = (
     lines: ProjectCopyLine[],
     projectLine: number,
     statistics: string,
+    projectHeaderEnd: number,
     endOfLine = '\n',
     includeRemainingDocument = false
 ): string => {
@@ -37,7 +40,7 @@ export const renderProjectCopy = (
     return lines
         .slice(projectLine, end)
         .map((line, index) =>
-            index === 0 ? renderProjectHeader(line.text, statistics) : line.text
+            index === 0 ? renderProjectHeader(line.text, statistics, projectHeaderEnd) : line.text
         )
         .join(endOfLine);
 };

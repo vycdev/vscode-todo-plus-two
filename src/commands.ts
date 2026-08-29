@@ -355,7 +355,8 @@ async function copyProjectWithStatistics() {
     }
 
     const projectLine = textEditor.selection.active.line,
-        project = doc.getProjectAt(projectLine, true) as Project;
+        items = DocumentDecorator.getItems(doc),
+        project = items.projects.find((item) => item.lineNumber === projectLine) as Project;
 
     if (!project) {
         return vscode.window.showInformationMessage('Place the cursor on a project to copy it');
@@ -370,7 +371,6 @@ async function copyProjectWithStatistics() {
     }
 
     const textDocument = textEditor.document,
-        items = DocumentDecorator.getItems(doc),
         condition = Config.getKey('statistics.project.enabled');
 
     Utils.statistics.tokens.updateDisabledAll();
@@ -408,6 +408,7 @@ async function copyProjectWithStatistics() {
             lines,
             projectLine,
             statistics,
+            project.range.end.character,
             endOfLine,
             includeRemainingDocument
         );
