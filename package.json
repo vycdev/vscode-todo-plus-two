@@ -22,6 +22,7 @@
         "onCommand:todo.toggleStatusBarTimer",
         "onCommand:todo.archive",
         "onCommand:todo.exportHtml",
+        "onCommand:todo.copyProjectWithStatistics",
         "onCommand:todo.openDependency",
         "onCommand:todo.openDependencyAtCursor",
         "onCommand:todo.addDependency",
@@ -988,6 +989,10 @@
                 "title": "Todo: Export to HTML"
             },
             {
+                "command": "todo.copyProjectWithStatistics",
+                "title": "Todo: Copy Project with Statistics"
+            },
+            {
                 "command": "todo.openDependency",
                 "title": "Todo: Open Dependency"
             },
@@ -1284,6 +1289,10 @@
                 },
                 {
                     "command": "todo.archive",
+                    "when": "editorLangId == todo"
+                },
+                {
+                    "command": "todo.copyProjectWithStatistics",
                     "when": "editorLangId == todo"
                 },
                 {
