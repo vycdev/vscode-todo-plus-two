@@ -18,6 +18,8 @@ import { unarchiveItemsFromSameFileContent } from './utils/unarchive-helpers';
 import { AutoCompleteLine, getAutoCompletableParentLines } from './utils/auto-complete';
 import { getTimerState } from './utils/timekeeping';
 import { HtmlExportLine, renderTodoHtml } from './utils/html-export';
+import DocumentDecorator from './todo/decorators/document';
+import { ProjectCopyLine, renderProjectCopy } from './utils/project-copy';
 import {
     DependencyReference,
     DependencyTarget,
@@ -336,6 +338,88 @@ async function exportHtml() {
         return vscode.window.showInformationMessage(`Exported ${sourceName} to HTML`);
     } catch (error) {
         return vscode.window.showErrorMessage(`Unable to export HTML: ${error.message || error}`);
+    }
+}
+
+async function copyProjectWithStatistics() {
+    const textEditor = vscode.window.activeTextEditor;
+
+    if (!textEditor) {
+        return vscode.window.showInformationMessage('This command works only in Todo files');
+    }
+
+    const doc = new Document(textEditor);
+
+    if (!doc.isSupported()) {
+        return vscode.window.showInformationMessage('This command works only in Todo files');
+    }
+
+    const projectLine = textEditor.selection.active.line,
+        items = DocumentDecorator.getItems(doc),
+        project = items.projects.find((item) => item.lineNumber === projectLine) as Project;
+
+    if (!project) {
+        return vscode.window.showInformationMessage('Place the cursor on a project to copy it');
+    }
+
+    const clipboard = (vscode as any).env && (vscode as any).env.clipboard;
+
+    if (!clipboard || !clipboard.writeText) {
+        return vscode.window.showErrorMessage(
+            'Copying rendered project statistics requires a newer version of VS Code'
+        );
+    }
+
+    const textDocument = textEditor.document,
+        condition = Config.getKey('statistics.project.enabled');
+
+    Utils.statistics.tokens.updateDisabledAll();
+    Utils.statistics.tokens.updateGlobal(items);
+    Utils.statistics.tokens.updateProjects(textDocument, items);
+
+    const tokens = Utils.statistics.tokens.projects[projectLine],
+        withStatistics = Utils.statistics.condition.is(
+            condition,
+            Utils.statistics.tokens.global,
+            tokens
+        );
+
+    if (!withStatistics) {
+        return vscode.window.showInformationMessage(
+            'Project statistics are not shown for this project'
+        );
+    }
+
+    const statistics = Utils.statistics.template.render(
+            Config.getKey('statistics.project.text'),
+            tokens
+        ),
+        lines: ProjectCopyLine[] = _.range(textDocument.lineCount).map((lineNumber) => {
+            const text = textDocument.lineAt(lineNumber).text;
+
+            return {
+                text,
+                level: Utils.ast.getLevel(textDocument, text),
+            };
+        }),
+        endOfLine = textDocument.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
+        includeRemainingDocument = !!items.archive && items.archive.lineNumber === projectLine,
+        content = renderProjectCopy(
+            lines,
+            projectLine,
+            statistics,
+            project.range.end.character,
+            endOfLine,
+            includeRemainingDocument
+        );
+
+    try {
+        await clipboard.writeText(content);
+        return vscode.window.showInformationMessage('Copied project with statistics');
+    } catch (error) {
+        return vscode.window.showErrorMessage(
+            `Unable to copy project with statistics: ${error.message || error}`
+        );
     }
 }
 
@@ -848,6 +932,7 @@ export {
     open,
     openEmbedded,
     exportHtml,
+    copyProjectWithStatistics,
     toggleBox,
     toggleDone,
     toggleCancelled,

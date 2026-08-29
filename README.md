@@ -49,6 +49,7 @@ It adds the following commonly used commands to the command palette:
 'Todo: Archive'; // Archive finished todos
 'Todo: Unarchive'; // Restore an archived task to its project list (when todo.archive.type is InSameFile)
 'Todo: Export to HTML'; // Export the active Todo file as a standalone HTML document
+'Todo: Copy Project with Statistics'; // Copy the project at the cursor, including its rendered statistics
 'Todo: Open Dependency'; // Search task IDs and open a referenced task
 'Todo: Open Dependency at Cursor'; // Open the dependency under the cursor
 'Todo: Add Dependency'; // Search task IDs and add one to the selected todo
