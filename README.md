@@ -126,6 +126,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.symbols.box": "☐", // Box symbol
   "todo.symbols.done": "✔", // Done symbol
   "todo.symbols.cancelled": "✘", // Cancelled symbol
+  "todo.colors.enabled": true, // Apply Todo+ editor colors; disable to use the active syntax theme
   "todo.colors.done": "#a6e22e", // Done todo color
   "todo.colors.cancelled": "#f92672", // Cancelled todo color
   "todo.colors.started": "#4fc1ff", // Started todo color
@@ -287,6 +288,8 @@ The following tokens can be used in `todo.statistics.project.text`, `todo.statis
 ## Hints
 
 - **Dark/Light Themes**: if you switch between dark and light themes, remember that you can provide specific colors for them via the `todo.colors.dark.*` and `todo.colors.light.*` settings, which will override the default `todo.colors.*` settings.
+
+- **Theme Syntax Colors**: set `todo.colors.enabled` to `false` to disable Todo+ editor colors and let the active syntax theme style projects, tasks, comments, formatting and tags. Done-task strikethrough and rendered project statistics remain available.
 
 - **Activity Bar**: you can switch the focus to the `Todo` activity bar view by assigning a shortcut to the `workbench.view.extension.todo` command.
 

@@ -15,6 +15,7 @@ let PROJECT_STATISTICS: vscode.TextEditorDecorationType;
 
 function getDecorationSignature() {
     return JSON.stringify({
+        enabled: Config.getKey('colors.enabled') !== false,
         project: Consts.colors.project,
         projectStatistics: Consts.colors.projectStatistics,
         dark: {
@@ -38,38 +39,46 @@ function ensureDecorationTypes() {
     if (PROJECT_BASIC) PROJECT_BASIC.dispose();
     if (PROJECT_STATISTICS) PROJECT_STATISTICS.dispose();
 
-    PROJECT_BASIC = vscode.window.createTextEditorDecorationType({
-        color: Consts.colors.project,
-        rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
-        dark: {
-            color: Consts.colors.dark.project || Consts.colors.project,
+    const colorsEnabled = Config.getKey('colors.enabled') !== false,
+        basicOptions: any = {
+            rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
         },
-        light: {
-            color: Consts.colors.light.project || Consts.colors.project,
-        },
-    });
+        statisticsOptions: any = {
+            rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+            after: {
+                margin: '.05em 0 .05em .5em',
+                textDecoration: ';font-size: .9em',
+            },
+        };
 
-    PROJECT_STATISTICS = vscode.window.createTextEditorDecorationType({
-        color: Consts.colors.project,
-        rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
-        after: {
-            color: Consts.colors.projectStatistics,
-            margin: '.05em 0 .05em .5em',
-            textDecoration: ';font-size: .9em',
-        },
-        dark: {
+    if (colorsEnabled) {
+        basicOptions.color = Consts.colors.project;
+        basicOptions.dark = {
+            color: Consts.colors.dark.project || Consts.colors.project,
+        };
+        basicOptions.light = {
+            color: Consts.colors.light.project || Consts.colors.project,
+        };
+
+        statisticsOptions.color = Consts.colors.project;
+        statisticsOptions.after.color = Consts.colors.projectStatistics;
+        statisticsOptions.dark = {
             color: Consts.colors.dark.project || Consts.colors.project,
             after: {
                 color: Consts.colors.dark.projectStatistics || Consts.colors.projectStatistics,
             },
-        },
-        light: {
+        };
+        statisticsOptions.light = {
             color: Consts.colors.light.project || Consts.colors.project,
             after: {
                 color: Consts.colors.light.projectStatistics || Consts.colors.projectStatistics,
             },
-        },
-    });
+        };
+    }
+
+    PROJECT_BASIC = vscode.window.createTextEditorDecorationType(basicOptions);
+
+    PROJECT_STATISTICS = vscode.window.createTextEditorDecorationType(statisticsOptions);
 
     DECORATIONS_SIGNATURE = signature;
 

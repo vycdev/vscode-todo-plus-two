@@ -1,5 +1,6 @@
 ### Version 5.3.0 (Unreleased)
 
+- Added a `todo.colors.enabled` setting for using the active syntax theme's colors instead of Todo+ editor colors. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/96
 - Added an independent `todo.file.view.showComments` setting for optionally showing note lines in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/15
 - Fixed live timer status bar alignment and priority changes so they apply without reloading VS Code.
 - Preserved CRLF line endings when creating new archive files.

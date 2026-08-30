@@ -62,6 +62,13 @@ describe('Todo configuration schema', () => {
         expect(colors.default).to.deep.equal([]);
     });
 
+    it('allows custom editor colors to be disabled in favor of syntax theme colors', () => {
+        const enabled = pkg.contributes.configuration.properties['todo.colors.enabled'];
+
+        expect(enabled.type).to.equal('boolean');
+        expect(enabled.default).to.equal(true);
+    });
+
     it('accepts embedded Problems view severity mappings', () => {
         const problems = pkg.contributes.configuration.properties['todo.embedded.problems'];
 
