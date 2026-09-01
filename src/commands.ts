@@ -18,6 +18,7 @@ import { unarchiveItemsFromSameFileContent } from './utils/unarchive-helpers';
 import { AutoCompleteLine, getAutoCompletableParentLines } from './utils/auto-complete';
 import { getTimerState } from './utils/timekeeping';
 import { HtmlExportLine, renderTodoHtml } from './utils/html-export';
+import { renderTodoMarkdown } from './utils/markdown-export';
 import DocumentDecorator from './todo/decorators/document';
 import { ProjectCopyLine, renderProjectCopy } from './utils/project-copy';
 import {
@@ -270,6 +271,46 @@ async function openEmbedded() {
     Utils.editor.open(content);
 }
 
+function getExportLines(textEditor: vscode.TextEditor, doc: Document): HtmlExportLine[] {
+    const textDocument = textEditor.document;
+
+    return _.range(textDocument.lineCount).reduce((result: HtmlExportLine[], lineNumber) => {
+        const raw = textDocument.lineAt(lineNumber).text;
+
+        if (!raw.trim()) return result;
+
+        const todo = doc.getTodoAt(lineNumber, true) as Todo,
+            project = doc.getProjectAt(lineNumber, true) as Project,
+            level = Utils.ast.getLevel(textDocument, raw);
+
+        if (todo) {
+            const status = todo.getStatus(),
+                text = raw.replace(Consts.regexes.todoSymbol, '').trim();
+
+            result.push({
+                kind: 'todo',
+                level,
+                text,
+                status: status.done ? 'done' : status.cancelled ? 'cancelled' : 'pending',
+            });
+        } else if (project) {
+            const match = raw.match(Consts.regexes.projectParts),
+                title = match ? match[2].trim() : raw.trim(),
+                tags = match && match[3] ? match[3].trim() : '';
+
+            result.push({
+                kind: 'project',
+                level,
+                text: tags ? `${title} ${tags}` : title,
+            });
+        } else {
+            result.push({ kind: 'comment', level, text: raw.trim() });
+        }
+
+        return result;
+    }, []);
+}
+
 async function exportHtml() {
     const textEditor = vscode.window.activeTextEditor;
 
@@ -284,41 +325,7 @@ async function exportHtml() {
     }
 
     const textDocument = textEditor.document,
-        lines = _.range(textDocument.lineCount).reduce((result: HtmlExportLine[], lineNumber) => {
-            const raw = textDocument.lineAt(lineNumber).text;
-
-            if (!raw.trim()) return result;
-
-            const todo = doc.getTodoAt(lineNumber, true) as Todo,
-                project = doc.getProjectAt(lineNumber, true) as Project,
-                level = Utils.ast.getLevel(textDocument, raw);
-
-            if (todo) {
-                const status = todo.getStatus(),
-                    text = raw.replace(Consts.regexes.todoSymbol, '').trim();
-
-                result.push({
-                    kind: 'todo',
-                    level,
-                    text,
-                    status: status.done ? 'done' : status.cancelled ? 'cancelled' : 'pending',
-                });
-            } else if (project) {
-                const match = raw.match(Consts.regexes.projectParts),
-                    title = match ? match[2].trim() : raw.trim(),
-                    tags = match && match[3] ? match[3].trim() : '';
-
-                result.push({
-                    kind: 'project',
-                    level,
-                    text: tags ? `${title} ${tags}` : title,
-                });
-            } else {
-                result.push({ kind: 'comment', level, text: raw.trim() });
-            }
-
-            return result;
-        }, []),
+        lines = getExportLines(textEditor, doc),
         sourceName = path.basename(textDocument.fileName) || 'Todo',
         sourceExtension = path.extname(sourceName),
         exportName = `${path.basename(sourceName, sourceExtension) || 'Todo'}.html`,
@@ -338,6 +345,49 @@ async function exportHtml() {
         return vscode.window.showInformationMessage(`Exported ${sourceName} to HTML`);
     } catch (error) {
         return vscode.window.showErrorMessage(`Unable to export HTML: ${error.message || error}`);
+    }
+}
+
+async function exportMarkdown() {
+    const textEditor = vscode.window.activeTextEditor;
+
+    if (!textEditor) {
+        return vscode.window.showInformationMessage('This command works only in Todo files');
+    }
+
+    const doc = new Document(textEditor);
+
+    if (!doc.isSupported()) {
+        return vscode.window.showInformationMessage('This command works only in Todo files');
+    }
+
+    const textDocument = textEditor.document,
+        lines = getExportLines(textEditor, doc),
+        sourceName = path.basename(textDocument.fileName) || 'Todo',
+        sourceExtension = path.extname(sourceName),
+        sourceBaseName = path.basename(sourceName, sourceExtension) || 'Todo',
+        exportName =
+            sourceExtension.toLowerCase() === '.md'
+                ? `${sourceBaseName}.export.md`
+                : `${sourceBaseName}.md`,
+        defaultUri = textDocument.isUntitled
+            ? undefined
+            : vscode.Uri.file(path.join(path.dirname(textDocument.fileName), exportName)),
+        destination = await vscode.window.showSaveDialog({
+            defaultUri,
+            filters: { Markdown: ['md'] },
+            saveLabel: 'Export',
+        });
+
+    if (!destination) return;
+
+    try {
+        await Utils.file.write(destination.fsPath, renderTodoMarkdown(sourceName, lines));
+        return vscode.window.showInformationMessage(`Exported ${sourceName} to Markdown`);
+    } catch (error) {
+        return vscode.window.showErrorMessage(
+            `Unable to export Markdown: ${error.message || error}`
+        );
     }
 }
 
@@ -932,6 +982,7 @@ export {
     open,
     openEmbedded,
     exportHtml,
+    exportMarkdown,
     copyProjectWithStatistics,
     toggleBox,
     toggleDone,

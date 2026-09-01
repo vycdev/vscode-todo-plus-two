@@ -4,6 +4,7 @@
 - Fixed live timer status bar alignment and priority changes so they apply without reloading VS Code.
 - Preserved CRLF line endings when creating new archive files.
 - Added a command to export the active Todo file as a standalone HTML document, preserving task hierarchy, status, comments, and inline formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/85
+- Added a command to export the active Todo file as a Markdown task list, preserving hierarchy, status, comments, and inline formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/29
 - Fixed the statistics status bar to apply `todo.statistics.statusbar.alignment` and `todo.statistics.statusbar.priority` changes without requiring an extension reload.
 - Added opt-in Problems view diagnostics for embedded markers through `todo.embedded.problems`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/60
 - Fixed fulfilled promise batches so errors in optional rejection observers do not discard successful results.

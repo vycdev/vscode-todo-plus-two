@@ -22,6 +22,7 @@
         "onCommand:todo.toggleStatusBarTimer",
         "onCommand:todo.archive",
         "onCommand:todo.exportHtml",
+        "onCommand:todo.exportMarkdown",
         "onCommand:todo.copyProjectWithStatistics",
         "onCommand:todo.openDependency",
         "onCommand:todo.openDependencyAtCursor",
@@ -987,6 +988,10 @@
             {
                 "command": "todo.exportHtml",
                 "title": "Todo: Export to HTML"
+            },
+            {
+                "command": "todo.exportMarkdown",
+                "title": "Todo: Export to Markdown"
             },
             {
                 "command": "todo.copyProjectWithStatistics",
