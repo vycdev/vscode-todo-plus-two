@@ -7,6 +7,7 @@ import Consts from '../consts';
 import { Comment, Project, Tag, TodoBox, TodoDone, TodoCancelled } from '../todo/items';
 import AST from './ast';
 import { getEstimateDuration } from './estimate';
+import { evaluateStatisticsCondition } from './statistics-condition';
 import { getStatisticsLines, getStatisticsScopeEnd } from './statistics-lines';
 import { renderStatisticsTemplate } from './statistics-template';
 import Tokens from './statistics_tokens';
@@ -88,34 +89,7 @@ const Statistics = {
     /* CONDITION */
 
     condition: {
-        functions: {}, // Cache of functions created from conditions
-
-        toFunction(condition) {
-            // Avoiding repeatedly calling `eval`
-
-            if (Statistics.condition.functions[condition])
-                return Statistics.condition.functions[condition];
-
-            const fn = new Function('global', 'project', `return ${condition}`);
-
-            Statistics.condition.functions[condition] = fn;
-
-            return fn;
-        },
-
-        is(condition, globalTokens, projectTokens) {
-            if (_.isBoolean(condition)) return condition;
-
-            if (!globalTokens && !projectTokens) return false;
-
-            const fn = Statistics.condition.toFunction(condition);
-
-            try {
-                return !!fn(globalTokens, projectTokens);
-            } catch (e) {
-                return false;
-            }
-        },
+        is: evaluateStatisticsCondition,
     },
 
     /* TOKENS */
