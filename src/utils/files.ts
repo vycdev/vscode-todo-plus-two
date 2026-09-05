@@ -79,7 +79,6 @@ class Files {
         }, 250);
 
         const add = (event) => {
-            console.log('add', event.fsPath);
             if (!this.filesData) return;
             const filePath = pathNormalizer(event.fsPath);
             if (this.filesData.hasOwnProperty(filePath)) return;
@@ -89,7 +88,6 @@ class Files {
         };
 
         const change = (event) => {
-            console.log('change', event.fsPath);
             if (!this.filesData) return;
             const filePath = pathNormalizer(event.fsPath);
             if (!this.isIncluded(filePath)) {
@@ -102,7 +100,6 @@ class Files {
         };
 
         const unlink = (event) => {
-            console.log('unlink', event.fsPath);
             if (!this.filesData) return;
             const filePath = pathNormalizer(event.fsPath);
             delete this.filesData[filePath];
