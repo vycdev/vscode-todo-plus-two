@@ -215,6 +215,11 @@
                     "description": "Todo cancelled string",
                     "default": "✘"
                 },
+                "todo.colors.enabled": {
+                    "type": "boolean",
+                    "description": "Apply Todo+ editor colors. Disable to use the active syntax theme's colors",
+                    "default": true
+                },
                 "todo.colors.done": {
                     "type": "string",
                     "description": "Done todo color",

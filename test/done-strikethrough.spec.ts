@@ -7,7 +7,8 @@ const loadTodoDone = () => {
         previousDecorator = require.cache[decoratorPath],
         createdDecorations: any[] = [];
 
-    let strikethrough: boolean | undefined;
+    let strikethrough: boolean | undefined,
+        colorsEnabled = true;
 
     class Line {
         getItemsRanges(items: any[]) {
@@ -21,7 +22,7 @@ const loadTodoDone = () => {
                 DecorationRangeBehavior: { ClosedOpen: 'closed-open' },
                 window: {
                     createTextEditorDecorationType: (options) => {
-                        const decoration = { options };
+                        const decoration = { options, dispose: () => undefined };
 
                         createdDecorations.push(decoration);
 
@@ -31,7 +32,12 @@ const loadTodoDone = () => {
             };
         }
         if (request === '../../config') {
-            return { default: { getKey: () => strikethrough } };
+            return {
+                default: {
+                    getKey: (key: string) =>
+                        key === 'colors.enabled' ? colorsEnabled : strikethrough,
+                },
+            };
         }
         if (request === '../../consts') {
             return {
@@ -63,6 +69,9 @@ const loadTodoDone = () => {
             createdDecorations,
             setStrikethrough: (value: boolean | undefined) => {
                 strikethrough = value;
+            },
+            setColorsEnabled: (value: boolean) => {
+                colorsEnabled = value;
             },
         };
     } finally {
@@ -97,5 +106,17 @@ describe('Done todo strikethrough decoration', () => {
 
         expect(decorations[0].ranges).to.deep.equal([range]);
         expect(decorations[1].ranges).to.deep.equal([]);
+    });
+
+    it('keeps strikethrough without overriding syntax theme colors', () => {
+        const { TodoDone, createdDecorations, setColorsEnabled } = loadTodoDone();
+
+        setColorsEnabled(false);
+        new TodoDone();
+
+        expect(createdDecorations).to.have.length(2);
+        expect(createdDecorations[0].options).not.to.have.property('color');
+        expect(createdDecorations[1].options).not.to.have.property('color');
+        expect(createdDecorations[1].options.textDecoration).to.equal('line-through');
     });
 });
