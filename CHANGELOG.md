@@ -77,6 +77,7 @@
 - Added optional whole-line background colors for configured special tags with `todo.colors.tags.lineBackground`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/93
 - Added TextMate syntax scopes so Todo projects, standard statuses, tags, and formatting are visible in the editor minimap. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/70
 - Added a command to copy the project at the cursor with its rendered statistics included as text. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/73
+- Fixed invalid statistics visibility expressions so they hide the affected statistics instead of interrupting extension updates.
 
 ### Version 5.2.0
 
