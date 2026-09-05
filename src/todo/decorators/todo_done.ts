@@ -8,28 +8,55 @@ import Line from './line';
 
 /* DECORATION TYPES */
 
-const TODO_DONE_OPTIONS = {
-    color: Consts.colors.done,
-    rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
-    dark: {
-        color: Consts.colors.dark.done,
-    },
-    light: {
-        color: Consts.colors.light.done,
-    },
-};
+let DECORATIONS_SIGNATURE: string;
+let TODO_DONE: vscode.TextEditorDecorationType;
+let TODO_DONE_STRIKETHROUGH: vscode.TextEditorDecorationType;
 
-const TODO_DONE = vscode.window.createTextEditorDecorationType(TODO_DONE_OPTIONS);
+function getDecorationSignature() {
+    return JSON.stringify({
+        enabled: Config.getKey('colors.enabled') !== false,
+        done: Consts.colors.done,
+        dark: Consts.colors.dark.done,
+        light: Consts.colors.light.done,
+    });
+}
 
-const TODO_DONE_STRIKETHROUGH = vscode.window.createTextEditorDecorationType({
-    ...TODO_DONE_OPTIONS,
-    textDecoration: 'line-through',
-});
+function ensureDecorationTypes() {
+    const signature = getDecorationSignature();
+
+    if (signature === DECORATIONS_SIGNATURE) return [TODO_DONE, TODO_DONE_STRIKETHROUGH];
+
+    if (TODO_DONE) TODO_DONE.dispose();
+    if (TODO_DONE_STRIKETHROUGH) TODO_DONE_STRIKETHROUGH.dispose();
+
+    const options: any = {
+        rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
+    };
+
+    if (Config.getKey('colors.enabled') !== false) {
+        options.color = Consts.colors.done;
+        options.dark = { color: Consts.colors.dark.done };
+        options.light = { color: Consts.colors.light.done };
+    }
+
+    TODO_DONE = vscode.window.createTextEditorDecorationType(options);
+    TODO_DONE_STRIKETHROUGH = vscode.window.createTextEditorDecorationType({
+        ...options,
+        textDecoration: 'line-through',
+    });
+    DECORATIONS_SIGNATURE = signature;
+
+    return [TODO_DONE, TODO_DONE_STRIKETHROUGH];
+}
 
 /* TODO DONE */
 
 class TodoDone extends Line {
-    TYPES = [TODO_DONE, TODO_DONE_STRIKETHROUGH];
+    constructor() {
+        super();
+
+        this.TYPES = ensureDecorationTypes();
+    }
 
     getItemRanges(todoDone: TodoDoneItem, negRange?: vscode.Range | vscode.Range[]) {
         return [
@@ -43,15 +70,16 @@ class TodoDone extends Line {
 
     getDecorations(todosDone: TodoDoneItem[], negRange?: vscode.Range | vscode.Range[]) {
         const ranges = this.getItemsRanges(todosDone, negRange)[0] || [],
-            strikethrough = Config.getKey('decorations.done.strikethrough') !== false;
+            strikethrough = Config.getKey('decorations.done.strikethrough') !== false,
+            types = ensureDecorationTypes();
 
         return [
             {
-                type: TODO_DONE,
+                type: types[0],
                 ranges: strikethrough ? [] : ranges,
             },
             {
-                type: TODO_DONE_STRIKETHROUGH,
+                type: types[1],
                 ranges: strikethrough ? ranges : [],
             },
         ];

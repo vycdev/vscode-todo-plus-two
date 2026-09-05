@@ -15,6 +15,7 @@ import TodoDone from './todo_done';
 import TodoCancelled from './todo_cancelled';
 import TodoStarted from './todo_started';
 import { DocumentLinesCache } from './document-lines-cache';
+import { applyCustomColors } from './theme-colors';
 
 /* DOCUMENTS LINES CACHE */
 
@@ -144,15 +145,20 @@ const Document = {
     },
 
     getItemsDecorations(items) {
+        const colorsEnabled = Config.getKey('colors.enabled') !== false;
+
         return _.concat(
-            new Comment().getDecorations(items.comments),
-            new Formatted().getDecorations(items.formatted),
-            new Tag().getDecorations(items.tags),
-            new TodoDue().getDecorations(items.tagsDue),
+            applyCustomColors(new Comment().getDecorations(items.comments), colorsEnabled),
+            applyCustomColors(new Formatted().getDecorations(items.formatted), colorsEnabled),
+            applyCustomColors(new Tag().getDecorations(items.tags), colorsEnabled),
+            applyCustomColors(new TodoDue().getDecorations(items.tagsDue), colorsEnabled),
             new Project().getDecorations(items.projects),
-            new TodoStarted().getDecorations(items.todosStarted),
+            applyCustomColors(new TodoStarted().getDecorations(items.todosStarted), colorsEnabled),
             new TodoDone().getDecorations(items.todosDone),
-            new TodoCancelled().getDecorations(items.todosCancelled)
+            applyCustomColors(
+                new TodoCancelled().getDecorations(items.todosCancelled),
+                colorsEnabled
+            )
         );
     },
 };
