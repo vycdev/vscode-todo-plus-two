@@ -13,6 +13,8 @@ export interface MarkdownExportLine {
 const escapeMarkdownText = (text: string): string => text.replace(/[!-/:-@[-`{-~]/g, '\\$&');
 
 const renderCodeSpan = (content: string): string => {
+    if (!content) return '<code></code>';
+
     const needsPadding =
             (content.startsWith(' ') || content.endsWith(' ')) && !/^ +$/.test(content),
         padding = needsPadding ? ' ' : '';
@@ -33,16 +35,22 @@ const renderFormattedText = (text: string): string => {
 
         const formatted = match.slice(1, 5).filter(Boolean)[0],
             delimiter = formatted[0],
-            content = formatted.slice(1, -1);
+            content = formatted.slice(1, -1),
+            escaped = escapeMarkdownText(content),
+            tag = delimiter === '*' ? 'strong' : delimiter === '_' ? 'em' : 's',
+            marker = delimiter === '*' ? '**' : delimiter === '_' ? '_' : '~~',
+            // Todo permits formatting where Markdown delimiters cannot open or close.
+            needsInlineHtml =
+                /^\s|\s$/.test(content) ||
+                /\S/.test(text.charAt(match.index - 1)) ||
+                /\S/.test(text.charAt(match.index + match[0].length));
 
         rendered +=
             delimiter === '`'
                 ? renderCodeSpan(content)
-                : delimiter === '*'
-                  ? `**${escapeMarkdownText(content)}**`
-                  : delimiter === '_'
-                    ? `_${escapeMarkdownText(content)}_`
-                    : `~~${escapeMarkdownText(content)}~~`;
+                : needsInlineHtml
+                  ? `<${tag}>${escaped}</${tag}>`
+                  : `${marker}${escaped}${marker}`;
         cursor = match.index + match[0].length;
     }
 
@@ -51,8 +59,8 @@ const renderFormattedText = (text: string): string => {
     return rendered + escapeMarkdownText(text.slice(cursor));
 };
 
-const renderLine = (line: MarkdownExportLine): string => {
-    const indentation = '  '.repeat(Math.max(0, line.level)),
+const renderLine = (line: MarkdownExportLine, depth: number): string => {
+    const indentation = '  '.repeat(depth),
         text = renderFormattedText(line.text);
 
     if (line.kind === 'project') return `${indentation}- **${text}**`;
@@ -71,5 +79,16 @@ export const renderTodoMarkdown = (title: string, lines: MarkdownExportLine[]): 
 
     if (!lines.length) return `${heading}\n\n_No content to export._\n`;
 
-    return `${heading}\n\n${lines.map(renderLine).join('\n')}\n`;
+    const levels: number[] = [],
+        rendered = lines.map((line) => {
+            const level = Math.max(0, line.level);
+
+            while (levels.length && level <= levels[levels.length - 1]) levels.pop();
+
+            const result = renderLine(line, levels.length);
+            levels.push(level);
+            return result;
+        });
+
+    return `${heading}\n\n${rendered.join('\n')}\n`;
 };

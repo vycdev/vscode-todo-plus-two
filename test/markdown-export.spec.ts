@@ -21,7 +21,22 @@ describe('Todo Markdown export', () => {
             { kind: 'comment', level: 1, text: 'Sibling note' },
         ]);
 
-        expect(markdown).to.equal('# Tasks\n\n- **Project**\n    - [ ] Nested\n  - Sibling note\n');
+        expect(markdown).to.equal('# Tasks\n\n- **Project**\n  - [ ] Nested\n  - Sibling note\n');
+    });
+
+    it('renders indented roots and skipped indentation levels as a task hierarchy', () => {
+        const markdown = renderTodoMarkdown('Tasks', [
+                { kind: 'project', level: 3, text: 'Indented project' },
+                { kind: 'todo', level: 7, text: 'Deep task' },
+                { kind: 'comment', level: 5, text: 'Sibling note' },
+                { kind: 'todo', level: 1, text: 'Next root' },
+            ]),
+            tokens = new MarkdownIt().parse(markdown, {});
+
+        expect(
+            tokens.filter((token) => token.type === 'list_item_open').map((token) => token.level)
+        ).to.deep.equal([1, 3, 3, 1]);
+        expect(tokens.some((token) => token.type === 'code_block')).to.equal(false);
     });
 
     it('converts Todo inline formatting to Markdown equivalents', () => {
@@ -42,6 +57,32 @@ describe('Todo Markdown export', () => {
         ]);
 
         expect(markdown).to.include('- \\*\\*bold\\*\\* \\~\\~struck\\~\\~');
+    });
+
+    it('preserves formatting with edge spaces and adjacent text when rendered', () => {
+        const markdown = renderTodoMarkdown('Tasks', [
+                {
+                    kind: 'comment',
+                    level: 0,
+                    text: '* bold <T> &copy; * _ italic _ ~ struck ~ _italic_2 *!!*2',
+                },
+            ]),
+            html = new MarkdownIt({ html: true }).render(markdown);
+
+        expect(html).to.include('<strong> bold &lt;T&gt; &amp;copy; </strong>');
+        expect(html).to.include('<em> italic </em>');
+        expect(html).to.include('<s> struck </s>');
+        expect(html).to.include('<em>italic</em>2');
+        expect(html).to.include('<strong>!!</strong>2');
+    });
+
+    it('preserves empty code spans and their significant spaces', () => {
+        const markdown = renderTodoMarkdown('Tasks', [
+                { kind: 'comment', level: 0, text: '`` ` ` ` code `' },
+            ]),
+            html = new MarkdownIt({ html: true }).render(markdown);
+
+        expect(html).to.include('<code></code> <code> </code> <code> code </code>');
     });
 
     it('preserves HTML-like text and entities in rendered Markdown', () => {
