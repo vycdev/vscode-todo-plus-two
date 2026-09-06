@@ -22,6 +22,7 @@
         "onCommand:todo.toggleStatusBarTimer",
         "onCommand:todo.archive",
         "onCommand:todo.exportHtml",
+        "onCommand:todo.exportMarkdown",
         "onCommand:todo.copyProjectWithStatistics",
         "onCommand:todo.openDependency",
         "onCommand:todo.openDependencyAtCursor",
@@ -994,6 +995,10 @@
                 "title": "Todo: Export to HTML"
             },
             {
+                "command": "todo.exportMarkdown",
+                "title": "Todo: Export to Markdown"
+            },
+            {
                 "command": "todo.copyProjectWithStatistics",
                 "title": "Todo: Copy Project with Statistics"
             },
@@ -1611,6 +1616,7 @@
         "@types/chai": "^5.2.3",
         "@types/mocha": "^10.0.10",
         "chai": "^6.2.1",
+        "markdown-it": "^14.1.0",
         "mocha": "^11.7.5",
         "prettier": "^3.6.2",
         "rimraf": "^6.0.1",
