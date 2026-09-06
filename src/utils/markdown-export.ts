@@ -10,6 +10,16 @@ export interface MarkdownExportLine {
     status?: MarkdownExportTodoStatus;
 }
 
+const escapeMarkdownText = (text: string): string => text.replace(/[!-/:-@[-`{-~]/g, '\\$&');
+
+const renderCodeSpan = (content: string): string => {
+    const needsPadding =
+            (content.startsWith(' ') || content.endsWith(' ')) && !/^ +$/.test(content),
+        padding = needsPadding ? ' ' : '';
+
+    return `\`${padding}${content}${padding}\``;
+};
+
 const renderFormattedText = (text: string): string => {
     const regex = formattingRegexes.formatted;
     let cursor = 0;
@@ -19,20 +29,26 @@ const renderFormattedText = (text: string): string => {
     regex.lastIndex = 0;
 
     while ((match = regex.exec(text))) {
-        rendered += text.slice(cursor, match.index);
+        rendered += escapeMarkdownText(text.slice(cursor, match.index));
 
         const formatted = match.slice(1, 5).filter(Boolean)[0],
             delimiter = formatted[0],
             content = formatted.slice(1, -1);
 
         rendered +=
-            delimiter === '*' ? `**${content}**` : delimiter === '~' ? `~~${content}~~` : formatted;
+            delimiter === '`'
+                ? renderCodeSpan(content)
+                : delimiter === '*'
+                  ? `**${escapeMarkdownText(content)}**`
+                  : delimiter === '_'
+                    ? `_${escapeMarkdownText(content)}_`
+                    : `~~${escapeMarkdownText(content)}~~`;
         cursor = match.index + match[0].length;
     }
 
     regex.lastIndex = 0;
 
-    return rendered + text.slice(cursor);
+    return rendered + escapeMarkdownText(text.slice(cursor));
 };
 
 const renderLine = (line: MarkdownExportLine): string => {
@@ -51,7 +67,7 @@ const renderLine = (line: MarkdownExportLine): string => {
 };
 
 export const renderTodoMarkdown = (title: string, lines: MarkdownExportLine[]): string => {
-    const heading = `# ${title}`;
+    const heading = `# ${escapeMarkdownText(title)}`;
 
     if (!lines.length) return `${heading}\n\n_No content to export._\n`;
 
