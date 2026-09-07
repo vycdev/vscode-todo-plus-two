@@ -40,7 +40,8 @@ class DueView extends View {
             groups = {},
             today = new Date(),
             todayKey = getDueDateKey(today),
-            soonDays = Number(Config.getKey('due.soonDays')) || 7;
+            configuredSoonDays = Number(Config.getKey('due.soonDays')),
+            soonDays = Number.isFinite(configuredSoonDays) ? configuredSoonDays : 7;
 
         Object.keys(filesData).forEach((filePath) => {
             const data = filesData[filePath];
