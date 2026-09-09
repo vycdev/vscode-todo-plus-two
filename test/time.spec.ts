@@ -54,7 +54,7 @@ describe('Time utilities', () => {
     });
 
     it('parses natural-language durations relative to the supplied base date', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
+        const from = new Date(2020, 0, 1);
 
         expect(Time.durationSeconds('3 hours', from)).to.equal(3 * 3600);
         expect(Time.durationSeconds('1 week', from)).to.equal(7 * 24 * 3600);
