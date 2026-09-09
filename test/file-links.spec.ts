@@ -3,14 +3,13 @@ import * as path from 'path';
 import { findRelativeFileLinks } from '../src/utils/file-links';
 
 describe('Relative file links', () => {
-    const documentPath = path.join(path.sep, 'workspace', 'todos', 'project.todo');
+    const workspacePath = path.resolve(path.sep, 'workspace'),
+        documentPath = path.join(workspacePath, 'todos', 'project.todo');
 
     it('resolves links from the todo document directory', () => {
         const [link] = findRelativeFileLinks('See file://./config/app.rb', documentPath);
 
-        expect(link.targetPath).to.equal(
-            path.join(path.sep, 'workspace', 'todos', 'config', 'app.rb')
-        );
+        expect(link.targetPath).to.equal(path.join(workspacePath, 'todos', 'config', 'app.rb'));
         expect(link.start).to.equal(4);
         expect(link.end).to.equal(26);
     });
@@ -18,7 +17,7 @@ describe('Relative file links', () => {
     it('resolves parent paths and decodes URL-encoded filenames', () => {
         const [link] = findRelativeFileLinks('file://../shared/my%20file.txt', documentPath);
 
-        expect(link.targetPath).to.equal(path.join(path.sep, 'workspace', 'shared', 'my file.txt'));
+        expect(link.targetPath).to.equal(path.join(workspacePath, 'shared', 'my file.txt'));
     });
 
     it('finds multiple links and excludes trailing punctuation from their ranges', () => {
