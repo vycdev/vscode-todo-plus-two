@@ -80,6 +80,7 @@
 - Added a command to copy the project at the cursor with its rendered statistics included as text. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/73
 - Fixed invalid statistics visibility expressions so they hide the affected statistics instead of interrupting extension updates.
 - Fixed the Due view so `todo.due.soonDays: 0` keeps future tasks out of the soon window.
+- Added a pending-task badge to the Todo activity bar icon on supported VS Code versions. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/90
 
 ### Version 5.2.0
 

@@ -6,6 +6,11 @@ import Utils from '../utils';
 import Consts from '../consts';
 import { hasUnfinishedTodo, matchesFilesViewFilter } from '../utils/files-view-filter';
 import { matchesTodoStatus } from '../utils/todo-status';
+import {
+    countPendingTodos,
+    supportsActivityBarBadge,
+    updateActivityBarBadge,
+} from '../utils/activity-bar-badge';
 import Tags from '../utils/tags';
 import File from './items/file';
 import Item from './items/item';
@@ -53,7 +58,14 @@ class Files extends View {
             return [];
         }
 
-        let obj = item ? item.obj : await Utils.files.get(undefined, this.filter);
+        let obj;
+
+        if (item) {
+            obj = item.obj;
+        } else {
+            obj = await Utils.files.get(undefined, this.filter);
+            this.updateActivityBarBadge();
+        }
 
         while (obj && '' in obj) obj = obj['']; // Collapsing unnecessary groups
 
@@ -150,7 +162,31 @@ class Files extends View {
 
         super.refresh();
 
+        this.refreshActivityBarBadge();
+
         vscode.commands.executeCommand('setContext', 'todo-files-show-finished', this.showFinished);
+    }
+
+    setTreeView(treeView) {
+        super.setTreeView(treeView);
+        this.refreshActivityBarBadge();
+    }
+
+    async refreshActivityBarBadge() {
+        if (!supportsActivityBarBadge(this.treeView)) return;
+
+        try {
+            await Utils.files.get();
+            this.updateActivityBarBadge();
+        } catch (error) {
+            console.warn('Todo+: Could not update the activity bar badge', error);
+        }
+    }
+
+    updateActivityBarBadge() {
+        const pending = countPendingTodos(Utils.files.filesData, Consts.regexes.todoBox);
+
+        updateActivityBarBadge(this.treeView, pending);
     }
 
     isFinishedTodo(text: string) {
