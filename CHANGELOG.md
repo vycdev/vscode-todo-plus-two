@@ -81,6 +81,7 @@
 - Fixed invalid statistics visibility expressions so they hide the affected statistics instead of interrupting extension updates.
 - Fixed the Due view so `todo.due.soonDays: 0` keeps future tasks out of the soon window.
 - Added a pending-task badge to the Todo activity bar icon on supported VS Code versions. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/90
+- Keep the badge current for unsaved edits and workspace changes, ignore completion-tag examples in inline code, and serialize overlapping file loads to avoid duplicate scans and watchers.
 
 ### Version 5.2.0
 

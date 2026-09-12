@@ -184,6 +184,8 @@ class Files extends View {
     }
 
     updateActivityBarBadge() {
+        if (!supportsActivityBarBadge(this.treeView)) return;
+
         const pending = countPendingTodos(Utils.files.filesData, Consts.regexes.todoBox);
 
         updateActivityBarBadge(this.treeView, pending);

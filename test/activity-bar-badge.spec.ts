@@ -38,6 +38,20 @@ describe('Activity bar badge', () => {
         });
     });
 
+    it('counts unfinished tasks with completion-tag examples inside inline code', () => {
+        const filesData = {
+            '/workspace/TODO': {
+                textEditor: document([
+                    '☐ explain `@done`',
+                    '☐ explain ``@cancelled``',
+                    '☐ actually finished @done',
+                    '☐ actually cancelled @cancelled',
+                ]),
+            },
+        };
+        expect(countPendingTodos(filesData, /^\s*☐\s(?!.*@(?:done|cancelled)).*/gm)).to.equal(2);
+    });
+
     it('updates supported tree views without affecting older VS Code versions', () => {
         const supported = { badge: undefined };
         const unsupported = {};

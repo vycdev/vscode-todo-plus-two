@@ -1,3 +1,5 @@
+import { matchesTodoStatus } from './todo-status';
+
 interface TextLineLike {
     text: string;
 }
@@ -25,9 +27,7 @@ export const countPendingTodos = (filesData, pendingPattern: RegExp): number => 
         if (!data || !data.textEditor) return count;
 
         for (let lineNumber = 0; lineNumber < data.textEditor.lineCount; lineNumber++) {
-            pendingPattern.lastIndex = 0;
-
-            if (pendingPattern.test(data.textEditor.lineAt(lineNumber).text)) count++;
+            if (matchesTodoStatus(data.textEditor.lineAt(lineNumber).text, pendingPattern)) count++;
         }
 
         return count;
