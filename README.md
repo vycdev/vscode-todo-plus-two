@@ -213,7 +213,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.embedded.view.groupByType": true, // Group embedded todos by type
   "todo.embedded.view.groupByFile": true, // Group embedded todos by file
   "todo.embedded.view.expanded": true, // Start the tree in an expanded state
-  "todo.embedded.view.icons": true // Show icons next to todos and types"
+  "todo.embedded.view.icons": true // Show icons next to todos and types
 }
 ```
 
