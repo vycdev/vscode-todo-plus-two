@@ -1,6 +1,6 @@
 # Develop codebase review — 2026-09-12
 
-Reviewed the complete source tree, tests, extension manifest, build/test configuration, repository guidance, and contributor documentation, starting at `7bcc173` on `develop`. Three independent subsystem reviews covered the model/archive/dependency layer, filesystem/embedded layer, and UI/providers/time/statistics layer. The integration review covered commands, activation, configuration, exports, lifecycle ownership, and the combined changes.
+Reviewed the complete source tree, tests, extension manifest, build/test configuration, repository guidance, and contributor documentation, starting at `7bcc173` on `develop`. Incoming changes through `5381b53`, including the activity-bar badge, were integrated and reviewed before merging. Three independent subsystem reviews covered the model/archive/dependency layer, filesystem/embedded layer, and UI/providers/time/statistics layer. The integration review covered commands, activation, configuration, exports, lifecycle ownership, and the combined changes.
 
 ## Findings and fixes
 
@@ -30,7 +30,7 @@ Two compatibility changes are intentional: statistics conditions no longer accep
 
 ## Validation
 
-Final local validation: a clean `npm ci`, all 375 tests, source/test type checking, the development build, the production build, and formatting checks passed. The pre-review baseline had 291 passing tests. The expression evaluator also matched JavaScript on 2,898 generated expressions within the supported grammar.
+Final local validation: a clean `npm ci`, all 383 tests, source/test type checking, the development build, the production build, and formatting checks passed. The pre-review baseline had 291 passing tests. The expression evaluator also matched JavaScript on 2,898 generated expressions within the supported grammar.
 
 Regression coverage exercises archive failure/concurrency paths, dirty and hidden documents, symlink traversal including Windows junctions, scan and provider races, command focus/version changes, prototype-like IDs, invalid/empty regexes, lifecycle cleanup, UI refreshes, expression parsing, and time calculations. Existing export, parser, tag, dependency, and view tests remain part of the full suite.
 

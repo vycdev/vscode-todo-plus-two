@@ -281,7 +281,7 @@ class Files {
       .map((filePath) => ({ filePath, data: this.filesData[filePath] }))
       .filter(({ filePath, data }) => {
         if (!data) return false;
-        return matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()]);
+        return !filter || matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()]);
       });
     const rootKeys = getUniqueRootKeys(
       visibleFiles.map(({ data }) => ({ root: data.root, rootPath: data.rootPath }))

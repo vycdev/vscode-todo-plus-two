@@ -5,9 +5,14 @@ describe('View lifecycle', () => {
   it('registers view and configuration disposables with the extension context', () => {
     const disposed: string[] = [];
     const refreshed: string[] = [];
+    const treeViews: string[] = [];
     const context = { subscriptions: [] };
     const views = [
-      { id: 'files', refresh: () => refreshed.push('files') },
+      {
+        id: 'files',
+        refresh: () => refreshed.push('files'),
+        setTreeView: (treeView) => treeViews.push(treeView.id),
+      },
       { id: 'embedded', refresh: () => refreshed.push('embedded') },
     ];
     let configurationListener: () => void;
@@ -15,7 +20,7 @@ describe('View lifecycle', () => {
     registerViews(
       context,
       views,
-      (id) => ({ dispose: () => disposed.push(id) }),
+      (id) => ({ id, dispose: () => disposed.push(id) }),
       (listener) => {
         configurationListener = listener;
 
@@ -24,6 +29,7 @@ describe('View lifecycle', () => {
     );
 
     expect(context.subscriptions).to.have.length(3);
+    expect(treeViews).to.deep.equal(['files']);
 
     configurationListener!();
     expect(refreshed).to.deep.equal(['files', 'embedded']);
@@ -42,6 +48,7 @@ describe('View lifecycle', () => {
         {
           id: 'due',
           refresh: () => undefined,
+          setTreeView: () => disposed.push('bound-tree-view'),
           dispose: () => disposed.push('view-resources'),
         },
       ],
@@ -50,6 +57,11 @@ describe('View lifecycle', () => {
     );
 
     context.subscriptions.forEach((subscription) => subscription.dispose());
-    expect(disposed).to.deep.equal(['registration', 'configuration', 'view-resources']);
+    expect(disposed).to.deep.equal([
+      'bound-tree-view',
+      'registration',
+      'configuration',
+      'view-resources',
+    ]);
   });
 });

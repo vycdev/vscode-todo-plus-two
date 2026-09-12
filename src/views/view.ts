@@ -10,6 +10,7 @@ class View implements vscode.TreeDataProvider<Item> {
   protected subscriptions: vscode.Disposable[] = [];
   private refreshTimer;
   config;
+  treeView;
   onDidChangeTreeDataEvent = new vscode.EventEmitter<Item | undefined>();
   onDidChangeTreeData = this.onDidChangeTreeDataEvent.event;
 
@@ -25,6 +26,10 @@ class View implements vscode.TreeDataProvider<Item> {
     return [];
   }
 
+  setTreeView(treeView) {
+    this.treeView = treeView;
+  }
+
   refresh() {
     this.config = Config.get();
 
@@ -38,6 +43,7 @@ class View implements vscode.TreeDataProvider<Item> {
 
   dispose() {
     clearTimeout(this.refreshTimer);
+    this.treeView = undefined;
     this.subscriptions.forEach((subscription) => subscription.dispose());
     this.subscriptions = [];
     this.onDidChangeTreeDataEvent.dispose();

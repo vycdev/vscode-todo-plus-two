@@ -112,7 +112,7 @@ const loadExtension = () => {
     './utils': { default: utils },
     './utils/dependency_index': { default: { initialize: initialize('index') } },
     './views/embedded': { default: { refreshFile: () => events.push('embedded-view') } },
-    './views/files': { default: {} },
+    './views/files': { default: { refresh() {}, refreshActivityBarBadge() {} } },
     './views/due': {
       Due: { refresh: () => events.push('due-view'), onDidChangeDate: dates.subscribe },
     },

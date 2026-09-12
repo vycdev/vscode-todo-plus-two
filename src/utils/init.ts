@@ -64,7 +64,7 @@ const Init = {
     registerViews(
       context,
       Views,
-      (id, view) => vscode.window.registerTreeDataProvider(id, view),
+      (id, view) => vscode.window.createTreeView(id, { treeDataProvider: view }),
       (listener) => vscode.workspace.onDidChangeConfiguration(listener)
     );
   },
