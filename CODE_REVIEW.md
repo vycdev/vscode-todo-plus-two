@@ -30,7 +30,7 @@ Two compatibility changes are intentional: statistics conditions no longer accep
 
 ## Validation
 
-Final local validation: a clean `npm ci`, all 383 tests, source/test type checking, the development build, the production build, and formatting checks passed. The pre-review baseline had 291 passing tests. The expression evaluator also matched JavaScript on 2,898 generated expressions within the supported grammar.
+Final local validation: a clean `npm ci`, all 384 tests, source/test type checking, the development build, the production build, and formatting checks passed. The pre-review baseline had 291 passing tests. The expression evaluator also matched JavaScript on 2,898 generated expressions within the supported grammar. The complete CI matrix passed on Windows and Linux with Node 22 and 24.
 
 Regression coverage exercises archive failure/concurrency paths, dirty and hidden documents, symlink traversal including Windows junctions, scan and provider races, command focus/version changes, prototype-like IDs, invalid/empty regexes, lifecycle cleanup, UI refreshes, expression parsing, and time calculations. Existing export, parser, tag, dependency, and view tests remain part of the full suite.
 
