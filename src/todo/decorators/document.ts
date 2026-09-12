@@ -4,7 +4,6 @@ import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Config from '../../config';
 import Utils from '../../utils';
-import Item from '../items/item';
 import DocumentModule from '../document';
 import Comment from './comment';
 import Formatted from './formatted';
@@ -24,143 +23,107 @@ const DocumentsLinesCache = new DocumentLinesCache();
 /* DOCUMENT */
 
 const Document = {
-    /* UPDATE */
+  /* UPDATE */
 
-    update(
-        res: vscode.TextEditor | vscode.TextDocument = vscode.window.activeTextEditor,
-        force: boolean = false
-    ) {
-        const statisticsStatusbar = Config.getKey('statistics.statusbar.enabled') !== false,
-            statisticsProjects = Config.getKey('statistics.project.enabled') !== false;
+  update(
+    res: vscode.TextEditor | vscode.TextDocument = vscode.window.activeTextEditor,
+    force: boolean = false
+  ) {
+    const statisticsStatusbar = Config.getKey('statistics.statusbar.enabled') !== false,
+      statisticsProjects = Config.getKey('statistics.project.enabled') !== false,
+      activeEditor = vscode.window.activeTextEditor,
+      StatusbarTimer = require('../../statusbars/timer').default;
 
-        if (res) {
-            const doc = new DocumentModule(res);
+    if (res) {
+      const doc = new DocumentModule(res);
 
-            if (doc.isSupported()) {
-                // if ( !force && !DocumentsLinesCache.didChange ( doc ) ) return; //FIXME: Decorations might get trashed, so we can't skip this work //URL: https://github.com/Microsoft/vscode/issues/50415
+      if (doc.isSupported()) {
+        // if ( !force && !DocumentsLinesCache.didChange ( doc ) ) return; //FIXME: Decorations might get trashed, so we can't skip this work //URL: https://github.com/Microsoft/vscode/issues/50415
 
-                DocumentsLinesCache.update(doc.textDocument);
+        DocumentsLinesCache.update(doc.textDocument);
 
-                const items = Document.getItems(doc);
+        const items = Document.getItems(doc),
+          isActive = activeEditor && activeEditor.document === doc.textDocument,
+          previousGlobalTokens = Utils.statistics.tokens.global;
 
-                if (statisticsStatusbar || statisticsProjects) {
-                    Utils.statistics.tokens.updateGlobal(items);
-                }
-
-                if (statisticsProjects) {
-                    Utils.statistics.tokens.updateProjects(doc.textDocument, items);
-                }
-
-                const decorations = Document.getItemsDecorations(items);
-
-                decorations.forEach(({ type, ranges }) => {
-                    doc.textEditor.setDecorations(type, ranges);
-                });
-
-                const StatusbarTimer = require('../../statusbars/timer').default; // Avoiding a cyclic dependency
-
-                StatusbarTimer.update(doc);
-            }
+        if (statisticsStatusbar || statisticsProjects) {
+          Utils.statistics.tokens.updateGlobal(items);
         }
 
-        if (statisticsStatusbar) {
-            const StatusbarStatistics = require('../../statusbars/statistics').default; // Avoiding a cyclic dependency
-
-            StatusbarStatistics.update();
-        }
-    },
-
-    updateLines(
-        res: vscode.TextEditor | vscode.TextDocument = vscode.window.activeTextEditor,
-        lineNrs: number[]
-    ) {
-        //URL: https://github.com/Microsoft/vscode/issues/50346
-
-        // This should optimize these scenarios:
-        // 1. No items at all
-        // 2. Same items but with same ranges
-        // 3. Same items but both ranging through the entire line
-        // 4. Same items but both ranging through the entire line, with some other items before the end
-
-        const doc = new DocumentModule(res);
-
-        if (!doc.isSupported()) return;
-
-        const prevLines = DocumentsLinesCache.get(doc.textDocument);
-
-        if (prevLines && prevLines.length === doc.textDocument.lineCount) {
-            lineNrs = _.uniq(lineNrs); // Multiple cursors on the same line
-
-            const isUnchanged = lineNrs.every((lineNr) => {
-                const prevLine = prevLines[lineNr],
-                    prevDoc = new DocumentModule(prevLine),
-                    prevItems = Document.getItems(prevDoc) as any, //TSC
-                    currLine = doc.textDocument.lineAt(lineNr).text,
-                    currDoc = new DocumentModule(currLine),
-                    currItems = Document.getItems(currDoc) as any; //TSC
-
-                return _.isEqualWith(prevItems, currItems, (prevItem, currItem) => {
-                    if (prevItem instanceof Item && currItem instanceof Item) {
-                        return (
-                            prevItem.matchRange.start === currItem.matchRange.start &&
-                            (prevItem.matchRange.end === currItem.matchRange.end ||
-                                (_.trim(prevItem.match.input) === _.trim(prevItem.text) &&
-                                    _.trim(currItem.match.input) === _.trim(currItem.text) &&
-                                    !_.find(
-                                        currItems,
-                                        (items) =>
-                                            _.isArray(items) &&
-                                            items.find(
-                                                (item) =>
-                                                    item !== currItem &&
-                                                    _.trim(currItem.text).endsWith(item.text)
-                                            )
-                                    )))
-                        ); //TODO: Write it better
-                    }
-                });
-            });
-
-            if (isUnchanged) return;
+        if (statisticsProjects) {
+          Utils.statistics.tokens.updateProjects(doc.textDocument, items);
         }
 
-        Document.update(res, true);
-    },
+        const decorations = Document.getItemsDecorations(items);
 
-    /* ITEMS */
+        decorations.forEach(({ type, ranges }) => {
+          doc.textEditor.setDecorations(type, ranges);
+        });
 
-    getItems(doc: DocumentModule) {
-        return {
-            archive: doc.getArchive(),
-            comments: doc.getComments(),
-            formatted: Config.getKey('formatting.enabled') ? doc.getFormatted() : [],
-            projects: doc.getProjects(),
-            tags: doc.getTags(),
-            tagsDue: doc.getTagsDue(),
-            todosBox: doc.getTodosBox(),
-            todosStarted: doc.getTodosBoxStarted(),
-            todosDone: doc.getTodosDone(),
-            todosCancelled: doc.getTodosCancelled(),
-        };
-    },
+        if (isActive) {
+          StatusbarTimer.update(doc);
+        } else {
+          // Background editor decorations may need their own global conditions,
+          // but the status bar continues to describe the active document.
+          Utils.statistics.tokens.global = previousGlobalTokens;
+        }
+      }
+    }
 
-    getItemsDecorations(items) {
-        const colorsEnabled = Config.getKey('colors.enabled') !== false;
+    if (!Utils.editor.isSupported(activeEditor)) StatusbarTimer.update();
 
-        return _.concat(
-            applyCustomColors(new Comment().getDecorations(items.comments), colorsEnabled),
-            applyCustomColors(new Formatted().getDecorations(items.formatted), colorsEnabled),
-            applyCustomColors(new Tag().getDecorations(items.tags), colorsEnabled),
-            applyCustomColors(new TodoDue().getDecorations(items.tagsDue), colorsEnabled),
-            new Project().getDecorations(items.projects),
-            applyCustomColors(new TodoStarted().getDecorations(items.todosStarted), colorsEnabled),
-            new TodoDone().getDecorations(items.todosDone),
-            applyCustomColors(
-                new TodoCancelled().getDecorations(items.todosCancelled),
-                colorsEnabled
-            )
-        );
-    },
+    const StatusbarStatistics = require('../../statusbars/statistics').default; // Avoiding a cyclic dependency
+
+    // Update even when disabled so an already visible item is hidden immediately.
+    StatusbarStatistics.update();
+  },
+
+  updateLines(
+    res: vscode.TextEditor | vscode.TextDocument = vscode.window.activeTextEditor,
+    lineNrs: number[]
+  ) {
+    const doc = new DocumentModule(res);
+
+    if (!doc.isSupported()) return;
+
+    // Equal match ranges do not imply equal behavior: editing a tag value can
+    // change statistics, the timer or due colors without changing its length.
+    if (!DocumentsLinesCache.didChange({ textDocument: doc.textDocument })) return;
+
+    Document.update(res, true);
+  },
+
+  /* ITEMS */
+
+  getItems(doc: DocumentModule) {
+    return {
+      archive: doc.getArchive(),
+      comments: doc.getComments(),
+      formatted: Config.getKey('formatting.enabled') ? doc.getFormatted() : [],
+      projects: doc.getProjects(),
+      tags: doc.getTags(),
+      tagsDue: doc.getTagsDue(),
+      todosBox: doc.getTodosBox(),
+      todosStarted: doc.getTodosBoxStarted(),
+      todosDone: doc.getTodosDone(),
+      todosCancelled: doc.getTodosCancelled(),
+    };
+  },
+
+  getItemsDecorations(items) {
+    const colorsEnabled = Config.getKey('colors.enabled') !== false;
+
+    return _.concat(
+      applyCustomColors(new Comment().getDecorations(items.comments), colorsEnabled),
+      applyCustomColors(new Formatted().getDecorations(items.formatted), colorsEnabled),
+      applyCustomColors(new Tag().getDecorations(items.tags), colorsEnabled),
+      applyCustomColors(new TodoDue().getDecorations(items.tagsDue), colorsEnabled),
+      new Project().getDecorations(items.projects),
+      applyCustomColors(new TodoStarted().getDecorations(items.todosStarted), colorsEnabled),
+      new TodoDone().getDecorations(items.todosDone),
+      applyCustomColors(new TodoCancelled().getDecorations(items.todosCancelled), colorsEnabled)
+    );
+  },
 };
 
 /* EXPORT */

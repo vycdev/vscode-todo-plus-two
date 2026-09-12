@@ -8,20 +8,16 @@ import AG from './ag';
 /* RG */ // ripgrep //URL: https://github.com/BurntSushi/ripgrep
 
 class RG extends AG {
-    static bin = 'rg';
+  static bin = 'rg';
 
-    execa(filePaths) {
-        const config = Config.get();
+  execa(filePaths) {
+    const config = Config.get();
 
-        return execa(
-            RG.bin,
-            buildRgArgs(
-                config.embedded.providers.rg.regex,
-                config.embedded.providers.rg.args,
-                filePaths
-            )
-        );
-    }
+    return execa(
+      RG.bin,
+      buildRgArgs(config.embedded.providers.rg.regex, config.embedded.providers.rg.args, filePaths)
+    );
+  }
 }
 
 /* EXPORT */

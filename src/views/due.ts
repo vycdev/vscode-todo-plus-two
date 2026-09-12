@@ -11,97 +11,106 @@ import Todo from './items/todo';
 import View from './view';
 
 class DueView extends View {
-    id = 'todo.views.3due';
-    rolloverTimer;
+  id = 'todo.views.3due';
+  rolloverTimer;
+  private dateChanges = new vscode.EventEmitter<void>();
+  readonly onDidChangeDate = this.dateChanges.event;
 
-    constructor() {
-        super();
-        this.scheduleRolloverRefresh();
-    }
+  constructor() {
+    super();
+    this.scheduleRolloverRefresh();
+  }
 
-    scheduleRolloverRefresh() {
-        const now = new Date(),
-            tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
-            delay = tomorrow.getTime() - now.getTime() + 1000;
+  scheduleRolloverRefresh() {
+    const now = new Date(),
+      tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
+      delay = tomorrow.getTime() - now.getTime() + 1000;
 
-        clearTimeout(this.rolloverTimer);
-        this.rolloverTimer = setTimeout(() => {
-            this.refresh();
-            this.scheduleRolloverRefresh();
-        }, delay);
-    }
+    clearTimeout(this.rolloverTimer);
+    this.rolloverTimer = setTimeout(() => {
+      this.refresh();
+      this.dateChanges.fire();
+      this.scheduleRolloverRefresh();
+    }, delay);
+  }
 
-    async getChildren(item?: Item): Promise<Item[]> {
-        if (item) return item.obj;
+  dispose() {
+    clearTimeout(this.rolloverTimer);
+    this.dateChanges.dispose();
+    super.dispose();
+  }
 
-        await Utils.files.get();
+  async getChildren(item?: Item): Promise<Item[]> {
+    if (item) return item.obj;
 
-        const filesData = Utils.files.filesData || {},
-            groups = {},
-            today = new Date(),
-            todayKey = getDueDateKey(today),
-            configuredSoonDays = Number(Config.getKey('due.soonDays')),
-            soonDays = Number.isFinite(configuredSoonDays) ? configuredSoonDays : 7;
+    await Utils.files.get();
 
-        Object.keys(filesData).forEach((filePath) => {
-            const data = filesData[filePath];
+    const filesData = Utils.files.filesData || {},
+      groups = {},
+      today = new Date(),
+      todayKey = getDueDateKey(today),
+      configuredSoonDays = Number(Config.getKey('due.soonDays')),
+      soonDays = Number.isFinite(configuredSoonDays) ? configuredSoonDays : 7;
 
-            if (!data || !data.textEditor) return;
+    Object.keys(filesData).forEach((filePath) => {
+      const data = filesData[filePath];
 
-            const lines = [];
+      if (!data || !data.textEditor) return;
 
-            for (let lineNumber = 0; lineNumber < data.textEditor.lineCount; lineNumber++) {
-                lines.push(data.textEditor.lineAt(lineNumber).text);
-            }
+      const lines = [];
 
-            getDueTaskLines(
-                lines,
-                Consts.regexes.todo,
-                Consts.regexes.todoFinished,
-                today,
-                soonDays
-            ).forEach((task) => {
-                const line = data.textEditor.lineAt(task.lineNumber),
-                    obj = {
-                        filePath,
-                        line,
-                        lineNr: task.lineNumber,
-                        relativePath: data.relativePath,
-                        textEditor: data.textEditor,
-                    },
-                    todo = new Todo(obj, _.trimStart(task.text));
+      for (let lineNumber = 0; lineNumber < data.textEditor.lineCount; lineNumber++) {
+        lines.push(data.textEditor.lineAt(lineNumber).text);
+      }
 
-                todo.tooltip = `${task.text}\n${data.relativePath}`;
+      getDueTaskLines(
+        lines,
+        Consts.regexes.todo,
+        Consts.regexes.todoFinished,
+        today,
+        soonDays
+      ).forEach((task) => {
+        const line = data.textEditor.lineAt(task.lineNumber),
+          obj = {
+            filePath,
+            line,
+            lineNr: task.lineNumber,
+            relativePath: data.relativePath,
+            textEditor: data.textEditor,
+          },
+          todo = new Todo(obj, _.trimStart(task.text));
 
-                if (!groups[task.dateKey]) groups[task.dateKey] = { date: task.date, todos: [] };
-                groups[task.dateKey].todos.push(todo);
-            });
-        });
+        todo.tooltip = `${task.text}\n${data.relativePath}`;
 
-        const dateKeys = Object.keys(groups).sort();
+        if (!groups[task.dateKey]) groups[task.dateKey] = { date: task.date, todos: [] };
+        groups[task.dateKey].todos.push(todo);
+      });
+    });
 
-        if (!dateKeys.length) return [new Placeholder('No unfinished tasks with due dates found')];
+    const dateKeys = Object.keys(groups).sort();
 
-        return dateKeys.map((dateKey) => {
-            const groupData = groups[dateKey],
-                label =
-                    dateKey === todayKey
-                        ? 'Today'
-                        : groupData.date.toLocaleDateString(undefined, {
-                              weekday: 'short',
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                          }),
-                group = new Group(groupData.todos, `${label} (${groupData.todos.length})`);
-            group.collapsibleState =
-                dateKey === todayKey
-                    ? vscode.TreeItemCollapsibleState.Expanded
-                    : vscode.TreeItemCollapsibleState.Collapsed;
+    if (!dateKeys.length) return [new Placeholder('No unfinished tasks with due dates found')];
 
-            return group;
-        });
-    }
+    return dateKeys.map((dateKey) => {
+      const groupData = groups[dateKey],
+        label =
+          dateKey === todayKey
+            ? 'Today'
+            : groupData.date.toLocaleDateString(undefined, {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              }),
+        group = new Group(groupData.todos, `${label} (${groupData.todos.length})`);
+      group.collapsibleState =
+        dateKey === todayKey
+          ? vscode.TreeItemCollapsibleState.Expanded
+          : vscode.TreeItemCollapsibleState.Collapsed;
+
+      return group;
+    });
+  }
 }
 
 export const Due = new DueView();

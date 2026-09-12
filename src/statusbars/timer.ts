@@ -10,215 +10,188 @@ import { getTimerState } from '../utils/timekeeping';
 /* TIMER */
 
 class Timer {
-    item;
-    itemProps;
-    config;
-    data;
-    intervalId;
-    layout: {
-        alignment: vscode.StatusBarAlignment;
-        priority: number;
+  item;
+  itemProps;
+  config;
+  data;
+  intervalId;
+  layout: {
+    alignment: vscode.StatusBarAlignment;
+    priority: number;
+  };
+
+  constructor() {
+    this.item = this._initItem();
+    this.itemProps = {};
+    this.data = {};
+  }
+
+  _getLayout() {
+    return {
+      alignment:
+        Config.getKey('timer.statusbar.alignment') === 'right'
+          ? vscode.StatusBarAlignment.Right
+          : vscode.StatusBarAlignment.Left,
+      priority: Config.getKey('timer.statusbar.priority'),
     };
+  }
 
-    constructor() {
-        this.item = this._initItem();
-        this.itemProps = {};
-        this.data = {};
+  _initItem() {
+    const layout = this._getLayout();
+
+    this.layout = layout;
+
+    return vscode.window.createStatusBarItem(layout.alignment, layout.priority);
+  }
+
+  _updateLayout() {
+    const layout = this._getLayout();
+
+    if (
+      this.layout &&
+      this.layout.alignment === layout.alignment &&
+      this.layout.priority === layout.priority
+    )
+      return false;
+
+    const previousItem = this.item;
+
+    this.item = this._initItem();
+    this.itemProps = {};
+    if (previousItem) previousItem.dispose();
+
+    return true;
+  }
+
+  _setItemProp(prop, value, _set = true) {
+    if (this.itemProps[prop] === value) return false;
+
+    this.itemProps[prop] = value;
+
+    if (_set) {
+      this.item[prop] = value;
     }
 
-    _getLayout() {
-        return {
-            alignment:
-                Config.getKey('timer.statusbar.alignment') === 'right'
-                    ? vscode.StatusBarAlignment.Right
-                    : vscode.StatusBarAlignment.Left,
-            priority: Config.getKey('timer.statusbar.priority'),
-        };
-    }
+    return true;
+  }
 
-    _initItem() {
-        const layout = this._getLayout();
+  update(doc?: Document) {
+    this._updateLayout();
+    this.config = Config.get();
+    this.updateData(doc);
+    this.updateVisibility();
+    this.updateTimer();
 
-        this.layout = layout;
+    if (!this.itemProps.visibility) return;
 
-        return vscode.window.createStatusBarItem(layout.alignment, layout.priority);
-    }
+    this.updateColor();
+    this.updateCommand();
+    this.updateTooltip();
+    this.updateText();
+  }
 
-    _updateLayout() {
-        const layout = this._getLayout();
+  updateData(doc?: Document) {
+    const startedFormat = this.config.timekeeping.started.format,
+      timestampOffset = startedFormat.indexOf('s') >= 0 ? 0 : Date.now() % 60000,
+      todo =
+        doc &&
+        doc.getTodosBoxStarted().find((candidate) => {
+          const state = getTimerState(candidate.text, startedFormat, new Date(), timestampOffset);
 
-        if (
-            this.layout &&
-            this.layout.alignment === layout.alignment &&
-            this.layout.priority === layout.priority
-        )
-            return false;
+          return Boolean(state && state.active);
+        });
 
-        const previousItem = this.item;
+    if (!todo) {
+      this.data = {};
+    } else {
+      const startedTag = todo['getTag'](Consts.regexes.tagStarted), //TSC
+        sameTimer =
+          this.data.filePath === doc.textDocument.uri.fsPath &&
+          this.data.startedTag === startedTag &&
+          this.data.startedFormat === startedFormat;
 
-        this.item = this._initItem();
-        this.itemProps = {};
-        if (previousItem) previousItem.dispose();
+      this.data = {
+        filePath: doc.textDocument.uri.fsPath,
+        line: todo.line,
+        text: todo.text,
+        startedTag,
+        startedFormat,
+        // Preserve sub-minute precision while the task is edited or moved.
+        timestampOffset: sameTimer ? this.data.timestampOffset : timestampOffset,
+      };
 
-        return true;
-    }
+      const estTag = todo['getTag'](Consts.regexes.tagEstimate); //TSC
 
-    _setItemProp(prop, value, _set = true) {
-        if (this.itemProps[prop] === value) return false;
+      if (estTag) {
+        const estSeconds = Utils.statistics.timeTags.parseEstimate(estTag);
 
-        this.itemProps[prop] = value;
-
-        if (_set) {
-            this.item[prop] = value;
+        if (estSeconds) {
+          this.data.estMilliseconds = estSeconds * 1000;
         }
-
-        return true;
+      }
     }
+  }
 
-    update(doc: Document) {
-        const layoutUpdated = this._updateLayout();
+  updateColor() {
+    const { color } = this.config.timer.statusbar;
 
-        this.config = Config.get();
+    this._setItemProp('color', color);
+  }
 
-        const updated = this.updateData(doc);
+  updateCommand() {
+    const command = Utils.command.get('todo.open', [this.data.filePath, this.data.line.lineNumber]);
 
-        if (!updated && !layoutUpdated) return;
+    this._setItemProp('command', command);
+  }
 
-        this.updateVisibility();
-        this.updateTimer();
+  updateTooltip() {
+    this._setItemProp('tooltip', this.data.text);
+  }
 
-        if (!this.itemProps.visibility) return;
+  updateText() {
+    const state = getTimerState(
+      this.data.text,
+      this.data.startedFormat,
+      new Date(),
+      this.data.timestampOffset
+    );
 
-        this.updateColor();
-        this.updateCommand();
-        this.updateTooltip();
-        this.updateText();
+    if (!state) return;
+
+    const fromDate = this.data.estMilliseconds ? new Date(state.elapsedMilliseconds) : new Date(0),
+      toDate = this.data.estMilliseconds
+        ? new Date(this.data.estMilliseconds)
+        : new Date(state.elapsedMilliseconds),
+      clock = Utils.time.diffClock(toDate, fromDate);
+
+    this._setItemProp('text', clock);
+  }
+
+  updateVisibility() {
+    const condition = Consts.timer,
+      visibility =
+        this.data.text &&
+        (condition === true || (condition === 'estimate' && this.data.estMilliseconds));
+
+    if (this._setItemProp('visibility', visibility)) {
+      this.item[visibility ? 'show' : 'hide']();
     }
+  }
 
-    updateData(doc: Document) {
-        const startedFormat = this.config.timekeeping.started.format,
-            timestampOffset = startedFormat.indexOf('s') >= 0 ? 0 : Date.now() % 60000,
-            todo = doc.getTodosBoxStarted().find((candidate) => {
-                const state = getTimerState(
-                    candidate.text,
-                    startedFormat,
-                    new Date(),
-                    timestampOffset
-                );
-
-                return Boolean(state && state.active);
-            });
-
-        if (!todo) {
-            if (!this.data.line) return false;
-
-            this.data = {};
-        } else {
-            if (
-                this.data.text === todo.text &&
-                this.data.line &&
-                this.data.line.lineNumber === todo.line.lineNumber
-            ) {
-                return false;
-            }
-
-            const startedTag = todo['getTag'](Consts.regexes.tagStarted); //TSC
-
-            if (
-                this.data.line &&
-                this.data.line.lineNumber === todo.line.lineNumber &&
-                this.data.startedTag === startedTag
-            ) {
-                // Support for editing the todo without resetting the timer
-
-                this.data.text = todo.text;
-
-                this.updateTooltip();
-
-                return false;
-            }
-
-            this.data = {
-                filePath: doc.textDocument.uri.fsPath,
-                line: todo.line,
-                text: todo.text,
-                startedTag,
-                startedFormat,
-                timestampOffset,
-            };
-
-            const estTag = todo['getTag'](Consts.regexes.tagEstimate); //TSC
-
-            if (estTag) {
-                const estSeconds = Utils.statistics.timeTags.parseEstimate(estTag);
-
-                if (estSeconds) {
-                    this.data.estMilliseconds = estSeconds * 1000;
-                }
-            }
-        }
-
-        return true;
+  updateTimer() {
+    if (!this.itemProps.visibility) {
+      clearInterval(this.intervalId);
+      this.intervalId = undefined;
+    } else if (!this.intervalId) {
+      this.intervalId = setInterval(this.updateText.bind(this), 1000);
     }
+  }
 
-    updateColor() {
-        const { color } = this.config.timer.statusbar;
-
-        this._setItemProp('color', color);
-    }
-
-    updateCommand() {
-        const command = Utils.command.get('todo.open', [
-            this.data.filePath,
-            this.data.line.lineNumber,
-        ]);
-
-        this._setItemProp('command', command);
-    }
-
-    updateTooltip() {
-        this._setItemProp('tooltip', this.data.text);
-    }
-
-    updateText() {
-        const state = getTimerState(
-            this.data.text,
-            this.data.startedFormat,
-            new Date(),
-            this.data.timestampOffset
-        );
-
-        if (!state) return;
-
-        const fromDate = this.data.estMilliseconds
-                ? new Date(state.elapsedMilliseconds)
-                : new Date(0),
-            toDate = this.data.estMilliseconds
-                ? new Date(this.data.estMilliseconds)
-                : new Date(state.elapsedMilliseconds),
-            clock = Utils.time.diffClock(toDate, fromDate);
-
-        this._setItemProp('text', clock);
-    }
-
-    updateVisibility() {
-        const condition = Consts.timer,
-            visibility =
-                this.data.text &&
-                (condition === true || (condition === 'estimate' && this.data.estMilliseconds));
-
-        if (this._setItemProp('visibility', visibility)) {
-            this.item[visibility ? 'show' : 'hide']();
-        }
-    }
-
-    updateTimer() {
-        if (this.intervalId) clearInterval(this.intervalId);
-
-        if (!this.itemProps.visibility) return;
-
-        this.intervalId = setInterval(this.updateText.bind(this), 1000);
-    }
+  dispose() {
+    clearInterval(this.intervalId);
+    this.intervalId = undefined;
+    this.item.dispose();
+  }
 }
 
 /* EXPORT */

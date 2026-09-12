@@ -9,9 +9,9 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Portable**: being a plain text format you can read and edit it using any editor
 - **Custom symbols**: you can replace the default symbols with any symbol you want
 - **Supported symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes by default.
-    - **Box**: `☐` or Markdown `- [ ]`
-    - **Done**: `✔` or Markdown `- [x]`
-    - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
+  - **Box**: `☐` or Markdown `- [ ]`
+  - **Done**: `✔` or Markdown `- [x]`
+  - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
 - **Custom colors**: all colors can be customized
 - **Custom special tags**: special tags' names and their colors can be customized
 - **Archive**: you can move finished todos to a special "Archive" section with a shortcut
@@ -26,6 +26,8 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Activity bar views**: you can view your todo file and your embedded todos from a custom activity bar section
 
 ## Install
+
+Requires Visual Studio Code 1.36 or newer.
 
 Follow the instructions in the [Marketplace](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two), or run the following in the command palette:
 
@@ -180,9 +182,9 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.timer.statusbar.alignment": "left", // Should the item be placed to the left or right?
   "todo.timer.statusbar.color": "", // The foreground color for this item
   "todo.timer.statusbar.priority": -10, // The priority of this item. Higher value means the item should be shown more to the left
-  "todo.statistics.project.enabled": "global.projects < 100", // Show statistics next to a project, boolean or JS expression
+  "todo.statistics.project.enabled": "global.projects < 100", // Show statistics next to a project, boolean or token condition
   "todo.statistics.project.text": "([pending]) [est]", // Template used for rendering the text
-  "todo.statistics.statusbar.enabled": "global.all > 0", // Show statistics in the statusbar, boolean or JS expression
+  "todo.statistics.statusbar.enabled": "global.all > 0", // Show statistics in the statusbar, boolean or token condition
   "todo.statistics.statusbar.ignoreArchive": true, // Ignore the archive when rendering statistics in the statusbar
   "todo.statistics.statusbar.alignment": "left", // Should the item be placed to the left or right?
   "todo.statistics.statusbar.color": "", // The foreground color for this item
@@ -217,7 +219,9 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
 }
 ```
 
-Changing some settings (symbols, colors, providers...) requires a restart.
+Symbols, colors, view settings, and embedded provider settings refresh when changed.
+
+Statistics visibility conditions read `global` and `project` tokens, such as `global.all > 0 && project.pending > 0`. They support numeric/string/boolean literals, comparisons, arithmetic, logical operators, parentheses, and ternary expressions. Use bracket notation for hyphenated names, such as `project['est-total']`. Function calls, assignments, and arbitrary JavaScript execution are not supported; unsupported conditions evaluate to false.
 
 An actual regex will be generated from the value of the `todo.embedded.regex` setting. It uses 2 capturing groups, the first one captures the type of the todo (`TODO`, `FIXME` etc.) and the second one captures an optional description (`TODO: description`).
 

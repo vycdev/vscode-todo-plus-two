@@ -9,344 +9,342 @@ const projectParts = /^(\s*)([^:]+):(?=\s|$|@)/;
 const defaultIndentUnit = '  ';
 
 const sameProjectPath = (left: string[], right: string[]) =>
-    left.length === right.length && left.every((name, index) => name === right[index]);
+  left.length === right.length && left.every((name, index) => name === right[index]);
 
 export function createArchiveFinishedDateGetter(
-    todoFinishedRegex: RegExp,
-    tagFinishedRegex: RegExp,
-    parseDate: (value: string) => Date
+  todoFinishedRegex: RegExp,
+  tagFinishedRegex: RegExp,
+  parseDate: (value: string) => Date
 ) {
-    let previousFinishedDate: number | Date = -1;
+  let previousFinishedDate: number | Date = -1;
 
-    return (line: string) => {
-        const statusText = maskInlineCode(line);
+  return (line: string) => {
+    const statusText = maskInlineCode(line);
 
-        // Global regular expressions retain their last match position. Reset it
-        // so adjacent finished todos are both classified independently.
-        todoFinishedRegex.lastIndex = 0;
-        if (todoFinishedRegex.test(statusText)) {
-            const match = statusText.match(tagFinishedRegex);
-            previousFinishedDate = match ? parseDate(match[1]) : -1;
-        }
+    // Global regular expressions retain their last match position. Reset it
+    // so adjacent finished todos are both classified independently.
+    todoFinishedRegex.lastIndex = 0;
+    if (todoFinishedRegex.test(statusText)) {
+      const match = statusText.match(tagFinishedRegex);
+      previousFinishedDate = match ? parseDate(match[1]) : -1;
+    }
 
-        return previousFinishedDate;
-    };
+    return previousFinishedDate;
+  };
 }
 
 export function getTrailingEmptySeparatorStart(lines: string[], archiveLine?: number) {
-    if (typeof archiveLine !== 'number' || archiveLine < 0 || archiveLine >= lines.length) {
-        return undefined;
-    }
+  if (typeof archiveLine !== 'number' || archiveLine < 0 || archiveLine >= lines.length) {
+    return undefined;
+  }
 
-    let separatorStart = archiveLine;
+  let separatorStart = archiveLine;
 
-    while (separatorStart > 0 && lines[separatorStart - 1].trim() === '') {
-        separatorStart--;
-    }
+  while (separatorStart > 0 && lines[separatorStart - 1].trim() === '') {
+    separatorStart--;
+  }
 
-    return separatorStart;
+  return separatorStart;
 }
 
 export function getRemovableEmptyLineNumbers(
-    lines: string[],
-    emptyLines: number,
-    removedLineNumbers: number[] = [],
-    preserveFromLine?: number
+  lines: string[],
+  emptyLines: number,
+  removedLineNumbers: number[] = [],
+  preserveFromLine?: number
 ) {
-    if (emptyLines < 0) return [];
+  if (emptyLines < 0) return [];
 
-    const removedLineNumberSet = new Set(removedLineNumbers);
-    const removableLineNumbers = [] as number[];
-    let streak = 0;
+  const removedLineNumberSet = new Set(removedLineNumbers);
+  const removableLineNumbers = [] as number[];
+  let streak = 0;
 
-    lines.forEach((line, lineNumber) => {
-        if (removedLineNumberSet.has(lineNumber)) return;
-        if (typeof preserveFromLine === 'number' && lineNumber >= preserveFromLine) return;
+  lines.forEach((line, lineNumber) => {
+    if (removedLineNumberSet.has(lineNumber)) return;
+    if (typeof preserveFromLine === 'number' && lineNumber >= preserveFromLine) return;
 
-        if (line && line.trim() !== '') {
-            streak = 0;
-            return;
-        }
+    if (line && line.trim() !== '') {
+      streak = 0;
+      return;
+    }
 
-        streak++;
+    streak++;
 
-        if (streak > emptyLines) {
-            removableLineNumbers.push(lineNumber);
-        }
-    });
+    if (streak > emptyLines) {
+      removableLineNumbers.push(lineNumber);
+    }
+  });
 
-    return removableLineNumbers;
+  return removableLineNumbers;
 }
 
 export function mergeInsertItemsIntoArchiveContent(
-    content: string,
-    insertItems: any[],
-    config: any,
-    isTodoLine: (line: string) => boolean = () => false
+  content: string,
+  insertItems: any[],
+  config: any,
+  isTodoLine: (line: string) => boolean = () => false
 ) {
-    const normalizedContent = content || '';
-    const sourceLineEnding = config && config.lineEnding === '\r\n' ? '\r\n' : '\n';
-    const lineEnding = normalizedContent
-        ? normalizedContent.includes('\r\n')
-            ? '\r\n'
-            : '\n'
-        : sourceLineEnding;
-    const projectTagRegex = /\s*@project\([^)]*\)/g;
-    const rootIndentLevel =
-        config && typeof config.rootIndentLevel === 'number' ? config.rootIndentLevel : 0;
-    // Strip project tags from existing content to avoid clutter and duplicate information
-    const lines = normalizedContent.replace(projectTagRegex, '').split(/\r?\n/);
+  const normalizedContent = content || '';
+  const sourceLineEnding = config && config.lineEnding === '\r\n' ? '\r\n' : '\n';
+  const lineEnding = normalizedContent
+    ? normalizedContent.includes('\r\n')
+      ? '\r\n'
+      : '\n'
+    : sourceLineEnding;
+  const projectTagRegex = /\s*@project\([^)]*\)/g;
+  const rootIndentLevel =
+    config && typeof config.rootIndentLevel === 'number' ? config.rootIndentLevel : 0;
+  // Strip project tags from existing content to avoid clutter and duplicate information
+  const lines = normalizedContent.replace(projectTagRegex, '').split(/\r?\n/);
 
-    // Remove leading and trailing empty lines to avoid creating an extra blank
-    // line when merging into empty files or appending to files that have a
-    // trailing newline.
-    while (lines.length && lines[0].trim() === '') lines.shift();
-    while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
-    const indentUnit = (config && config.indentation) || defaultIndentUnit;
+  // Remove leading and trailing empty lines to avoid creating an extra blank
+  // line when merging into empty files or appending to files that have a
+  // trailing newline.
+  while (lines.length && lines[0].trim() === '') lines.shift();
+  while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+  const indentUnit = (config && config.indentation) || defaultIndentUnit;
 
-    function getIndentLevel(line: string, unit: string) {
-        let count = 0;
-        if (!unit || !unit.length) return 0;
-        while (line.startsWith(unit.repeat(count + 1))) count++;
-        return count;
-    }
+  function getIndentLevel(line: string, unit: string) {
+    let count = 0;
+    if (!unit || !unit.length) return 0;
+    while (line.startsWith(unit.repeat(count + 1))) count++;
+    return count;
+  }
 
-    function detectContentIndentUnit(linesArr: string[]) {
-        const wsLens = linesArr
-            .map((l) => {
-                const m = l.match(/^(\s+)/);
-                return m ? m[1] : '';
-            })
-            .filter(Boolean);
+  function detectContentIndentUnit(linesArr: string[]) {
+    const wsLens = linesArr
+      .map((l) => {
+        const m = l.match(/^(\s+)/);
+        return m ? m[1] : '';
+      })
+      .filter(Boolean);
 
-        if (!wsLens.length) return null;
+    if (!wsLens.length) return null;
 
-        if (wsLens.find((ws) => ws.indexOf('\t') !== -1)) return '\t';
+    if (wsLens.find((ws) => ws.indexOf('\t') !== -1)) return '\t';
 
-        const minLen = Math.min(...wsLens.map((ws) => ws.length));
-        return ' '.repeat(minLen);
-    }
+    const minLen = Math.min(...wsLens.map((ws) => ws.length));
+    return ' '.repeat(minLen);
+  }
 
-    function trimEmptyEdges(block: string[]) {
-        const trimmed = block.slice();
-        while (trimmed.length && !trimmed[0].trim()) trimmed.shift();
-        while (trimmed.length && !trimmed[trimmed.length - 1].trim()) trimmed.pop();
-        return trimmed;
-    }
+  function trimEmptyEdges(block: string[]) {
+    const trimmed = block.slice();
+    while (trimmed.length && !trimmed[0].trim()) trimmed.shift();
+    while (trimmed.length && !trimmed[trimmed.length - 1].trim()) trimmed.pop();
+    return trimmed;
+  }
 
-    function insertIntoRoot(block: string[]) {
-        const normalized = trimEmptyEdges(block);
-        if (!normalized.length) return;
+  let rootInsertCount = 0;
 
-        // Root entries should appear before everything else (prepending behavior).
-        // Skip leading blank lines so we don't insert before the opening newline block.
-        let insertAt = 0;
-        while (insertAt < lines.length && !lines[insertAt].trim()) insertAt++;
-        lines.splice(insertAt, 0, ...normalized);
-    }
+  function insertIntoRoot(block: string[]) {
+    const normalized = trimEmptyEdges(block);
+    if (!normalized.length) return;
 
-    function parseProjects(linesArr: string[]) {
-        const projects = [] as any[];
-        const stack: string[] = [];
-        const contentIndentUnit = detectContentIndentUnit(linesArr);
-        const contentIndentLen = (contentIndentUnit || indentUnit).length || 1;
+    // Root entries should appear before everything else (prepending behavior).
+    // Skip leading blank lines so we don't insert before the opening newline block.
+    let insertAt = 0;
+    while (insertAt < lines.length && !lines[insertAt].trim()) insertAt++;
+    lines.splice(insertAt + rootInsertCount, 0, ...normalized);
+    rootInsertCount += normalized.length;
+  }
 
-        const projectSeparator =
-            (config &&
-                config.archive &&
-                config.archive.project &&
-                config.archive.project.separator) ||
-            '.';
+  function parseProjects(linesArr: string[]) {
+    const projects = [] as any[];
+    const stack: Array<{ name: string; level: number }> = [];
+    const contentIndentUnit = detectContentIndentUnit(linesArr);
+    const contentIndentLen = (contentIndentUnit || indentUnit).length || 1;
 
-        for (let i = 0; i < linesArr.length; i++) {
-            const line = linesArr[i];
-            const match = isTodoLine(line) ? null : line.match(projectParts);
+    const projectSeparator =
+      (config && config.archive && config.archive.project && config.archive.project.separator) ||
+      '.';
 
-            if (match) {
-                const indent = match[1] || '';
-                const name = match[2];
-                const level = Math.floor(indent.length / contentIndentLen);
+    for (let i = 0; i < linesArr.length; i++) {
+      const line = linesArr[i];
+      if (!line.trim()) continue;
+      const indent = (line.match(/^\s*/) || [''])[0];
+      const level = Math.floor(indent.length / contentIndentLen);
 
-                while (stack.length > level) stack.pop();
-                stack.push(name);
+      while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
 
-                projects.push({
-                    fullPath: stack.join(projectSeparator),
-                    names: stack.slice(),
-                    name,
-                    level,
-                    start: i,
-                    end: linesArr.length - 1,
-                });
-            }
-        }
+      const match = isTodoLine(line) ? null : line.match(projectParts);
 
-        // Compute end lines. For each project, the end is the line before the
-        // next project header of equal/lesser depth, or the first line after the
-        // project's start that has an indentation level <= project.level (this
-        // handles trailing content and lower-indented items that indicate the
-        // project's block has ended).
-        for (let i = 0; i < projects.length; i++) {
-            const p = projects[i];
+      if (match) {
+        const name = match[2];
+        stack.push({ name, level });
+        const names = stack.map((project) => project.name);
 
-            // Default end is the last line; we'll narrow it down if we find a
-            // next project header or a lower-indented line.
-            p.end = linesArr.length - 1;
-
-            // First, if there's a following project header at level <= p.level,
-            // that determines the end.
-            for (let j = i + 1; j < projects.length; j++) {
-                const q = projects[j];
-                if (q.level <= p.level) {
-                    p.end = q.start - 1;
-                    break;
-                }
-            }
-
-            // Next, scan forward from p.start+1 and if we find a line whose
-            // indentation level is <= this project level, we consider that the
-            // project ended before that line. This helps when there are no
-            // further project headers, but there is content at the same or
-            // lower indentation.
-            for (let k = p.start + 1; k < linesArr.length; k++) {
-                const line = linesArr[k];
-                // skip empty lines
-                if (!line || !line.trim()) continue;
-                const indentLen = getIndentLevel(line, contentIndentUnit || indentUnit);
-                if (indentLen <= p.level) {
-                    p.end = Math.min(p.end, k - 1);
-                    break;
-                }
-            }
-        }
-
-        return projects;
-    }
-
-    function ensureProjectChain(projectsArr: string[]) {
-        // Ensure project headers exist in lines; create them at end if missing
-        for (let i = 0; i < projectsArr.length; i++) {
-            let parsed = parseProjects(lines);
-            const contentIndentUnit = detectContentIndentUnit(lines) || indentUnit;
-            const existing = parsed.find((p) =>
-                sameProjectPath(p.names, projectsArr.slice(0, i + 1))
-            );
-            // Compute base indent level for the existing projects so any headers
-            // we create match the current archive indentation and nesting levels.
-            const parsedMinLevel = parsed.length
-                ? Math.min(...parsed.map((p) => p.level))
-                : undefined;
-            const baseLevel =
-                parsedMinLevel !== undefined
-                    ? Math.max(rootIndentLevel, parsedMinLevel)
-                    : rootIndentLevel;
-            if (!existing) {
-                // If there's a parent project, insert this header right after
-                // the parent project's block (keeping the hierarchy). Otherwise
-                // append to the end of file.
-                const parent = parsed.find((p) =>
-                    sameProjectPath(p.names, projectsArr.slice(0, i))
-                );
-                const indent = (contentIndentUnit || indentUnit).repeat(baseLevel + i);
-                const header = `${indent}${projectsArr[i]}:`;
-
-                if (parent) {
-                    // insert directly under the parent header (so it appears
-                    // at the top of the parent's block). Using parent.start + 1
-                    // avoids placing the new header after all existing children
-                    // and ensures it will be recognized as part of the parent's
-                    // subtree for subsequent inserts.
-                    const insertAt = parent.start + 1;
-                    lines.splice(insertAt, 0, header);
-                } else {
-                    lines.push(header);
-                }
-
-                // Recompute parsed structure for subsequent iterations
-                parsed = parseProjects(lines);
-            }
-        }
-    }
-
-    // Process each insert item sequentially to maintain ordering
-    const projectInsertCounts = {} as any; // projectPath => number of non-empty lines previously inserted
-    insertItems.forEach((ins) => {
-        const obj = ins.obj || ins; // support older shapes
-        // Remove project tags from insert text
-        const text = (obj.text || '').replace(projectTagRegex, '');
-        const projectSeparator =
-            (config &&
-                config.archive &&
-                config.archive.project &&
-                config.archive.project.separator) ||
-            '.';
-        const projectPath =
-            obj.projects && obj.projects.length ? obj.projects.join(projectSeparator) : undefined;
-        const textLinesRaw = text.split(/\r?\n/).map((l) => l.replace(projectTagRegex, ''));
-        const projectNames = new Set((obj.projects || []).map((project: string) => project.trim()));
-        const textLines = textLinesRaw.filter((line) => {
-            const match = isTodoLine(line) ? null : line.match(projectParts);
-
-            return !match || !projectNames.has(match[2].trim());
+        projects.push({
+          fullPath: names.join(projectSeparator),
+          names,
+          name,
+          level,
+          start: i,
+          end: linesArr.length - 1,
         });
+      }
+    }
 
-        if (projectPath) {
-            // Ensure chain
-            ensureProjectChain(obj.projects as string[]);
+    // Compute end lines. For each project, the end is the line before the
+    // next project header of equal/lesser depth, or the first line after the
+    // project's start that has an indentation level <= project.level (this
+    // handles trailing content and lower-indented items that indicate the
+    // project's block has ended).
+    for (let i = 0; i < projects.length; i++) {
+      const p = projects[i];
 
-            // Recompute projects map
-            const parsed = parseProjects(lines);
-            const target = parsed.find((p) => sameProjectPath(p.names, obj.projects));
+      // Default end is the last line; we'll narrow it down if we find a
+      // next project header or a lower-indented line.
+      p.end = linesArr.length - 1;
 
-            if (target) {
-                // Insert after the header, so new items appear at the top of the
-                // project's list. Use a per-project inserted count to avoid
-                // reordering when multiple items are inserted to the same
-                // project: the first processed (newest) item stays on top.
-                const alreadyInserted = projectInsertCounts[projectPath] || 0;
-                // Ensure insertion index is inside the target project's block
-                const tentative = target.start + 1 + alreadyInserted;
-                const insertAt = Math.min(tentative, target.end + 1);
-                // DEBUG LOG
-                // debug logs removed
-
-                // If inserting under a found project header, normalize the
-                // indentation of the incoming block so relative indentation is
-                // preserved while aligning with the target header's level.
-                const nonEmptyLines = textLines.filter((l) => (l || '').trim().length > 0);
-                const insertedIndentUnit = detectContentIndentUnit(textLines) || indentUnit;
-                const blockMinIndent = nonEmptyLines.length
-                    ? Math.min(...nonEmptyLines.map((l) => getIndentLevel(l, insertedIndentUnit)))
-                    : 0;
-                const desiredBaseLevel = (target.level || 0) + 1; // one level inside the header
-
-                const normalized = textLines.map((l) => {
-                    const trimmed = l.trim();
-                    if (!trimmed) return '';
-                    const curLevel = getIndentLevel(l, insertedIndentUnit);
-                    const rel = curLevel - blockMinIndent;
-                    const newLevel = Math.max(0, desiredBaseLevel + rel);
-                    const contentIndentUnit = detectContentIndentUnit(lines) || indentUnit;
-                    return `${contentIndentUnit.repeat(newLevel)}${trimmed}`;
-                });
-
-                // debug logs removed
-                lines.splice(insertAt, 0, ...normalized);
-                // Count non-empty lines inserted to track subsequent inserts
-                const insertedCount = normalized.filter((l) => (l || '').trim()).length;
-                projectInsertCounts[projectPath] =
-                    (projectInsertCounts[projectPath] || 0) + insertedCount;
-            } else {
-                // Fallback to appending at end
-                lines.push(...textLines);
-            }
-        } else {
-            // No project, treat as root-level content and prepend it to the archive body
-            insertIntoRoot(textLines);
+      // First, if there's a following project header at level <= p.level,
+      // that determines the end.
+      for (let j = i + 1; j < projects.length; j++) {
+        const q = projects[j];
+        if (q.level <= p.level) {
+          p.end = q.start - 1;
+          break;
         }
+      }
+
+      // Next, scan forward from p.start+1 and if we find a line whose
+      // indentation level is <= this project level, we consider that the
+      // project ended before that line. This helps when there are no
+      // further project headers, but there is content at the same or
+      // lower indentation.
+      for (let k = p.start + 1; k < linesArr.length; k++) {
+        const line = linesArr[k];
+        // skip empty lines
+        if (!line || !line.trim()) continue;
+        const indentLen = getIndentLevel(line, contentIndentUnit || indentUnit);
+        if (indentLen <= p.level) {
+          p.end = Math.min(p.end, k - 1);
+          break;
+        }
+      }
+    }
+
+    return projects;
+  }
+
+  function ensureProjectChain(projectsArr: string[]) {
+    // Ensure project headers exist in lines; create them at end if missing
+    for (let i = 0; i < projectsArr.length; i++) {
+      let parsed = parseProjects(lines);
+      const contentIndentUnit = detectContentIndentUnit(lines) || indentUnit;
+      const existing = parsed.find((p) => sameProjectPath(p.names, projectsArr.slice(0, i + 1)));
+      // Compute base indent level for the existing projects so any headers
+      // we create match the current archive indentation and nesting levels.
+      const parsedMinLevel = parsed.length ? Math.min(...parsed.map((p) => p.level)) : undefined;
+      const baseLevel =
+        parsedMinLevel !== undefined ? Math.max(rootIndentLevel, parsedMinLevel) : rootIndentLevel;
+      if (!existing) {
+        // If there's a parent project, insert this header right after
+        // the parent project's block (keeping the hierarchy). Otherwise
+        // append to the end of file.
+        const parent = parsed.find((p) => sameProjectPath(p.names, projectsArr.slice(0, i)));
+        const indent = (contentIndentUnit || indentUnit).repeat(baseLevel + i);
+        const header = `${indent}${projectsArr[i]}:`;
+
+        if (parent) {
+          // insert directly under the parent header (so it appears
+          // at the top of the parent's block). Using parent.start + 1
+          // avoids placing the new header after all existing children
+          // and ensures it will be recognized as part of the parent's
+          // subtree for subsequent inserts.
+          const insertAt = parent.start + 1;
+          lines.splice(insertAt, 0, header);
+        } else {
+          lines.push(header);
+        }
+
+        // Recompute parsed structure for subsequent iterations
+        parsed = parseProjects(lines);
+      }
+    }
+  }
+
+  // Process each insert item sequentially to maintain ordering
+  const projectInsertCounts = new Map<string, number>();
+  insertItems.forEach((ins) => {
+    const obj = ins.obj || ins; // support older shapes
+    // Remove project tags from insert text
+    const text = (obj.text || '').replace(projectTagRegex, '');
+    const projectPath =
+      obj.projects && obj.projects.length ? JSON.stringify(obj.projects) : undefined;
+    const textLinesRaw = text.split(/\r?\n/).map((l) => l.replace(projectTagRegex, ''));
+    const projectNames = new Set((obj.projects || []).map((project: string) => project.trim()));
+    const textLines = textLinesRaw.filter((line) => {
+      const match = isTodoLine(line) ? null : line.match(projectParts);
+
+      return !match || !projectNames.has(match[2].trim());
     });
 
-    return lines.join(lineEnding);
+    if (projectPath) {
+      // Ensure chain
+      ensureProjectChain(obj.projects as string[]);
+
+      // Recompute projects map
+      const parsed = parseProjects(lines);
+      const target = parsed.find((p) => sameProjectPath(p.names, obj.projects));
+
+      if (target) {
+        // Insert after the header, so new items appear at the top of the
+        // project's list. Use a per-project inserted count to avoid
+        // reordering when multiple items are inserted to the same
+        // project: the first processed (newest) item stays on top.
+        const alreadyInserted = projectInsertCounts.get(projectPath) || 0;
+        // Ensure insertion index is inside the target project's block
+        const tentative = target.start + 1 + alreadyInserted;
+        const insertAt = Math.min(tentative, target.end + 1);
+        // DEBUG LOG
+        // debug logs removed
+
+        // If inserting under a found project header, normalize the
+        // indentation of the incoming block so relative indentation is
+        // preserved while aligning with the target header's level.
+        const nonEmptyLines = textLines.filter((l) => (l || '').trim().length > 0);
+        const insertedIndentUnit = indentUnit;
+        const blockMinIndent = nonEmptyLines.length
+          ? Math.min(...nonEmptyLines.map((l) => getIndentLevel(l, insertedIndentUnit)))
+          : 0;
+        const desiredBaseLevel = (target.level || 0) + 1; // one level inside the header
+
+        const normalized = textLines.map((l) => {
+          const trimmed = l.trim();
+          if (!trimmed) return '';
+          const curLevel = getIndentLevel(l, insertedIndentUnit);
+          const rel = curLevel - blockMinIndent;
+          const newLevel = Math.max(0, desiredBaseLevel + rel);
+          const contentIndentUnit = detectContentIndentUnit(lines) || indentUnit;
+          return `${contentIndentUnit.repeat(newLevel)}${trimmed}`;
+        });
+
+        // debug logs removed
+        lines.splice(insertAt, 0, ...normalized);
+        // Count non-empty lines inserted to track subsequent inserts
+        projectInsertCounts.set(projectPath, alreadyInserted + normalized.length);
+      } else {
+        // Fallback to appending at end
+        lines.push(...textLines);
+      }
+    } else {
+      // No project, treat as root-level content and prepend it to the archive body
+      const nonEmptyLines = textLines.filter((line) => line.trim()),
+        baseLevel = nonEmptyLines.length
+          ? Math.min(...nonEmptyLines.map((line) => getIndentLevel(line, indentUnit)))
+          : 0;
+
+      insertIntoRoot(
+        textLines.map((line) =>
+          line.trim()
+            ? `${indentUnit.repeat(rootIndentLevel + getIndentLevel(line, indentUnit) - baseLevel)}${line.trim()}`
+            : ''
+        )
+      );
+    }
+  });
+
+  return lines.join(lineEnding);
 }
 
 export default mergeInsertItemsIntoArchiveContent;

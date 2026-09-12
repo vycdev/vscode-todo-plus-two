@@ -1,29 +1,38 @@
 interface DisposableLike {
-    dispose(): void;
+  dispose(): void;
 }
 
 interface SubscriptionContext {
-    subscriptions: DisposableLike[];
+  subscriptions: DisposableLike[];
 }
 
 interface RefreshableView {
-    id: string;
-    refresh(): void;
+  id: string;
+  refresh(): void;
+  dispose?(): void;
 }
 
 type RegisterTreeDataProvider<T> = (id: string, view: T) => DisposableLike;
 type OnDidChangeConfiguration = (listener: () => void) => DisposableLike;
 
 export const registerViews = <T extends RefreshableView>(
-    context: SubscriptionContext,
-    views: T[],
-    registerTreeDataProvider: RegisterTreeDataProvider<T>,
-    onDidChangeConfiguration: OnDidChangeConfiguration
+  context: SubscriptionContext,
+  views: T[],
+  registerTreeDataProvider: RegisterTreeDataProvider<T>,
+  onDidChangeConfiguration: OnDidChangeConfiguration
 ): void => {
-    const registrations = views.map((view) => registerTreeDataProvider(view.id, view));
-    const configurationListener = onDidChangeConfiguration(() => {
-        views.forEach((view) => view.refresh());
-    });
+  const registrations = views.map((view) => registerTreeDataProvider(view.id, view));
+  const configurationListener = onDidChangeConfiguration(() => {
+    views.forEach((view) => view.refresh());
+  });
 
-    context.subscriptions.push(...registrations, configurationListener);
+  context.subscriptions.push(
+    ...registrations,
+    configurationListener,
+    ...views
+      .filter((view) => typeof view.dispose === 'function')
+      .map((view) => ({
+        dispose: () => view.dispose(),
+      }))
+  );
 };

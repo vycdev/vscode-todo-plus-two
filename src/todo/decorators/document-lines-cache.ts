@@ -1,31 +1,31 @@
 interface TextDocumentLike {
-    getText(): string;
+  getText(): string;
 }
 
 interface ParsedDocumentLike {
-    textDocument: TextDocumentLike;
+  textDocument: TextDocumentLike;
 }
 
 export class DocumentLinesCache {
-    private readonly lines = new WeakMap<TextDocumentLike, string[]>();
+  private readonly lines = new WeakMap<TextDocumentLike, string[]>();
 
-    get(textDocument: TextDocumentLike): string[];
-    get(textDocument: TextDocumentLike, lineNr: number): string;
-    get(textDocument: TextDocumentLike, lineNr?: number) {
-        const lines = this.lines.get(textDocument);
+  get(textDocument: TextDocumentLike): string[];
+  get(textDocument: TextDocumentLike, lineNr: number): string;
+  get(textDocument: TextDocumentLike, lineNr?: number) {
+    const lines = this.lines.get(textDocument);
 
-        return lines && typeof lineNr === 'number' ? lines[lineNr] : lines;
-    }
+    return lines && typeof lineNr === 'number' ? lines[lineNr] : lines;
+  }
 
-    update(textDocument: TextDocumentLike) {
-        this.lines.set(textDocument, textDocument.getText().split('\n'));
-    }
+  update(textDocument: TextDocumentLike) {
+    this.lines.set(textDocument, textDocument.getText().split('\n'));
+  }
 
-    didChange(doc: ParsedDocumentLike) {
-        const prevLines = this.get(doc.textDocument);
+  didChange(doc: ParsedDocumentLike) {
+    const prevLines = this.get(doc.textDocument);
 
-        if (prevLines && prevLines.join('\n') === doc.textDocument.getText()) return false;
+    if (prevLines && prevLines.join('\n') === doc.textDocument.getText()) return false;
 
-        return true;
-    }
+    return true;
+  }
 }

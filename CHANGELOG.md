@@ -1,5 +1,25 @@
 ### Version 5.3.0 (Unreleased)
 
+#### Review fixes
+
+- Preserved unsaved archive buffers, serialized simultaneous transfers, and replaced closed archive files only after a complete write. Failed writes, stale source documents, and rejected editor edits keep source tasks intact.
+- Preserved archive task order, sibling project structure, attached comment indentation, and standalone notes when removing empty projects.
+- Fixed dependency indexing for IDs such as `constructor` and `__proto__`, and stopped disposed diagnostic providers from republishing results.
+- Prevented task commands from applying stale edits after dependency checks or pickers, kept tree actions bound to their target editor, and excluded unselected tasks at the start of a selection's ending line.
+- Enforced `todo.followSymlinks` consistently across file discovery, literal glob prefixes, watchers, and document updates. Shared discovery now handles overlapping roots and inaccessible files consistently.
+- Serialized file scans and provider initialization, preserved unsaved editor content, and cancelled watcher callbacks, refresh timers, and provider work during disposal.
+- Bounded external-search command lengths, retained partial search results, and parsed multiple `ag` matches on one line. Invalid or empty-match embedded regex settings no longer crash or freeze the extension.
+- Refreshed timers, statistics, due state, decorations, and view filters after text and configuration changes, including edits that keep the same length, updates to background editors, and due-date rollover at midnight.
+- Fixed symbol parenting, indentation setting changes, decoration range subtraction, dependency completion boundaries, signed duration parsing, and elapsed-only statistics templates.
+- Replaced JavaScript execution in statistics visibility settings with a restricted expression evaluator. Token access, comparisons, arithmetic, logical operators, and ternary expressions remain supported; function calls and assignments are no longer accepted.
+
+#### Development and compatibility
+
+- Corrected the minimum VS Code version to 1.36 to match the APIs and regular expression syntax already used by the extension.
+- Added source/test type checking and Windows/Linux CI, pinned compatible compiler/API declarations, removed the obsolete VS Code downloader and unused donation dependency, and aligned formatting with the documented two-space indentation and LF line endings.
+
+#### Other unreleased changes
+
 - Added a `todo.colors.enabled` setting for using the active syntax theme's colors instead of Todo+ editor colors. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/96
 - Added an independent `todo.file.view.showComments` setting for optionally showing note lines in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/15
 - Fixed live timer status bar alignment and priority changes so they apply without reloading VS Code.

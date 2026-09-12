@@ -7,9 +7,9 @@ import Todo from './todo';
 /* TODO FINISHED */
 
 class TodoFinished extends Todo {
-    static is(str: string) {
-        return matchesTodoStatus(str, Consts.regexes.todoFinished);
-    }
+  static is(str: string) {
+    return matchesTodoStatus(str, Consts.regexes.todoFinished);
+  }
 }
 
 /* EXPORT */

@@ -16,208 +16,206 @@ let ID: vscode.TextEditorDecorationType;
 let DEPENDENCY: vscode.TextEditorDecorationType;
 
 function getDecorationSignature() {
-    return JSON.stringify({
-        names: Consts.tags.names,
-        colors: {
-            tag: Consts.colors.tag,
-            id: Consts.colors.id,
-            dependency: Consts.colors.dependency,
-            tags: Consts.colors.tags,
-            dark: {
-                tag: Consts.colors.dark.tag,
-                id: Consts.colors.dark.id,
-                dependency: Consts.colors.dark.dependency,
-                tags: Consts.colors.dark.tags,
-            },
-            light: {
-                tag: Consts.colors.light.tag,
-                id: Consts.colors.light.id,
-                dependency: Consts.colors.light.dependency,
-                tags: Consts.colors.light.tags,
-            },
-        },
-    });
+  return JSON.stringify({
+    names: Consts.tags.names,
+    colors: {
+      tag: Consts.colors.tag,
+      id: Consts.colors.id,
+      dependency: Consts.colors.dependency,
+      tags: Consts.colors.tags,
+      dark: {
+        tag: Consts.colors.dark.tag,
+        id: Consts.colors.dark.id,
+        dependency: Consts.colors.dark.dependency,
+        tags: Consts.colors.dark.tags,
+      },
+      light: {
+        tag: Consts.colors.light.tag,
+        id: Consts.colors.light.id,
+        dependency: Consts.colors.light.dependency,
+        tags: Consts.colors.light.tags,
+      },
+    },
+  });
 }
 
 function disposeDecorationTypes(types: vscode.TextEditorDecorationType[]) {
-    types.forEach((type) => type && type.dispose());
+  types.forEach((type) => type && type.dispose());
 }
 
 function ensureDecorationTypes() {
-    const signature = getDecorationSignature();
+  const signature = getDecorationSignature();
 
-    if (signature === DECORATIONS_SIGNATURE) {
-        return {
-            special: SPECIAL_TAGS,
-            lines: SPECIAL_TAG_LINES,
-            tag: TAG,
-            id: ID,
-            dependency: DEPENDENCY,
-        };
-    }
-
-    disposeDecorationTypes([
-        ...SPECIAL_TAGS,
-        ...SPECIAL_TAG_LINES.map(({ type }) => type),
-        TAG,
-        ID,
-        DEPENDENCY,
-    ]);
-
-    SPECIAL_TAGS = Consts.tags.names.map((name, index) => {
-        const background = getTagPaletteColor(Consts.colors.tags.background, index);
-        const foreground = getTagPaletteColor(Consts.colors.tags.foreground, index);
-
-        return vscode.window.createTextEditorDecorationType({
-            backgroundColor: background,
-            color: foreground || Consts.colors.tag,
-            borderRadius: '2px',
-            rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-            dark: {
-                backgroundColor:
-                    getTagPaletteColor(Consts.colors.dark.tags.background, index) || background,
-                color:
-                    getTagPaletteColor(Consts.colors.dark.tags.foreground, index) ||
-                    foreground ||
-                    Consts.colors.dark.tag ||
-                    Consts.colors.tag,
-            },
-            light: {
-                backgroundColor:
-                    getTagPaletteColor(Consts.colors.light.tags.background, index) || background,
-                color:
-                    getTagPaletteColor(Consts.colors.light.tags.foreground, index) ||
-                    foreground ||
-                    Consts.colors.light.tag ||
-                    Consts.colors.tag,
-            },
-        });
-    });
-
-    SPECIAL_TAG_LINES = [];
-    Consts.tags.names.forEach((name, index) => {
-        const backgroundColor = getTagPaletteColor(Consts.colors.tags.lineBackground, index);
-
-        if (!backgroundColor) return;
-
-        SPECIAL_TAG_LINES.push({
-            index,
-            type: vscode.window.createTextEditorDecorationType({
-                backgroundColor,
-                isWholeLine: true,
-                rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-                dark: {
-                    backgroundColor:
-                        getTagPaletteColor(Consts.colors.dark.tags.lineBackground, index) ||
-                        backgroundColor,
-                },
-                light: {
-                    backgroundColor:
-                        getTagPaletteColor(Consts.colors.light.tags.lineBackground, index) ||
-                        backgroundColor,
-                },
-            }),
-        });
-    });
-
-    TAG = vscode.window.createTextEditorDecorationType({
-        color: Consts.colors.tag,
-        rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        dark: {
-            color: Consts.colors.dark.tag || Consts.colors.tag,
-        },
-        light: {
-            color: Consts.colors.light.tag || Consts.colors.tag,
-        },
-    });
-
-    ID = vscode.window.createTextEditorDecorationType({
-        color: Consts.colors.id,
-        fontWeight: 'bold',
-        rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        dark: {
-            color: Consts.colors.dark.id || Consts.colors.id,
-        },
-        light: {
-            color: Consts.colors.light.id || Consts.colors.id,
-        },
-    });
-
-    DEPENDENCY = vscode.window.createTextEditorDecorationType({
-        color: Consts.colors.dependency,
-        rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        dark: {
-            color: Consts.colors.dark.dependency || Consts.colors.dependency,
-        },
-        light: {
-            color: Consts.colors.light.dependency || Consts.colors.dependency,
-        },
-    });
-
-    DECORATIONS_SIGNATURE = signature;
-
+  if (signature === DECORATIONS_SIGNATURE) {
     return {
-        special: SPECIAL_TAGS,
-        lines: SPECIAL_TAG_LINES,
-        tag: TAG,
-        id: ID,
-        dependency: DEPENDENCY,
+      special: SPECIAL_TAGS,
+      lines: SPECIAL_TAG_LINES,
+      tag: TAG,
+      id: ID,
+      dependency: DEPENDENCY,
     };
+  }
+
+  disposeDecorationTypes([
+    ...SPECIAL_TAGS,
+    ...SPECIAL_TAG_LINES.map(({ type }) => type),
+    TAG,
+    ID,
+    DEPENDENCY,
+  ]);
+
+  SPECIAL_TAGS = Consts.tags.names.map((name, index) => {
+    const background = getTagPaletteColor(Consts.colors.tags.background, index);
+    const foreground = getTagPaletteColor(Consts.colors.tags.foreground, index);
+
+    return vscode.window.createTextEditorDecorationType({
+      backgroundColor: background,
+      color: foreground || Consts.colors.tag,
+      borderRadius: '2px',
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      dark: {
+        backgroundColor:
+          getTagPaletteColor(Consts.colors.dark.tags.background, index) || background,
+        color:
+          getTagPaletteColor(Consts.colors.dark.tags.foreground, index) ||
+          foreground ||
+          Consts.colors.dark.tag ||
+          Consts.colors.tag,
+      },
+      light: {
+        backgroundColor:
+          getTagPaletteColor(Consts.colors.light.tags.background, index) || background,
+        color:
+          getTagPaletteColor(Consts.colors.light.tags.foreground, index) ||
+          foreground ||
+          Consts.colors.light.tag ||
+          Consts.colors.tag,
+      },
+    });
+  });
+
+  SPECIAL_TAG_LINES = [];
+  Consts.tags.names.forEach((name, index) => {
+    const backgroundColor = getTagPaletteColor(Consts.colors.tags.lineBackground, index);
+
+    if (!backgroundColor) return;
+
+    SPECIAL_TAG_LINES.push({
+      index,
+      type: vscode.window.createTextEditorDecorationType({
+        backgroundColor,
+        isWholeLine: true,
+        rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        dark: {
+          backgroundColor:
+            getTagPaletteColor(Consts.colors.dark.tags.lineBackground, index) || backgroundColor,
+        },
+        light: {
+          backgroundColor:
+            getTagPaletteColor(Consts.colors.light.tags.lineBackground, index) || backgroundColor,
+        },
+      }),
+    });
+  });
+
+  TAG = vscode.window.createTextEditorDecorationType({
+    color: Consts.colors.tag,
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    dark: {
+      color: Consts.colors.dark.tag || Consts.colors.tag,
+    },
+    light: {
+      color: Consts.colors.light.tag || Consts.colors.tag,
+    },
+  });
+
+  ID = vscode.window.createTextEditorDecorationType({
+    color: Consts.colors.id,
+    fontWeight: 'bold',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    dark: {
+      color: Consts.colors.dark.id || Consts.colors.id,
+    },
+    light: {
+      color: Consts.colors.light.id || Consts.colors.id,
+    },
+  });
+
+  DEPENDENCY = vscode.window.createTextEditorDecorationType({
+    color: Consts.colors.dependency,
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    dark: {
+      color: Consts.colors.dark.dependency || Consts.colors.dependency,
+    },
+    light: {
+      color: Consts.colors.light.dependency || Consts.colors.dependency,
+    },
+  });
+
+  DECORATIONS_SIGNATURE = signature;
+
+  return {
+    special: SPECIAL_TAGS,
+    lines: SPECIAL_TAG_LINES,
+    tag: TAG,
+    id: ID,
+    dependency: DEPENDENCY,
+  };
 }
 
 /* TAG */
 
 class Tag extends Line {
-    constructor() {
-        super();
+  constructor() {
+    super();
 
-        const types = ensureDecorationTypes();
+    const types = ensureDecorationTypes();
 
-        this.TYPES = [
-            ...types.lines.map(({ type }) => type),
-            ...types.special,
-            types.id,
-            types.dependency,
-            types.tag,
-        ];
-    }
+    this.TYPES = [
+      ...types.lines.map(({ type }) => type),
+      ...types.special,
+      types.id,
+      types.dependency,
+      types.tag,
+    ];
+  }
 
-    getItemRanges(tag: TagItem) {
-        //FIXME: We are purposely not supporting tags inside code blocks, it's an uncommon case, we'll just be wasting some performance
-        // this.TYPES.map ( ( type, index ) => tag.match[index + 1] && this.getRangeDifference ( tag.text, tag.range, [Consts.regexes.formattedCode] ) );
-        const types = ensureDecorationTypes(),
-            special = types.special.map((type, index) => tag.match[index + 1] && tag.range),
-            id = tag.isId() && tag.range,
-            dependency = tag.isDependency() && tag.range,
-            normal = tag.isNormal() && !id && !dependency && tag.range;
+  getItemRanges(tag: TagItem) {
+    //FIXME: We are purposely not supporting tags inside code blocks, it's an uncommon case, we'll just be wasting some performance
+    // this.TYPES.map ( ( type, index ) => tag.match[index + 1] && this.getRangeDifference ( tag.text, tag.range, [Consts.regexes.formattedCode] ) );
+    const types = ensureDecorationTypes(),
+      special = types.special.map((type, index) => tag.match[index + 1] && tag.range),
+      id = tag.isId() && tag.range,
+      dependency = tag.isDependency() && tag.range,
+      normal = tag.isNormal() && !id && !dependency && tag.range;
 
-        return [...special, id, dependency, normal];
-    }
+    return [...special, id, dependency, normal];
+  }
 
-    getDecorations(tags: TagItem[]) {
-        const types = ensureDecorationTypes(),
-            lineRanges = types.lines.map(() => []),
-            decoratedLines = {};
+  getDecorations(tags: TagItem[]) {
+    const types = ensureDecorationTypes(),
+      lineRanges = types.lines.map(() => []),
+      decoratedLines = {};
 
-        tags.forEach((tag) => {
-            if (decoratedLines[tag.lineNumber]) return;
+    tags.forEach((tag) => {
+      if (decoratedLines[tag.lineNumber]) return;
 
-            const lineTypeIndex = types.lines.findIndex(({ index }) => !!tag.match[index + 1]);
+      const lineTypeIndex = types.lines.findIndex(({ index }) => !!tag.match[index + 1]);
 
-            if (lineTypeIndex < 0) return;
+      if (lineTypeIndex < 0) return;
 
-            lineRanges[lineTypeIndex].push(tag.range);
-            decoratedLines[tag.lineNumber] = true;
-        });
+      lineRanges[lineTypeIndex].push(tag.range);
+      decoratedLines[tag.lineNumber] = true;
+    });
 
-        const tagRanges = super.getItemsRanges(tags),
-            ranges = [...lineRanges, ...tagRanges];
+    const tagRanges = super.getItemsRanges(tags),
+      ranges = [...lineRanges, ...tagRanges];
 
-        return this.TYPES.map((type, index) => ({
-            type,
-            ranges: ranges[index] || [],
-        }));
-    }
+    return this.TYPES.map((type, index) => ({
+      type,
+      ranges: ranges[index] || [],
+    }));
+  }
 }
 
 /* EXPORT */
