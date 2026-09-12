@@ -2,142 +2,159 @@ import { expect } from 'chai';
 import Time from '../src/utils/time';
 
 describe('Time utilities', () => {
-    it('keeps precise long diffs working with the Moment package alias', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
-        const to = new Date('2020-01-01T01:02:03Z');
+  it('keeps precise long diffs working with the Moment package alias', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+    const to = new Date('2020-01-01T01:02:03Z');
 
-        expect(Time.diff(to, from, 'long')).to.equal('1 hour 2 minutes 3 seconds');
+    expect(Time.diff(to, from, 'long')).to.equal('1 hour 2 minutes 3 seconds');
+  });
+
+  it('uses 24 hours per day by default for short durations', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+    const to = new Date('2020-01-02T01:00:00Z');
+
+    expect(Time.diff(to, from, 'short-compact')).to.equal('1d1h');
+  });
+
+  it('supports configurable hours per day for short durations', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+    const to = new Date('2020-01-02T01:00:00Z');
+
+    expect(Time.diff(to, from, 'short-compact', 8)).to.equal('3d1h');
+  });
+
+  it('renders zero short durations as 0s', () => {
+    const instant = new Date('2020-01-01T00:00:00Z');
+
+    expect(Time.diff(instant, instant, 'short')).to.equal('0s');
+    expect(Time.diff(instant, instant, 'short-compact')).to.equal('0s');
+  });
+
+  it('renders zero clock durations as 0', () => {
+    const instant = new Date('2020-01-01T00:00:00Z');
+
+    expect(Time.diff(instant, instant, 'clock')).to.equal('0');
+  });
+
+  it('round-trips clock durations', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+    const durations = [0, 30, 59, 60, 3600, 8 * 24 * 3600, 365 * 24 * 3600, -3600];
+
+    durations.forEach((seconds) => {
+      const to = new Date(from.getTime() + seconds * 1000),
+        clock = Time.diff(to, from, 'clock');
+
+      expect(Time.durationSeconds(clock, from)).to.equal(seconds);
     });
 
-    it('uses 24 hours per day by default for short durations', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
-        const to = new Date('2020-01-02T01:00:00Z');
+    expect(Time.durationSeconds('1:60', from)).to.equal(0);
+    expect(Time.durationSeconds('1:', from)).to.equal(0);
+    expect(Time.durationSeconds('2020', from)).to.equal(0);
+    expect(Time.durationSeconds(30 as any, from)).to.equal(0);
+  });
 
-        expect(Time.diff(to, from, 'short-compact')).to.equal('1d1h');
-    });
+  it('parses natural-language durations relative to the supplied base date', () => {
+    const from = new Date(2020, 0, 1);
 
-    it('supports configurable hours per day for short durations', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
-        const to = new Date('2020-01-02T01:00:00Z');
+    expect(Time.durationSeconds('3 hours', from)).to.equal(3 * 3600);
+    expect(Time.durationSeconds('1 week', from)).to.equal(7 * 24 * 3600);
+    expect(Time.durationSeconds('1h5m21s', from)).to.equal(3921);
+    expect(Time.durationSeconds('2020-01-02', from)).to.equal(24 * 3600);
+  });
 
-        expect(Time.diff(to, from, 'short-compact', 8)).to.equal('3d1h');
-    });
+  it('supports flat man-hours formatting', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+    const to = new Date(from.getTime() + (25 * 3600 + 15 * 60) * 1000);
 
-    it('renders zero short durations as 0s', () => {
-        const instant = new Date('2020-01-01T00:00:00Z');
+    expect(Time.diff(to, from, 'man-hours')).to.equal('25h15m');
+  });
 
-        expect(Time.diff(instant, instant, 'short')).to.equal('0s');
-        expect(Time.diff(instant, instant, 'short-compact')).to.equal('0s');
-    });
+  it('renders zero man-time durations as 0s', () => {
+    const instant = new Date('2020-01-01T00:00:00Z');
 
-    it('renders zero clock durations as 0', () => {
-        const instant = new Date('2020-01-01T00:00:00Z');
+    expect(Time.diff(instant, instant, 'man-hours')).to.equal('0s');
+    expect(Time.diff(instant, instant, 'man-days')).to.equal('0s');
+    expect(Time.diff(instant, instant, 'man-weeks')).to.equal('0s');
+  });
 
-        expect(Time.diff(instant, instant, 'clock')).to.equal('0');
-    });
+  it('supports man-days formatting', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+    const to = new Date(from.getTime() + 25 * 3600 * 1000);
 
-    it('round-trips clock durations', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
-        const durations = [0, 30, 59, 60, 3600, 8 * 24 * 3600, 365 * 24 * 3600, -3600];
+    expect(Time.diff(to, from, 'man-days', 24, 8, 5)).to.equal('3md 1h');
+  });
 
-        durations.forEach((seconds) => {
-            const to = new Date(from.getTime() + seconds * 1000),
-                clock = Time.diff(to, from, 'clock');
+  it('supports man-weeks formatting', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+    const to = new Date(from.getTime() + 88 * 3600 * 1000);
 
-            expect(Time.durationSeconds(clock, from)).to.equal(seconds);
-        });
+    expect(Time.diff(to, from, 'man-weeks', 24, 8, 5)).to.equal('2mw 1md');
+  });
 
-        expect(Time.durationSeconds('1:60', from)).to.equal(0);
-        expect(Time.durationSeconds('1:', from)).to.equal(0);
-        expect(Time.durationSeconds('2020', from)).to.equal(0);
-        expect(Time.durationSeconds(30 as any, from)).to.equal(0);
-    });
+  it('supports configurable man-day and man-week sizes', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+    const to = new Date(from.getTime() + 36 * 3600 * 1000);
 
-    it('parses natural-language durations relative to the supplied base date', () => {
-        const from = new Date(2020, 0, 1);
+    expect(Time.diff(to, from, 'man-weeks', 24, 6, 3)).to.equal('2mw');
+  });
 
-        expect(Time.durationSeconds('3 hours', from)).to.equal(3 * 3600);
-        expect(Time.durationSeconds('1 week', from)).to.equal(7 * 24 * 3600);
-        expect(Time.durationSeconds('1h5m21s', from)).to.equal(3921);
-        expect(Time.durationSeconds('2020-01-02', from)).to.equal(24 * 3600);
-    });
+  it('parses man-time durations using the configured sizes', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
 
-    it('supports flat man-hours formatting', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
-        const to = new Date(from.getTime() + (25 * 3600 + 15 * 60) * 1000);
+    expect(Time.diffSeconds('1md 2h', from, 8, 5)).to.equal(10 * 3600);
+    expect(Time.diffSeconds('2mw 1md', from, 6, 3)).to.equal(42 * 3600);
+    expect(Time.diffSeconds('1mw1md', from, 8, 5)).to.equal(48 * 3600);
+    expect(Time.durationSeconds('2mw 1md', from, 6, 3)).to.equal(42 * 3600);
+  });
 
-        expect(Time.diff(to, from, 'man-hours')).to.equal('25h15m');
-    });
+  it('round-trips formatted man-time durations', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+    const to = new Date(from.getTime() + 42 * 3600 * 1000);
+    const formatted = Time.diff(to, from, 'man-weeks', 24, 6, 3);
 
-    it('renders zero man-time durations as 0s', () => {
-        const instant = new Date('2020-01-01T00:00:00Z');
+    expect(Time.diffSeconds(formatted, from, 6, 3)).to.equal(42 * 3600);
+    expect(Time.diff(formatted, from, 'man-weeks', 24, 6, 3)).to.equal(formatted);
+  });
 
-        expect(Time.diff(instant, instant, 'man-hours')).to.equal('0s');
-        expect(Time.diff(instant, instant, 'man-days')).to.equal('0s');
-        expect(Time.diff(instant, instant, 'man-weeks')).to.equal('0s');
-    });
+  it('applies a leading sign to complete man-time durations', () => {
+    const from = new Date('2020-01-01T00:00:00Z'),
+      negativeManDay = Time.diff(
+        new Date(from.getTime() - 10 * 3600 * 1000),
+        from,
+        'man-days',
+        24,
+        8,
+        5
+      ),
+      negativeManWeek = Time.diff(
+        new Date(from.getTime() - 50 * 3600 * 1000),
+        from,
+        'man-weeks',
+        24,
+        8,
+        5
+      );
 
-    it('supports man-days formatting', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
-        const to = new Date(from.getTime() + 25 * 3600 * 1000);
+    expect(negativeManDay).to.equal('-1md 2h');
+    expect(Time.diffSeconds(negativeManDay, from, 8, 5)).to.equal(-10 * 3600);
+    expect(negativeManWeek).to.equal('-1mw 1md 2h');
+    expect(Time.diffSeconds(negativeManWeek, from, 8, 5)).to.equal(-50 * 3600);
+  });
 
-        expect(Time.diff(to, from, 'man-days', 24, 8, 5)).to.equal('3md 1h');
-    });
+  it('round-trips negative standard durations', () => {
+    const from = new Date(2020, 0, 1);
+    const to = new Date(from.getTime() - (3600 + 2 * 60) * 1000);
 
-    it('supports man-weeks formatting', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
-        const to = new Date(from.getTime() + 88 * 3600 * 1000);
+    for (const format of ['short', 'short-compact', 'man-hours']) {
+      expect(Time.durationSeconds(Time.diff(to, from, format), from)).to.equal(-3720);
+    }
+  });
 
-        expect(Time.diff(to, from, 'man-weeks', 24, 8, 5)).to.equal('2mw 1md');
-    });
+  it('resolves relative calendar expressions from the supplied date', () => {
+    const from = new Date(2020, 0, 1);
 
-    it('supports configurable man-day and man-week sizes', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
-        const to = new Date(from.getTime() + 36 * 3600 * 1000);
-
-        expect(Time.diff(to, from, 'man-weeks', 24, 6, 3)).to.equal('2mw');
-    });
-
-    it('parses man-time durations using the configured sizes', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
-
-        expect(Time.diffSeconds('1md 2h', from, 8, 5)).to.equal(10 * 3600);
-        expect(Time.diffSeconds('2mw 1md', from, 6, 3)).to.equal(42 * 3600);
-        expect(Time.diffSeconds('1mw1md', from, 8, 5)).to.equal(48 * 3600);
-        expect(Time.durationSeconds('2mw 1md', from, 6, 3)).to.equal(42 * 3600);
-    });
-
-    it('round-trips formatted man-time durations', () => {
-        const from = new Date('2020-01-01T00:00:00Z');
-        const to = new Date(from.getTime() + 42 * 3600 * 1000);
-        const formatted = Time.diff(to, from, 'man-weeks', 24, 6, 3);
-
-        expect(Time.diffSeconds(formatted, from, 6, 3)).to.equal(42 * 3600);
-        expect(Time.diff(formatted, from, 'man-weeks', 24, 6, 3)).to.equal(formatted);
-    });
-
-    it('applies a leading sign to complete man-time durations', () => {
-        const from = new Date('2020-01-01T00:00:00Z'),
-            negativeManDay = Time.diff(
-                new Date(from.getTime() - 10 * 3600 * 1000),
-                from,
-                'man-days',
-                24,
-                8,
-                5
-            ),
-            negativeManWeek = Time.diff(
-                new Date(from.getTime() - 50 * 3600 * 1000),
-                from,
-                'man-weeks',
-                24,
-                8,
-                5
-            );
-
-        expect(negativeManDay).to.equal('-1md 2h');
-        expect(Time.diffSeconds(negativeManDay, from, 8, 5)).to.equal(-10 * 3600);
-        expect(negativeManWeek).to.equal('-1mw 1md 2h');
-        expect(Time.diffSeconds(negativeManWeek, from, 8, 5)).to.equal(-50 * 3600);
-    });
+    expect(Time.diffSeconds('tomorrow', from)).to.equal(24 * 3600);
+    expect(Time.diffSeconds('1 month', from)).to.equal(31 * 24 * 3600);
+    expect(from).to.deep.equal(new Date(2020, 0, 1));
+  });
 });

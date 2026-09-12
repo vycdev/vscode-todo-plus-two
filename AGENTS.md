@@ -1,6 +1,6 @@
 # Todo+2
 
-TypeScript, VS Code extension (vscode API ^1.25), webpack, moment-mini, mocha+chai.
+TypeScript, VS Code extension (vscode API ^1.36), webpack, moment-mini, mocha+chai.
 
 ## Commands
 
@@ -9,6 +9,8 @@ npm install          # install deps
 npm run compile      # webpack dev build → out/
 npm run compile:watch
 npm run test         # mocha tests in test/
+npm run typecheck    # TypeScript source and test checks
+npm run check        # types, tests, development build, formatting
 npm run format       # prettier --write
 npm run format:check
 ```

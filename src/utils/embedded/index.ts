@@ -16,98 +16,122 @@ declare const __non_webpack_require__: NodeRequire;
 /* EMBEDDED */
 
 const Embedded = {
-    async initProvider() {
-        if (Embedded.provider) return;
+  initProvider(): Promise<void> {
+    if (Embedded.disposed) return Promise.resolve();
+    if (Embedded.provider) return Promise.resolve();
+    if (Embedded.providerInitialization) return Embedded.providerInitialization;
 
-        const { javascript, ag, rg } = Embedded.providers;
-        const cfg = Config.get();
-        const preferred = cfg.embedded.provider; // "javascript" | "ag" | "rg" | ""
-        const generation = Embedded.providerGeneration;
+    const initialization = Embedded.createProvider();
+    Embedded.providerInitialization = initialization;
+    const clearInitialization = () => {
+      if (Embedded.providerInitialization === initialization) {
+        Embedded.providerInitialization = undefined;
+      }
+    };
+    initialization.then(clearInitialization, clearInitialization);
 
-        let Provider;
+    return initialization;
+  },
 
-        if (preferred) {
-            // Honor explicit preference, but fall back gracefully
-            const pick = await (Embedded.providers[preferred]
-                ? Embedded.providers[preferred]()
-                : undefined);
-            Provider = pick || javascript();
-        } else {
-            // Auto-detect fast providers, then fall back to JS
-            Provider = (await ag()) || (await rg()) || javascript();
-        }
+  async createProvider(): Promise<void> {
+    const { javascript, ag, rg } = Embedded.providers;
+    const cfg = Config.get();
+    const preferred = cfg.embedded.provider; // "javascript" | "ag" | "rg" | ""
+    const generation = Embedded.providerGeneration;
 
-        if (generation !== Embedded.providerGeneration) return Embedded.initProvider();
+    let Provider;
 
-        Embedded.provider = new Provider();
+    if (preferred) {
+      // Honor explicit preference, but fall back gracefully
+      const pick = await (Embedded.providers[preferred]
+        ? Embedded.providers[preferred]()
+        : undefined);
+      Provider = pick || javascript();
+    } else {
+      // Auto-detect fast providers, then fall back to JS
+      Provider = (await ag()) || (await rg()) || javascript();
+    }
+
+    if (Embedded.disposed) return;
+    if (generation !== Embedded.providerGeneration) return Embedded.createProvider();
+
+    Embedded.provider = new Provider();
+  },
+
+  resetProvider() {
+    resetEmbeddedProvider(Embedded);
+  },
+
+  dispose() {
+    Embedded.disposed = true;
+    Embedded.resetProvider();
+  },
+
+  disposed: false,
+  provider: undefined as JS | AG | RG,
+  providerInitialization: undefined as Promise<void> | undefined,
+  providerGeneration: 0,
+
+  providers: {
+    javascript() {
+      return JS;
     },
 
-    resetProvider() {
-        resetEmbeddedProvider(Embedded);
+    async ag() {
+      try {
+        await execa('ag', ['--version']);
+
+        return AG;
+      } catch (e) {}
     },
 
-    provider: undefined as JS | AG | RG,
-    providerGeneration: 0,
+    async rg() {
+      const config = Config.get(),
+        lookaroundRe = /\(\?<?(!|=)/;
 
-    providers: {
-        javascript() {
-            return JS;
-        },
+      if (lookaroundRe.test(config.embedded.providers.rg.regex)) {
+        vscode.window.showErrorMessage(
+          'ripgrep doesn\'t support lookaheads and lookbehinds, you have to update your "todo.embedded.providers.rg.regex" setting if you want to use ripgrep'
+        );
 
-        async ag() {
-            try {
-                await execa('ag', ['--version']);
+        return;
+      }
 
-                return AG;
-            } catch (e) {}
-        },
+      try {
+        await execa('rg', ['--version']);
 
-        async rg() {
-            const config = Config.get(),
-                lookaroundRe = /\(\?<?(!|=)/;
+        RG.bin = 'rg';
+        return RG;
+      } catch (e) {}
 
-            if (lookaroundRe.test(config.embedded.providers.rg.regex)) {
-                vscode.window.showErrorMessage(
-                    'ripgrep doesn\'t support lookaheads and lookbehinds, you have to update your "todo.embedded.providers.rg.regex" setting if you want to use ripgrep'
-                );
+      const rgPath = getCoreRipgrepPath(vscode.env.appRoot, __non_webpack_require__);
 
-                return;
-            }
+      if (rgPath) {
+        RG.bin = rgPath;
 
-            try {
-                await execa('rg', ['--version']);
+        return RG;
+      }
 
-                return RG;
-            } catch (e) {}
+      const name = /^win/.test(process.platform) ? 'rg.exe' : 'rg',
+        basePath = path.dirname(__dirname),
+        filePaths = [
+          path.join(basePath, `node_modules.asar.unpacked/vscode-ripgrep/bin/${name}`),
+          path.join(basePath, `node_modules.asar.unpacked/@vscode/ripgrep/bin/${name}`),
+          path.join(basePath, `node_modules/vscode-ripgrep/bin/${name}`),
+          path.join(basePath, `node_modules/@vscode/ripgrep/bin/${name}`),
+        ];
 
-            const rgPath = getCoreRipgrepPath(vscode.env.appRoot, __non_webpack_require__);
+      for (let filePath of filePaths) {
+        try {
+          fs.accessSync(filePath);
 
-            if (rgPath) {
-                RG.bin = rgPath;
+          RG.bin = filePath;
 
-                return RG;
-            }
-
-            const name = /^win/.test(process.platform) ? 'rg.exe' : 'rg',
-                basePath = path.dirname(__dirname),
-                filePaths = [
-                    path.join(basePath, `node_modules.asar.unpacked/vscode-ripgrep/bin/${name}`),
-                    path.join(basePath, `node_modules.asar.unpacked/@vscode/ripgrep/bin/${name}`),
-                    path.join(basePath, `node_modules/vscode-ripgrep/bin/${name}`),
-                    path.join(basePath, `node_modules/@vscode/ripgrep/bin/${name}`),
-                ];
-
-            for (let filePath of filePaths) {
-                try {
-                    fs.accessSync(filePath);
-
-                    RG.bin = filePath;
-
-                    return RG;
-                } catch (e) {}
-            }
-        },
+          return RG;
+        } catch (e) {}
+      }
     },
+  },
 };
 
 /* EXPORT */

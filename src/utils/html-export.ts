@@ -4,124 +4,124 @@ export type HtmlExportLineKind = 'project' | 'todo' | 'comment';
 export type HtmlExportTodoStatus = 'pending' | 'done' | 'cancelled';
 
 export interface HtmlExportLine {
-    kind: HtmlExportLineKind;
-    level: number;
-    text: string;
-    status?: HtmlExportTodoStatus;
+  kind: HtmlExportLineKind;
+  level: number;
+  text: string;
+  status?: HtmlExportTodoStatus;
 }
 
 const escapeHtml = (text: string): string =>
-    text.replace(/[&<>"']/g, (character) => {
-        const entities = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;',
-        };
+  text.replace(/[&<>"']/g, (character) => {
+    const entities = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    };
 
-        return entities[character];
-    });
+    return entities[character];
+  });
 
 const renderFormattedText = (text: string): string => {
-    const regex = formattingRegexes.formatted;
-    let cursor = 0;
-    let rendered = '';
-    let match: RegExpExecArray | null;
+  const regex = formattingRegexes.formatted;
+  let cursor = 0;
+  let rendered = '';
+  let match: RegExpExecArray | null;
 
-    regex.lastIndex = 0;
+  regex.lastIndex = 0;
 
-    while ((match = regex.exec(text))) {
-        rendered += escapeHtml(text.slice(cursor, match.index));
+  while ((match = regex.exec(text))) {
+    rendered += escapeHtml(text.slice(cursor, match.index));
 
-        const formatted = match.slice(1, 5).filter(Boolean)[0],
-            delimiter = formatted[0],
-            tag =
-                delimiter === '`'
-                    ? 'code'
-                    : delimiter === '*'
-                      ? 'strong'
-                      : delimiter === '_'
-                        ? 'em'
-                        : 'del';
+    const formatted = match.slice(1, 5).filter(Boolean)[0],
+      delimiter = formatted[0],
+      tag =
+        delimiter === '`'
+          ? 'code'
+          : delimiter === '*'
+            ? 'strong'
+            : delimiter === '_'
+              ? 'em'
+              : 'del';
 
-        rendered += `<${tag}>${escapeHtml(formatted.slice(1, -1))}</${tag}>`;
-        cursor = match.index + match[0].length;
-    }
+    rendered += `<${tag}>${escapeHtml(formatted.slice(1, -1))}</${tag}>`;
+    cursor = match.index + match[0].length;
+  }
 
-    regex.lastIndex = 0;
+  regex.lastIndex = 0;
 
-    return rendered + escapeHtml(text.slice(cursor));
+  return rendered + escapeHtml(text.slice(cursor));
 };
 
 const renderLine = (line: HtmlExportLine): string => {
-    const text = renderFormattedText(line.text);
+  const text = renderFormattedText(line.text);
 
-    if (line.kind === 'project') {
-        return `<li class="project"><span class="project-title">${text}</span>`;
-    }
+  if (line.kind === 'project') {
+    return `<li class="project"><span class="project-title">${text}</span>`;
+  }
 
-    if (line.kind === 'todo') {
-        const status = line.status || 'pending',
-            labels = {
-                pending: 'Pending',
-                done: 'Done',
-                cancelled: 'Cancelled',
-            },
-            markers = {
-                pending: '☐',
-                done: '✔',
-                cancelled: '✘',
-            };
+  if (line.kind === 'todo') {
+    const status = line.status || 'pending',
+      labels = {
+        pending: 'Pending',
+        done: 'Done',
+        cancelled: 'Cancelled',
+      },
+      markers = {
+        pending: '☐',
+        done: '✔',
+        cancelled: '✘',
+      };
 
-        return `<li class="todo ${status}"><span class="todo-marker" aria-hidden="true">${markers[status]}</span><span class="screen-reader-only">${labels[status]}: </span><span class="todo-text">${text}</span>`;
-    }
+    return `<li class="todo ${status}"><span class="todo-marker" aria-hidden="true">${markers[status]}</span><span class="screen-reader-only">${labels[status]}: </span><span class="todo-text">${text}</span>`;
+  }
 
-    return `<li class="comment"><span class="comment-text">${text}</span>`;
+  return `<li class="comment"><span class="comment-text">${text}</span>`;
 };
 
 const renderTree = (lines: HtmlExportLine[]): string => {
-    if (!lines.length) return '<p class="empty">No content to export.</p>';
+  if (!lines.length) return '<p class="empty">No content to export.</p>';
 
-    const openLevels: number[] = [];
-    let html = '<ul class="todo-tree">\n';
+  const openLevels: number[] = [];
+  let html = '<ul class="todo-tree">\n';
 
-    lines.forEach((line) => {
-        const level = Math.max(0, line.level);
+  lines.forEach((line) => {
+    const level = Math.max(0, line.level);
 
-        if (!openLevels.length) {
-            html += renderLine(line);
-            openLevels.push(level);
-            return;
-        }
+    if (!openLevels.length) {
+      html += renderLine(line);
+      openLevels.push(level);
+      return;
+    }
 
-        const currentLevel = openLevels[openLevels.length - 1];
+    const currentLevel = openLevels[openLevels.length - 1];
 
-        if (level > currentLevel) {
-            html += '\n<ul>\n' + renderLine(line);
-            openLevels.push(level);
-            return;
-        }
-
-        html += '</li>\n';
-
-        while (openLevels.length > 1 && level <= openLevels[openLevels.length - 2]) {
-            html += '</ul>\n</li>\n';
-            openLevels.pop();
-        }
-
-        openLevels[openLevels.length - 1] = level;
-        html += renderLine(line);
-    });
+    if (level > currentLevel) {
+      html += '\n<ul>\n' + renderLine(line);
+      openLevels.push(level);
+      return;
+    }
 
     html += '</li>\n';
 
-    while (openLevels.length > 1) {
-        html += '</ul>\n</li>\n';
-        openLevels.pop();
+    while (openLevels.length > 1 && level <= openLevels[openLevels.length - 2]) {
+      html += '</ul>\n</li>\n';
+      openLevels.pop();
     }
 
-    return html + '</ul>';
+    openLevels[openLevels.length - 1] = level;
+    html += renderLine(line);
+  });
+
+  html += '</li>\n';
+
+  while (openLevels.length > 1) {
+    html += '</ul>\n</li>\n';
+    openLevels.pop();
+  }
+
+  return html + '</ul>';
 };
 
 export const renderTodoHtml = (title: string, lines: HtmlExportLine[]): string => `<!doctype html>

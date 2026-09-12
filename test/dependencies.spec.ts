@@ -1,155 +1,161 @@
 import { expect } from 'chai';
 import {
-    DependencyTarget,
-    getDependencies,
-    getIds,
-    getUnresolvedIds,
-    isValidId,
-    normalizeId,
-    willFinishTodo,
+  DependencyTarget,
+  getDependencies,
+  getIds,
+  getUnresolvedIds,
+  isValidId,
+  normalizeId,
+  willFinishTodo,
 } from '../src/utils/dependencies';
 
 function target(id: string, text: string): DependencyTarget {
-    return {
-        id,
-        text,
-        filePath: 'TODO',
-        lineNumber: 0,
-        start: 0,
-        end: id.length,
-        tagStart: 0,
-        tagEnd: id.length,
-    };
+  return {
+    id,
+    text,
+    filePath: 'TODO',
+    lineNumber: 0,
+    start: 0,
+    end: id.length,
+    tagStart: 0,
+    tagEnd: id.length,
+  };
 }
 
 describe('Task dependencies', () => {
-    function todoStatus(status: 'open' | 'done' | 'cancelled') {
-        return {
-            isDone: () => status === 'done',
-            isCancelled: () => status === 'cancelled',
-            isFinished: () => status !== 'open',
-        };
-    }
+  function todoStatus(status: 'open' | 'done' | 'cancelled') {
+    return {
+      isDone: () => status === 'done',
+      isCancelled: () => status === 'cancelled',
+      isFinished: () => status !== 'open',
+    };
+  }
 
-    it('accepts readable IDs with spaces and punctuation', () => {
-        const references = getIds(
-            '  ☐ Release the API @id(release/v2: candidate A & B) @id(δelta)'
-        );
+  it('accepts readable IDs with spaces and punctuation', () => {
+    const references = getIds('  ☐ Release the API @id(release/v2: candidate A & B) @id(δelta)');
 
-        expect(references.map((reference) => reference.id)).to.deep.equal([
-            'release/v2: candidate A & B',
-            'δelta',
-        ]);
+    expect(references.map((reference) => reference.id)).to.deep.equal([
+      'release/v2: candidate A & B',
+      'δelta',
+    ]);
+  });
+
+  it('normalizes surrounding whitespace in IDs and dependencies', () => {
+    const ids = getIds('☐ Source task @id( source task )');
+    const dependencies = getDependencies('☐ Dependent task @depends( source task )');
+
+    expect(ids[0].id).to.equal('source task');
+    expect(dependencies[0].id).to.equal('source task');
+    expect(dependencies[0].tagEnd - dependencies[0].tagStart).to.equal(
+      '@depends( source task )'.length
+    );
+  });
+
+  it('requires ID and dependency tags to start at a tag boundary', () => {
+    expect(getIds('☐ Mention foo@id(fake) and `@id(code)`')).to.deep.equal([]);
+    expect(getDependencies('☐ Mention foo@depends(fake) and `@depends(code)`')).to.deep.equal([]);
+
+    const ids = getIds('☐ Keep (@id(real-id)');
+    const dependencies = getDependencies('☐ Keep [@depends(real-dependency)');
+
+    expect(ids[0]).to.include({
+      id: 'real-id',
+      start: '☐ Keep (@id('.length,
+      end: '☐ Keep (@id(real-id'.length,
+      tagStart: '☐ Keep ('.length,
+      tagEnd: '☐ Keep (@id(real-id)'.length,
+    });
+    expect(dependencies[0]).to.include({
+      id: 'real-dependency',
+      start: '☐ Keep [@depends('.length,
+      end: '☐ Keep [@depends(real-dependency'.length,
+      tagStart: '☐ Keep ['.length,
+      tagEnd: '☐ Keep [@depends(real-dependency)'.length,
     });
 
-    it('normalizes surrounding whitespace in IDs and dependencies', () => {
-        const ids = getIds('☐ Source task @id( source task )');
-        const dependencies = getDependencies('☐ Dependent task @depends( source task )');
+    expect(getIds('@id(first)@id(second)').map((reference) => reference.id)).to.deep.equal([
+      'first',
+      'second',
+    ]);
+  });
 
-        expect(ids[0].id).to.equal('source task');
-        expect(dependencies[0].id).to.equal('source task');
-        expect(dependencies[0].tagEnd - dependencies[0].tagStart).to.equal(
-            '@depends( source task )'.length
-        );
-    });
+  it('ignores ID and dependency tags inside inline code', () => {
+    expect(
+      getIds('☐ Keep `literal @id(fake)` @id(real) and `@id(also-fake)`').map(
+        (reference) => reference.id
+      )
+    ).to.deep.equal(['real']);
+    expect(
+      getDependencies(
+        '☐ Keep `literal @depends(fake)` @depends(real) and `@depends(also-fake)`'
+      ).map((reference) => reference.id)
+    ).to.deep.equal(['real']);
+  });
 
-    it('requires ID and dependency tags to start at a tag boundary', () => {
-        expect(getIds('☐ Mention foo@id(fake) and `@id(code)`')).to.deep.equal([]);
-        expect(getDependencies('☐ Mention foo@depends(fake) and `@depends(code)`')).to.deep.equal(
-            []
-        );
+  it('ignores ID and dependency tags inside multi-backtick code spans', () => {
+    expect(
+      getIds('☐ Keep ``literal @id(fake)`` @id(real) and ``@id(also-fake)``').map(
+        (reference) => reference.id
+      )
+    ).to.deep.equal(['real']);
+    expect(
+      getDependencies(
+        '☐ Keep ``literal @depends(fake)`` @depends(real) and ``@depends(also-fake)``'
+      ).map((reference) => reference.id)
+    ).to.deep.equal(['real']);
+  });
 
-        const ids = getIds('☐ Keep (@id(real-id)');
-        const dependencies = getDependencies('☐ Keep [@depends(real-dependency)');
+  it('finds every dependency on a task and ignores empty references', () => {
+    const dependencies = getDependencies(
+      '☐ Ship @depends(api contract) @depends(release/v2) @depends()'
+    );
 
-        expect(ids[0]).to.include({
-            id: 'real-id',
-            start: '☐ Keep (@id('.length,
-            end: '☐ Keep (@id(real-id'.length,
-            tagStart: '☐ Keep ('.length,
-            tagEnd: '☐ Keep (@id(real-id)'.length,
-        });
-        expect(dependencies[0]).to.include({
-            id: 'real-dependency',
-            start: '☐ Keep [@depends('.length,
-            end: '☐ Keep [@depends(real-dependency'.length,
-            tagStart: '☐ Keep ['.length,
-            tagEnd: '☐ Keep [@depends(real-dependency)'.length,
-        });
+    expect(dependencies.map((reference) => reference.id)).to.deep.equal([
+      'api contract',
+      'release/v2',
+    ]);
+  });
 
-        expect(getIds('@id(first)@id(second)').map((reference) => reference.id)).to.deep.equal([
-            'first',
-            'second',
-        ]);
-    });
+  it('preserves every duplicate ID for the link picker to resolve', () => {
+    const ids = getIds('☐ First @id(test) ☐ Second @id(test) ☐ Third @id(test)');
 
-    it('ignores ID and dependency tags inside inline code', () => {
-        expect(
-            getIds('☐ Keep `literal @id(fake)` @id(real) and `@id(also-fake)`').map(
-                (reference) => reference.id
-            )
-        ).to.deep.equal(['real']);
-        expect(
-            getDependencies(
-                '☐ Keep `literal @depends(fake)` @depends(real) and `@depends(also-fake)`'
-            ).map((reference) => reference.id)
-        ).to.deep.equal(['real']);
-    });
+    expect(ids.map((reference) => reference.id)).to.deep.equal(['test', 'test', 'test']);
+  });
 
-    it('ignores ID and dependency tags inside multi-backtick code spans', () => {
-        expect(
-            getIds('☐ Keep ``literal @id(fake)`` @id(real) and ``@id(also-fake)``').map(
-                (reference) => reference.id
-            )
-        ).to.deep.equal(['real']);
-        expect(
-            getDependencies(
-                '☐ Keep ``literal @depends(fake)`` @depends(real) and ``@depends(also-fake)``'
-            ).map((reference) => reference.id)
-        ).to.deep.equal(['real']);
-    });
+  it('requires every task sharing an ID to be finished', () => {
+    const dependencies = getDependencies('☐ Deploy @depends(shared) @depends(missing)');
+    const targets = {
+      shared: [target('shared', 'done'), target('shared', 'open')],
+    };
 
-    it('finds every dependency on a task and ignores empty references', () => {
-        const dependencies = getDependencies(
-            '☐ Ship @depends(api contract) @depends(release/v2) @depends()'
-        );
+    expect(getUnresolvedIds(dependencies, targets, (item) => item.text === 'done')).to.deep.equal([
+      'shared',
+      'missing',
+    ]);
+  });
 
-        expect(dependencies.map((reference) => reference.id)).to.deep.equal([
-            'api contract',
-            'release/v2',
-        ]);
-    });
+  it('checks dependencies when toggling between finished states', () => {
+    expect(willFinishTodo(todoStatus('open'), 'toggleDone')).to.equal(true);
+    expect(willFinishTodo(todoStatus('open'), 'toggleCancelled')).to.equal(true);
+    expect(willFinishTodo(todoStatus('done'), 'toggleDone')).to.equal(false);
+    expect(willFinishTodo(todoStatus('done'), 'toggleCancelled')).to.equal(true);
+    expect(willFinishTodo(todoStatus('cancelled'), 'toggleDone')).to.equal(true);
+    expect(willFinishTodo(todoStatus('cancelled'), 'toggleCancelled')).to.equal(false);
+  });
 
-    it('preserves every duplicate ID for the link picker to resolve', () => {
-        const ids = getIds('☐ First @id(test) ☐ Second @id(test) ☐ Third @id(test)');
+  it('treats inherited object names as unresolved IDs', () => {
+    const dependencies = getDependencies('@depends(constructor) @depends(__proto__)');
 
-        expect(ids.map((reference) => reference.id)).to.deep.equal(['test', 'test', 'test']);
-    });
+    expect(getUnresolvedIds(dependencies, {}, () => true)).to.deep.equal([
+      'constructor',
+      '__proto__',
+    ]);
+  });
 
-    it('requires every task sharing an ID to be finished', () => {
-        const dependencies = getDependencies('☐ Deploy @depends(shared) @depends(missing)');
-        const targets = {
-            shared: [target('shared', 'done'), target('shared', 'open')],
-        };
-
-        expect(
-            getUnresolvedIds(dependencies, targets, (item) => item.text === 'done')
-        ).to.deep.equal(['shared', 'missing']);
-    });
-
-    it('checks dependencies when toggling between finished states', () => {
-        expect(willFinishTodo(todoStatus('open'), 'toggleDone')).to.equal(true);
-        expect(willFinishTodo(todoStatus('open'), 'toggleCancelled')).to.equal(true);
-        expect(willFinishTodo(todoStatus('done'), 'toggleDone')).to.equal(false);
-        expect(willFinishTodo(todoStatus('done'), 'toggleCancelled')).to.equal(true);
-        expect(willFinishTodo(todoStatus('cancelled'), 'toggleDone')).to.equal(true);
-        expect(willFinishTodo(todoStatus('cancelled'), 'toggleCancelled')).to.equal(false);
-    });
-
-    it('validates and normalizes IDs before renaming', () => {
-        expect(normalizeId(' release/v2 ')).to.equal('release/v2');
-        expect(isValidId('release/v2')).to.equal(true);
-        expect(isValidId('')).to.equal(false);
-        expect(isValidId('release)')).to.equal(false);
-    });
+  it('validates and normalizes IDs before renaming', () => {
+    expect(normalizeId(' release/v2 ')).to.equal('release/v2');
+    expect(isValidId('release/v2')).to.equal(true);
+    expect(isValidId('')).to.equal(false);
+    expect(isValidId('release)')).to.equal(false);
+  });
 });

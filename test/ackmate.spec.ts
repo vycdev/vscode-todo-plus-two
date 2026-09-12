@@ -2,58 +2,68 @@ import { expect } from 'chai';
 import Ackmate from '../src/utils/ackmate';
 
 describe('Ackmate parser', () => {
-    it('preserves numeric-leading file paths', () => {
-        const output = [
-            '123/tasks/file.ts',
-            '2:TODO first',
-            '9;4 5:FIXME second',
-            'C:\\workspace\\other.ts',
-            '3:TODO third',
-        ].join('\r\n');
+  it('preserves ag lines containing multiple match spans', () => {
+    expect(Ackmate.parse(':src/tasks.ts\n4;3 4,15 5:TODO first and FIXME second')).to.deep.equal([
+      {
+        filePath: 'src/tasks.ts',
+        lineNr: 3,
+        line: 'TODO first and FIXME second',
+      },
+    ]);
+  });
 
-        expect(Ackmate.parse(output)).to.deep.equal([
-            {
-                filePath: '123/tasks/file.ts',
-                lineNr: 1,
-                line: 'TODO first',
-            },
-            {
-                filePath: '123/tasks/file.ts',
-                lineNr: 8,
-                line: 'FIXME second',
-            },
-            {
-                filePath: 'C:/workspace/other.ts',
-                lineNr: 2,
-                line: 'TODO third',
-            },
-        ]);
-    });
+  it('preserves numeric-leading file paths', () => {
+    const output = [
+      '123/tasks/file.ts',
+      '2:TODO first',
+      '9;4 5:FIXME second',
+      'C:\\workspace\\other.ts',
+      '3:TODO third',
+    ].join('\r\n');
 
-    it('ignores match records that precede their file path', () => {
-        const output = ['2:orphan result', 'src/tasks.ts', '4:TODO real'].join('\n');
+    expect(Ackmate.parse(output)).to.deep.equal([
+      {
+        filePath: '123/tasks/file.ts',
+        lineNr: 1,
+        line: 'TODO first',
+      },
+      {
+        filePath: '123/tasks/file.ts',
+        lineNr: 8,
+        line: 'FIXME second',
+      },
+      {
+        filePath: 'C:/workspace/other.ts',
+        lineNr: 2,
+        line: 'TODO third',
+      },
+    ]);
+  });
 
-        expect(Ackmate.parse(output)).to.deep.equal([
-            {
-                filePath: 'src/tasks.ts',
-                lineNr: 3,
-                line: 'TODO real',
-            },
-        ]);
-    });
+  it('ignores match records that precede their file path', () => {
+    const output = ['2:orphan result', 'src/tasks.ts', '4:TODO real'].join('\n');
 
-    it('parses records separated by classic Mac line endings', () => {
-        expect(Ackmate.parse('TODO.md\r2:TODO first\r3:FIXME second')).to.deep.equal([
-            {
-                filePath: 'TODO.md',
-                lineNr: 1,
-                line: 'TODO first',
-            },
-            {
-                filePath: 'TODO.md',
-                lineNr: 2,
-                line: 'FIXME second',
-            },
-        ]);
-    });
+    expect(Ackmate.parse(output)).to.deep.equal([
+      {
+        filePath: 'src/tasks.ts',
+        lineNr: 3,
+        line: 'TODO real',
+      },
+    ]);
+  });
+
+  it('parses records separated by classic Mac line endings', () => {
+    expect(Ackmate.parse('TODO.md\r2:TODO first\r3:FIXME second')).to.deep.equal([
+      {
+        filePath: 'TODO.md',
+        lineNr: 1,
+        line: 'TODO first',
+      },
+      {
+        filePath: 'TODO.md',
+        lineNr: 2,
+        line: 'FIXME second',
+      },
+    ]);
+  });
 });

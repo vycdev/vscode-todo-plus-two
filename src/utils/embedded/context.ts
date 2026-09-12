@@ -1,15 +1,15 @@
 export const getFollowingContext = (
-    lines: string[],
-    lineNr: number,
-    isEmbeddedTodo: (line: string) => boolean
+  lines: string[],
+  lineNr: number,
+  isEmbeddedTodo: (line: string) => boolean
 ): string | undefined => {
-    const line = lines[lineNr + 1];
+  const line = lines[lineNr + 1];
 
-    if (line === undefined) return;
+  if (line === undefined) return;
 
-    const context = line.trim();
+  const context = line.trim();
 
-    if (!context || isEmbeddedTodo(context)) return;
+  if (!context || isEmbeddedTodo(context)) return;
 
-    return context;
+  return context;
 };

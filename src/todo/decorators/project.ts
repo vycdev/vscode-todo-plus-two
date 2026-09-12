@@ -14,147 +14,145 @@ let PROJECT_BASIC: vscode.TextEditorDecorationType;
 let PROJECT_STATISTICS: vscode.TextEditorDecorationType;
 
 function getDecorationSignature() {
-    return JSON.stringify({
-        enabled: Config.getKey('colors.enabled') !== false,
-        project: Consts.colors.project,
-        projectStatistics: Consts.colors.projectStatistics,
-        dark: {
-            project: Consts.colors.dark.project,
-            projectStatistics: Consts.colors.dark.projectStatistics,
-        },
-        light: {
-            project: Consts.colors.light.project,
-            projectStatistics: Consts.colors.light.projectStatistics,
-        },
-    });
+  return JSON.stringify({
+    enabled: Config.getKey('colors.enabled') !== false,
+    project: Consts.colors.project,
+    projectStatistics: Consts.colors.projectStatistics,
+    dark: {
+      project: Consts.colors.dark.project,
+      projectStatistics: Consts.colors.dark.projectStatistics,
+    },
+    light: {
+      project: Consts.colors.light.project,
+      projectStatistics: Consts.colors.light.projectStatistics,
+    },
+  });
 }
 
 function ensureDecorationTypes() {
-    const signature = getDecorationSignature();
+  const signature = getDecorationSignature();
 
-    if (signature === DECORATIONS_SIGNATURE) {
-        return { basic: PROJECT_BASIC, statistics: PROJECT_STATISTICS };
-    }
-
-    if (PROJECT_BASIC) PROJECT_BASIC.dispose();
-    if (PROJECT_STATISTICS) PROJECT_STATISTICS.dispose();
-
-    const colorsEnabled = Config.getKey('colors.enabled') !== false,
-        basicOptions: any = {
-            rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
-        },
-        statisticsOptions: any = {
-            rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
-            after: {
-                margin: '.05em 0 .05em .5em',
-                textDecoration: ';font-size: .9em',
-            },
-        };
-
-    if (colorsEnabled) {
-        basicOptions.color = Consts.colors.project;
-        basicOptions.dark = {
-            color: Consts.colors.dark.project || Consts.colors.project,
-        };
-        basicOptions.light = {
-            color: Consts.colors.light.project || Consts.colors.project,
-        };
-
-        statisticsOptions.color = Consts.colors.project;
-        statisticsOptions.after.color = Consts.colors.projectStatistics;
-        statisticsOptions.dark = {
-            color: Consts.colors.dark.project || Consts.colors.project,
-            after: {
-                color: Consts.colors.dark.projectStatistics || Consts.colors.projectStatistics,
-            },
-        };
-        statisticsOptions.light = {
-            color: Consts.colors.light.project || Consts.colors.project,
-            after: {
-                color: Consts.colors.light.projectStatistics || Consts.colors.projectStatistics,
-            },
-        };
-    }
-
-    PROJECT_BASIC = vscode.window.createTextEditorDecorationType(basicOptions);
-
-    PROJECT_STATISTICS = vscode.window.createTextEditorDecorationType(statisticsOptions);
-
-    DECORATIONS_SIGNATURE = signature;
-
+  if (signature === DECORATIONS_SIGNATURE) {
     return { basic: PROJECT_BASIC, statistics: PROJECT_STATISTICS };
+  }
+
+  if (PROJECT_BASIC) PROJECT_BASIC.dispose();
+  if (PROJECT_STATISTICS) PROJECT_STATISTICS.dispose();
+
+  const colorsEnabled = Config.getKey('colors.enabled') !== false,
+    basicOptions: any = {
+      rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+    },
+    statisticsOptions: any = {
+      rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+      after: {
+        margin: '.05em 0 .05em .5em',
+        textDecoration: ';font-size: .9em',
+      },
+    };
+
+  if (colorsEnabled) {
+    basicOptions.color = Consts.colors.project;
+    basicOptions.dark = {
+      color: Consts.colors.dark.project || Consts.colors.project,
+    };
+    basicOptions.light = {
+      color: Consts.colors.light.project || Consts.colors.project,
+    };
+
+    statisticsOptions.color = Consts.colors.project;
+    statisticsOptions.after.color = Consts.colors.projectStatistics;
+    statisticsOptions.dark = {
+      color: Consts.colors.dark.project || Consts.colors.project,
+      after: {
+        color: Consts.colors.dark.projectStatistics || Consts.colors.projectStatistics,
+      },
+    };
+    statisticsOptions.light = {
+      color: Consts.colors.light.project || Consts.colors.project,
+      after: {
+        color: Consts.colors.light.projectStatistics || Consts.colors.projectStatistics,
+      },
+    };
+  }
+
+  PROJECT_BASIC = vscode.window.createTextEditorDecorationType(basicOptions);
+
+  PROJECT_STATISTICS = vscode.window.createTextEditorDecorationType(statisticsOptions);
+
+  DECORATIONS_SIGNATURE = signature;
+
+  return { basic: PROJECT_BASIC, statistics: PROJECT_STATISTICS };
 }
 
 /* PROJECT */
 
 class Project extends Line {
-    constructor() {
-        super();
+  constructor() {
+    super();
 
-        this.TYPES = [ensureDecorationTypes().basic];
+    this.TYPES = [ensureDecorationTypes().basic];
+  }
+
+  getItemRanges(project: ProjectItem, negRange?: vscode.Range | vscode.Range[]) {
+    return [this.getRangeDifference(project.text, project.range, negRange || [Consts.regexes.tag])];
+  }
+
+  getDecorations(projects: ProjectItem[]) {
+    const types = ensureDecorationTypes(),
+      condition = Config.getKey('statistics.project.enabled'),
+      textEditor = projects.length ? projects[0].textEditor : vscode.window.activeTextEditor;
+
+    if (condition === false) {
+      if (textEditor) textEditor.setDecorations(types.statistics, []);
+
+      return super.getDecorations(projects);
     }
 
-    getItemRanges(project: ProjectItem, negRange?: vscode.Range | vscode.Range[]) {
-        return [
-            this.getRangeDifference(project.text, project.range, negRange || [Consts.regexes.tag]),
-        ];
-    }
+    if (textEditor) textEditor.setDecorations(types.statistics, []);
 
-    getDecorations(projects: ProjectItem[]) {
-        const types = ensureDecorationTypes(),
-            condition = Config.getKey('statistics.project.enabled'),
-            textEditor = projects.length ? projects[0].textEditor : vscode.window.activeTextEditor;
+    const template = Config.getKey('statistics.project.text'),
+      basicRanges = [],
+      statisticRanges = [];
 
-        if (condition === false) {
-            if (textEditor) textEditor.setDecorations(types.statistics, []);
+    projects.forEach((project) => {
+      const ranges = this.getItemRanges(project)[0],
+        tokens = Utils.statistics.tokens.projects[project.lineNumber],
+        withStatistics = Utils.statistics.condition.is(
+          condition,
+          Utils.statistics.tokens.global,
+          tokens
+        );
 
-            return super.getDecorations(projects);
-        }
+      if (withStatistics) {
+        const contentText = Utils.statistics.template.render(template, tokens);
 
-        if (textEditor) textEditor.setDecorations(types.statistics, []);
-
-        const template = Config.getKey('statistics.project.text'),
-            basicRanges = [],
-            statisticRanges = [];
-
-        projects.forEach((project) => {
-            const ranges = this.getItemRanges(project)[0],
-                tokens = Utils.statistics.tokens.projects[project.lineNumber],
-                withStatistics = Utils.statistics.condition.is(
-                    condition,
-                    Utils.statistics.tokens.global,
-                    tokens
-                );
-
-            if (withStatistics) {
-                const contentText = Utils.statistics.template.render(template, tokens);
-
-                statisticRanges.push(
-                    ...ranges.map((range) => ({
-                        range,
-                        renderOptions: {
-                            after: {
-                                contentText,
-                            },
-                        },
-                    }))
-                );
-            } else {
-                basicRanges.push(...ranges);
-            }
-        });
-
-        return [
-            {
-                type: types.basic,
-                ranges: basicRanges,
+        statisticRanges.push(
+          ...ranges.map((range) => ({
+            range,
+            renderOptions: {
+              after: {
+                contentText,
+              },
             },
-            {
-                type: types.statistics,
-                ranges: statisticRanges,
-            },
-        ];
-    }
+          }))
+        );
+      } else {
+        basicRanges.push(...ranges);
+      }
+    });
+
+    return [
+      {
+        type: types.basic,
+        ranges: basicRanges,
+      },
+      {
+        type: types.statistics,
+        ranges: statisticRanges,
+      },
+    ];
+  }
 }
 
 /* EXPORT */

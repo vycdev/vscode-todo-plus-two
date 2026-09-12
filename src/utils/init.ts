@@ -1,9 +1,7 @@
 /* IMPORT */
 
-import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Consts from '../consts';
-import * as Commands from '../commands';
 import Config from '../config';
 import Views from '../views';
 import { getAutomaticSymbolRule } from './automatic_symbol';
@@ -12,79 +10,64 @@ import { registerViews } from './view-lifecycle';
 /* INIT */
 
 const Init = {
-    commands(context: vscode.ExtensionContext) {
-        const { commands } = vscode.extensions.getExtension('vycdev.vscode-todo-plus-two')
-            .packageJSON.contributes;
+  language(context: vscode.ExtensionContext) {
+    let languageDisposable: vscode.Disposable;
 
-        commands.forEach(({ command, title }) => {
-            const commandName = _.last(command.split('.')) as string,
-                handler = Commands[commandName],
-                disposable = vscode.commands.registerCommand(command, handler);
+    const update = () => {
+      if (languageDisposable) languageDisposable.dispose();
 
-            context.subscriptions.push(disposable);
-        });
+      Consts.update();
 
-        return Commands;
-    },
+      const automaticSymbolRule = Config.getKey('automaticSymbol')
+        ? getAutomaticSymbolRule(Consts.symbols)
+        : undefined;
 
-    language(context: vscode.ExtensionContext) {
-        let languageDisposable: vscode.Disposable;
-
-        const update = () => {
-            if (languageDisposable) languageDisposable.dispose();
-
-            Consts.update();
-
-            const automaticSymbolRule = Config.getKey('automaticSymbol')
-                ? getAutomaticSymbolRule(Consts.symbols)
-                : undefined;
-
-            languageDisposable = vscode.languages.setLanguageConfiguration(Consts.languageId, {
-                wordPattern:
-                    /(-?\d*\.\d\w*)|([^\-\`\~\!\#\%\^\&\*\(\)\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g,
-                indentationRules: {
-                    increaseIndentPattern: Consts.regexes.project,
-                    decreaseIndentPattern: Consts.regexes.impossible,
+      languageDisposable = vscode.languages.setLanguageConfiguration(Consts.languageId, {
+        wordPattern:
+          /(-?\d*\.\d\w*)|([^\-\`\~\!\#\%\^\&\*\(\)\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g,
+        indentationRules: {
+          increaseIndentPattern: Consts.regexes.project,
+          decreaseIndentPattern: Consts.regexes.impossible,
+        },
+        onEnterRules: automaticSymbolRule
+          ? [
+              {
+                beforeText: automaticSymbolRule.beforeText,
+                afterText: automaticSymbolRule.afterText,
+                action: {
+                  indentAction: vscode.IndentAction.None,
+                  appendText: automaticSymbolRule.appendText,
                 },
-                onEnterRules: automaticSymbolRule
-                    ? [
-                          {
-                              beforeText: automaticSymbolRule.beforeText,
-                              afterText: automaticSymbolRule.afterText,
-                              action: {
-                                  indentAction: vscode.IndentAction.None,
-                                  appendText: automaticSymbolRule.appendText,
-                              },
-                          },
-                      ]
-                    : [],
-            });
-        };
+              },
+            ]
+          : [],
+      });
+    };
 
-        const configurationDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
-            if (
-                event.affectsConfiguration('todo.automaticSymbol') ||
-                event.affectsConfiguration('todo.symbols')
-            ) {
-                update();
-            }
-        });
-
+    const configurationDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
+      if (
+        event.affectsConfiguration('todo.automaticSymbol') ||
+        event.affectsConfiguration('todo.symbols')
+      ) {
         update();
+      }
+    });
 
-        context.subscriptions.push(configurationDisposable, {
-            dispose: () => languageDisposable && languageDisposable.dispose(),
-        });
-    },
+    update();
 
-    views(context: vscode.ExtensionContext) {
-        registerViews(
-            context,
-            Views,
-            (id, view) => vscode.window.createTreeView(id, { treeDataProvider: view }),
-            (listener) => vscode.workspace.onDidChangeConfiguration(listener)
-        );
-    },
+    context.subscriptions.push(configurationDisposable, {
+      dispose: () => languageDisposable && languageDisposable.dispose(),
+    });
+  },
+
+  views(context: vscode.ExtensionContext) {
+    registerViews(
+      context,
+      Views,
+      (id, view) => vscode.window.createTreeView(id, { treeDataProvider: view }),
+      (listener) => vscode.workspace.onDidChangeConfiguration(listener)
+    );
+  },
 };
 
 /* EXPORT */

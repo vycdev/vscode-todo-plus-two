@@ -7,15 +7,15 @@ import { getFileOpenCommand } from './file-command';
 /* FILE */
 
 class File extends Group {
-    contextValue = 'file';
-    iconPath = vscode.ThemeIcon.File;
+  contextValue = 'file';
+  iconPath = vscode.ThemeIcon.File;
 
-    constructor(obj, uri) {
-        super(obj, uri.label);
+  constructor(obj, uri) {
+    super(obj, uri.label);
 
-        this.resourceUri = uri;
-        this.command = getFileOpenCommand(this);
-    }
+    this.resourceUri = uri;
+    this.command = getFileOpenCommand(this);
+  }
 }
 
 /* EXPORT */

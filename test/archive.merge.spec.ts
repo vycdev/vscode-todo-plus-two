@@ -1,628 +1,672 @@
 import { expect } from 'chai';
 import mergeHelper, {
-    createArchiveFinishedDateGetter,
-    getRemovableEmptyLineNumbers,
-    getTrailingEmptySeparatorStart,
+  createArchiveFinishedDateGetter,
+  getRemovableEmptyLineNumbers,
+  getTrailingEmptySeparatorStart,
 } from '../src/utils/archive-helpers';
 
 describe('Archive finished-date sorting helper', () => {
-    it('reads dates from consecutive finished todos', () => {
-        const getFinishedDate = createArchiveFinishedDateGetter(
-            /^\s*✔\s.*$/gm,
-            /@done\(([^)]*)\)/,
-            (value) => new Date(`${value}T00:00:00Z`)
-        );
+  it('reads dates from consecutive finished todos', () => {
+    const getFinishedDate = createArchiveFinishedDateGetter(
+      /^\s*✔\s.*$/gm,
+      /@done\(([^)]*)\)/,
+      (value) => new Date(`${value}T00:00:00Z`)
+    );
 
-        const older = getFinishedDate('  ✔ Older @done(2024-01-01)');
-        const newer = getFinishedDate('  ✔ Newer @done(2025-01-01)');
+    const older = getFinishedDate('  ✔ Older @done(2024-01-01)');
+    const newer = getFinishedDate('  ✔ Newer @done(2025-01-01)');
 
-        expect(older).to.deep.equal(new Date('2024-01-01T00:00:00Z'));
-        expect(newer).to.deep.equal(new Date('2025-01-01T00:00:00Z'));
-    });
+    expect(older).to.deep.equal(new Date('2024-01-01T00:00:00Z'));
+    expect(newer).to.deep.equal(new Date('2025-01-01T00:00:00Z'));
+  });
 
-    it('keeps an attached comment with its finished todo', () => {
-        const getFinishedDate = createArchiveFinishedDateGetter(
-            /^\s*✔\s.*$/gm,
-            /@done\(([^)]*)\)/,
-            (value) => new Date(`${value}T00:00:00Z`)
-        );
+  it('keeps an attached comment with its finished todo', () => {
+    const getFinishedDate = createArchiveFinishedDateGetter(
+      /^\s*✔\s.*$/gm,
+      /@done\(([^)]*)\)/,
+      (value) => new Date(`${value}T00:00:00Z`)
+    );
 
-        const todoDate = getFinishedDate('  ✔ Done @done(2025-01-01)');
-        const commentDate = getFinishedDate('    Attached comment');
+    const todoDate = getFinishedDate('  ✔ Done @done(2025-01-01)');
+    const commentDate = getFinishedDate('    Attached comment');
 
-        expect(commentDate).to.equal(todoDate);
-    });
+    expect(commentDate).to.equal(todoDate);
+  });
 
-    it('ignores finished tags inside inline code when carrying dates forward', () => {
-        const getFinishedDate = createArchiveFinishedDateGetter(
-            /^\s*(?:✔|☐ .*@done).*$/gm,
-            /@done\(([^)]*)\)/,
-            (value) => new Date(`${value}T00:00:00Z`)
-        );
+  it('ignores finished tags inside inline code when carrying dates forward', () => {
+    const getFinishedDate = createArchiveFinishedDateGetter(
+      /^\s*(?:✔|☐ .*@done).*$/gm,
+      /@done\(([^)]*)\)/,
+      (value) => new Date(`${value}T00:00:00Z`)
+    );
 
-        const todoDate = getFinishedDate('  ✔ Done @done(2025-01-01)');
-        const inlineExampleDate = getFinishedDate('  ☐ Explain `@done(2026-01-01)`');
+    const todoDate = getFinishedDate('  ✔ Done @done(2025-01-01)');
+    const inlineExampleDate = getFinishedDate('  ☐ Explain `@done(2026-01-01)`');
 
-        expect(inlineExampleDate).to.equal(todoDate);
-    });
+    expect(inlineExampleDate).to.equal(todoDate);
+  });
 });
 
 describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
-    const Archive: any = { mergeInsertItemsIntoArchiveContent: mergeHelper };
+  const Archive: any = { mergeInsertItemsIntoArchiveContent: mergeHelper };
 
-    it('merges into existing project block and creates chain if needed', () => {
-        const existing = `Archive:\nPROJECT1:\n    PROJECT2:\n      - old line`;
+  it('merges into existing project block and creates chain if needed', () => {
+    const existing = `Archive:\nPROJECT1:\n    PROJECT2:\n      - old line`;
 
-        const insertItem = {
-            obj: {
-                text: `PROJECT3:\n    <o> new finished task @done(2025-11-21 11:01:14 pm)`,
-                projects: ['PROJECT1', 'PROJECT2', 'PROJECT3'],
-            },
-            lineNumber: 42,
-        };
+    const insertItem = {
+      obj: {
+        text: `PROJECT3:\n    <o> new finished task @done(2025-11-21 11:01:14 pm)`,
+        projects: ['PROJECT1', 'PROJECT2', 'PROJECT3'],
+      },
+      lineNumber: 42,
+    };
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '    ',
-        });
-
-        expect(merged).to.include('PROJECT1:');
-        expect(merged).to.include('PROJECT2:');
-        expect(merged).to.include('PROJECT3:');
-        expect(merged).to.include('<o> new finished task');
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '    ',
     });
 
-    it('does not duplicate project headers', () => {
-        const existing = `Archive:\nPROJECT1:\n    PROJECT2:\n      - old line`;
+    expect(merged).to.include('PROJECT1:');
+    expect(merged).to.include('PROJECT2:');
+    expect(merged).to.include('PROJECT3:');
+    expect(merged).to.include('<o> new finished task');
+  });
 
-        const insertItem = {
-            obj: {
-                text: `PROJECT3:\n    <o> new finished task @done(2025-11-21 11:01:14 pm)`,
-                projects: ['PROJECT1', 'PROJECT2', 'PROJECT3'],
-            },
-            lineNumber: 42,
-        };
+  it('does not duplicate project headers', () => {
+    const existing = `Archive:\nPROJECT1:\n    PROJECT2:\n      - old line`;
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '    ',
-        });
+    const insertItem = {
+      obj: {
+        text: `PROJECT3:\n    <o> new finished task @done(2025-11-21 11:01:14 pm)`,
+        projects: ['PROJECT1', 'PROJECT2', 'PROJECT3'],
+      },
+      lineNumber: 42,
+    };
 
-        // PROJECT1 and PROJECT2 should each appear exactly once
-        expect(merged.split('\n').filter((l) => l.trim().startsWith('PROJECT1:')).length).to.equal(
-            1
-        );
-        expect(merged.split('\n').filter((l) => l.trim().startsWith('PROJECT2:')).length).to.equal(
-            1
-        );
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '    ',
     });
 
-    it('keeps project names containing the separator distinct from nested paths', () => {
-        const existing = [
-            'Archive:',
-            'A.B:',
-            '  ✔ Flat project task @done(2025-01-01)',
-            'A:',
-            '  B:',
-            '    ✔ Nested project task @done(2025-01-02)',
-        ].join('\n');
-        const insertItem = {
-            obj: {
-                text: '    ✔ New nested task @done(2025-01-03)',
-                projects: ['A', 'B'],
-            },
-            lineNumber: 42,
-        };
+    // PROJECT1 and PROJECT2 should each appear exactly once
+    expect(merged.split('\n').filter((l) => l.trim().startsWith('PROJECT1:')).length).to.equal(1);
+    expect(merged.split('\n').filter((l) => l.trim().startsWith('PROJECT2:')).length).to.equal(1);
+  });
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '  ',
-        });
-        const lines = merged.split('\n');
-        const flatTaskIndex = lines.findIndex((line) => line.includes('Flat project task'));
-        const nestedHeaderIndex = lines.findIndex((line) => line.trim() === 'B:');
-        const newTaskIndex = lines.findIndex((line) => line.includes('New nested task'));
-        const nestedTaskIndex = lines.findIndex((line) => line.includes('Nested project task'));
+  it('keeps project names containing the separator distinct from nested paths', () => {
+    const existing = [
+      'Archive:',
+      'A.B:',
+      '  ✔ Flat project task @done(2025-01-01)',
+      'A:',
+      '  B:',
+      '    ✔ Nested project task @done(2025-01-02)',
+    ].join('\n');
+    const insertItem = {
+      obj: {
+        text: '    ✔ New nested task @done(2025-01-03)',
+        projects: ['A', 'B'],
+      },
+      lineNumber: 42,
+    };
 
-        expect(lines.filter((line) => line.trim() === 'A.B:')).to.have.length(1);
-        expect(newTaskIndex).to.be.greaterThan(nestedHeaderIndex);
-        expect(newTaskIndex).to.be.lessThan(nestedTaskIndex);
-        expect(newTaskIndex).to.be.greaterThan(flatTaskIndex);
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '  ',
+    });
+    const lines = merged.split('\n');
+    const flatTaskIndex = lines.findIndex((line) => line.includes('Flat project task'));
+    const nestedHeaderIndex = lines.findIndex((line) => line.trim() === 'B:');
+    const newTaskIndex = lines.findIndex((line) => line.includes('New nested task'));
+    const nestedTaskIndex = lines.findIndex((line) => line.includes('Nested project task'));
+
+    expect(lines.filter((line) => line.trim() === 'A.B:')).to.have.length(1);
+    expect(newTaskIndex).to.be.greaterThan(nestedHeaderIndex);
+    expect(newTaskIndex).to.be.lessThan(nestedTaskIndex);
+    expect(newTaskIndex).to.be.greaterThan(flatTaskIndex);
+  });
+
+  it('preserves comments attached to archived todos', () => {
+    const existing = `Archive:\nPROJECT1:`;
+
+    const insertItem = {
+      obj: {
+        text: `PROJECT2:\n    <o> TASK1 @done(2025-11-21 11:01:14 pm)\n    - comment for task1`,
+        projects: ['PROJECT1', 'PROJECT2'],
+      },
+      lineNumber: 40,
+    };
+
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '    ',
     });
 
-    it('preserves comments attached to archived todos', () => {
-        const existing = `Archive:\nPROJECT1:`;
+    // the comment should still be present in the merged content
+    expect(merged).to.include('comment for task1');
+  });
 
-        const insertItem = {
-            obj: {
-                text: `PROJECT2:\n    <o> TASK1 @done(2025-11-21 11:01:14 pm)\n    - comment for task1`,
-                projects: ['PROJECT1', 'PROJECT2'],
-            },
-            lineNumber: 40,
-        };
+  it('preserves archived todo titles containing a colon', () => {
+    const existing = `Archive:\nPROJECT1:`;
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '    ',
-        });
+    const insertItem = {
+      obj: {
+        text: 'PROJECT1:\n    <o> Fix: parser behavior @done(2026-07-30)',
+        projects: ['PROJECT1'],
+      },
+      lineNumber: 40,
+    };
 
-        // the comment should still be present in the merged content
-        expect(merged).to.include('comment for task1');
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '    ',
     });
 
-    it('preserves archived todo titles containing a colon', () => {
-        const existing = `Archive:\nPROJECT1:`;
+    expect(merged).to.include('<o> Fix: parser behavior @done(2026-07-30)');
+    expect(merged.split('\n').filter((line) => line.trim() === 'PROJECT1:')).to.have.length(1);
+  });
 
-        const insertItem = {
-            obj: {
-                text: 'PROJECT1:\n    <o> Fix: parser behavior @done(2026-07-30)',
-                projects: ['PROJECT1'],
-            },
-            lineNumber: 40,
-        };
+  it('does not treat colon-containing todos as nested project headers', () => {
+    const existing = [
+      'Archive:',
+      'PROJECT1:',
+      '  ✔ Existing task: clarify parser @done(2026-01-01)',
+      '    PROJECT2:',
+      '      ✔ Nested existing @done(2026-01-02)',
+    ].join('\n');
+    const insertItem = {
+      obj: {
+        text: '    ✔ New task @done(2026-01-03)',
+        projects: ['PROJECT1', 'PROJECT2'],
+      },
+      lineNumber: 42,
+    };
+    const isTodoLine = (line: string) => /^\s*✔\s/.test(line);
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '    ',
-        });
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(
+      existing,
+      [insertItem],
+      { indentation: '  ' },
+      isTodoLine
+    );
+    const lines = merged.split('\n');
 
-        expect(merged).to.include('<o> Fix: parser behavior @done(2026-07-30)');
-        expect(merged.split('\n').filter((line) => line.trim() === 'PROJECT1:')).to.have.length(1);
+    expect(lines.filter((line) => line.trim() === 'PROJECT2:')).to.have.length(1);
+    const newTaskIndex = lines.indexOf('      ✔ New task @done(2026-01-03)');
+    const nestedTaskIndex = lines.indexOf('      ✔ Nested existing @done(2026-01-02)');
+
+    expect(newTaskIndex).to.be.greaterThan(-1);
+    expect(nestedTaskIndex).to.be.greaterThan(newTaskIndex);
+  });
+
+  it('inserts header-only projects correctly and only once', () => {
+    const existing = `Archive:\n`;
+
+    const insertItem = {
+      obj: {
+        text: '',
+        projects: ['PROJECT1', 'PROJECT2'],
+      },
+      lineNumber: 100,
+    };
+
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '    ',
     });
 
-    it('does not treat colon-containing todos as nested project headers', () => {
-        const existing = [
-            'Archive:',
-            'PROJECT1:',
-            '  ✔ Existing task: clarify parser @done(2026-01-01)',
-            '    PROJECT2:',
-            '      ✔ Nested existing @done(2026-01-02)',
-        ].join('\n');
-        const insertItem = {
-            obj: {
-                text: '    ✔ New task @done(2026-01-03)',
-                projects: ['PROJECT1', 'PROJECT2'],
-            },
-            lineNumber: 42,
-        };
-        const isTodoLine = (line: string) => /^\s*✔\s/.test(line);
+    // ensure PROJECT1 and PROJECT2 values exist only once as headers
+    expect(merged.split('\n').filter((l) => l.trim().startsWith('PROJECT1:')).length).to.equal(1);
+    expect(merged.split('\n').filter((l) => l.trim().startsWith('PROJECT2:')).length).to.equal(1);
+  });
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(
-            existing,
-            [insertItem],
-            { indentation: '  ' },
-            isTodoLine
-        );
-        const lines = merged.split('\n');
+  it('removes @project tags from both existing content and inserted items', () => {
+    const existing = `Archive:\nPROJECT1:\n    <o> TASK1 @done(2025-11-21 10:27:24 pm) @project(PROJECT1)`;
 
-        expect(lines.filter((line) => line.trim() === 'PROJECT2:')).to.have.length(1);
-        const newTaskIndex = lines.indexOf('      ✔ New task @done(2026-01-03)');
-        const nestedTaskIndex = lines.indexOf('      ✔ Nested existing @done(2026-01-02)');
+    const insertItem = {
+      obj: {
+        text: `PROJECT2:\n    <o> TASK2 @done(2025-11-21 10:27:59 pm) @project(PROJECT1.PROJECT2) @project(PROJECT1)`,
+        projects: ['PROJECT1', 'PROJECT2'],
+      },
+      lineNumber: 200,
+    };
 
-        expect(newTaskIndex).to.be.greaterThan(-1);
-        expect(nestedTaskIndex).to.be.greaterThan(newTaskIndex);
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '    ',
     });
 
-    it('inserts header-only projects correctly and only once', () => {
-        const existing = `Archive:\n`;
+    // Ensure @project tags are not present after merge
+    expect(merged.includes('@project(')).to.equal(false);
+    // Also ensure project headers remain
+    expect(merged).to.include('PROJECT1:');
+    expect(merged).to.include('PROJECT2:');
+  });
 
-        const insertItem = {
-            obj: {
-                text: '',
-                projects: ['PROJECT1', 'PROJECT2'],
-            },
-            lineNumber: 100,
-        };
+  it('merges nested projects from main section into existing Archive tree (same-file scenario)', () => {
+    const beforeArchiveBody = [
+      '  <o> no project here @done(2025-11-21 10:27:17 pm)',
+      '  PROJECT1:',
+      '    <o> TASK1 @done(2025-11-21 10:27:24 pm)',
+      '      - some deeper comment for task1',
+      '    PROJECT2:',
+      '      <x> new completed task with commnet @cancelled(2025-11-21 10:56:50 pm)',
+      '      - commnet',
+      '      <o> TASK2 @done(2025-11-21 10:27:59 pm)',
+      '        - comment for task2',
+    ].join('\n');
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '    ',
-        });
+    // This is the line that gets archived from the main section (under
+    // PROJECT1 -> PROJECT2 -> PROJECT3). We pass the raw text and the
+    // project chain metadata, mirroring what Archive.transformations
+    // produce for same-file archiving.
+    const insertItem = {
+      obj: {
+        text: '      <o> new finished task @done(2025-11-21 11:01:14 pm)',
+        projects: ['PROJECT1', 'PROJECT2', 'PROJECT3'],
+      },
+      lineNumber: 9,
+    };
 
-        // ensure PROJECT1 and PROJECT2 values exist only once as headers
-        expect(merged.split('\n').filter((l) => l.trim().startsWith('PROJECT1:')).length).to.equal(
-            1
-        );
-        expect(merged.split('\n').filter((l) => l.trim().startsWith('PROJECT2:')).length).to.equal(
-            1
-        );
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(beforeArchiveBody, [insertItem], {
+      indentation: '  ',
+      archive: {
+        project: {
+          separator: '.',
+        },
+      },
     });
 
-    it('removes @project tags from both existing content and inserted items', () => {
-        const existing = `Archive:\nPROJECT1:\n    <o> TASK1 @done(2025-11-21 10:27:24 pm) @project(PROJECT1)`;
+    // No debug output once assertions are stable
+    const lines = merged.split('\n');
 
-        const insertItem = {
-            obj: {
-                text: `PROJECT2:\n    <o> TASK2 @done(2025-11-21 10:27:59 pm) @project(PROJECT1.PROJECT2) @project(PROJECT1)`,
-                projects: ['PROJECT1', 'PROJECT2'],
-            },
-            lineNumber: 200,
-        };
+    // Expect a single PROJECT1 and PROJECT2 header in the archive body
+    expect(lines.filter((l) => l.trim() === 'PROJECT1:').length).to.equal(1);
+    expect(lines.filter((l) => l.trim() === 'PROJECT2:').length).to.equal(1);
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '    ',
-        });
+    // Expect a PROJECT3 header created under PROJECT2
+    expect(lines.filter((l) => l.trim() === 'PROJECT3:').length).to.equal(1);
 
-        // Ensure @project tags are not present after merge
-        expect(merged.includes('@project(')).to.equal(false);
-        // Also ensure project headers remain
-        expect(merged).to.include('PROJECT1:');
-        expect(merged).to.include('PROJECT2:');
+    // Find indices to assert structural order
+    const idxP1 = lines.findIndex((l) => l.trim() === 'PROJECT1:');
+    const idxP2 = lines.findIndex((l) => l.trim() === 'PROJECT2:');
+    const idxP3 = lines.findIndex((l) => l.trim() === 'PROJECT3:');
+
+    expect(idxP1).to.be.greaterThan(-1);
+    expect(idxP2).to.be.greaterThan(idxP1);
+    expect(idxP3).to.be.greaterThan(idxP2);
+
+    // The new finished task should appear under PROJECT3 and be properly indented
+    const newTaskLine = lines.find((l) => l.indexOf('new finished task') !== -1) || '';
+    expect(newTaskLine).to.contain('<o> new finished task');
+    // It should be more indented than the PROJECT3 header in the body
+    const project3Line = lines[idxP3] || '';
+    expect(newTaskLine.length).to.be.greaterThan(project3Line.length);
+  });
+
+  it('uses helperConfig.indentation when no existing project indentation', () => {
+    const beforeArchiveBody = '';
+
+    const insertItem = {
+      obj: {
+        text: 'PROJECT1:\n    <o> TASK1 @done(2025-11-21 11:01:14 pm)',
+        projects: ['PROJECT1'],
+      },
+      lineNumber: 1,
+    };
+
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(beforeArchiveBody, [insertItem], {
+      indentation: '    ', // 4 spaces: emulate an editor tabSize=4
+      rootIndentLevel: 1,
     });
 
-    it('merges nested projects from main section into existing Archive tree (same-file scenario)', () => {
-        const beforeArchiveBody = [
-            '  <o> no project here @done(2025-11-21 10:27:17 pm)',
-            '  PROJECT1:',
-            '    <o> TASK1 @done(2025-11-21 10:27:24 pm)',
-            '      - some deeper comment for task1',
-            '    PROJECT2:',
-            '      <x> new completed task with commnet @cancelled(2025-11-21 10:56:50 pm)',
-            '      - commnet',
-            '      <o> TASK2 @done(2025-11-21 10:27:59 pm)',
-            '        - comment for task2',
-        ].join('\n');
+    // The created PROJECT1 header should be 4 spaces indented relative to the body
+    const lines = merged.split('\n');
+    expect(lines).to.include('    PROJECT1:');
+    expect(lines).to.include('        <o> TASK1 @done(2025-11-21 11:01:14 pm)');
+  });
 
-        // This is the line that gets archived from the main section (under
-        // PROJECT1 -> PROJECT2 -> PROJECT3). We pass the raw text and the
-        // project chain metadata, mirroring what Archive.transformations
-        // produce for same-file archiving.
-        const insertItem = {
-            obj: {
-                text: '      <o> new finished task @done(2025-11-21 11:01:14 pm)',
-                projects: ['PROJECT1', 'PROJECT2', 'PROJECT3'],
-            },
-            lineNumber: 9,
-        };
+  it('respects existing archive body indentation even if helper config differs', () => {
+    const beforeArchiveBody = ['  PROJECT1:', '    <o> TASK1 @done(2025-11-21 11:01:14 pm)'].join(
+      '\n'
+    );
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(beforeArchiveBody, [insertItem], {
-            indentation: '  ',
-            archive: {
-                project: {
-                    separator: '.',
-                },
-            },
-        });
+    const insertItem = {
+      obj: {
+        text: '      <o> TASK2 @done(2025-11-21 11:03:14 pm)',
+        projects: ['PROJECT1', 'PROJECT2'],
+      },
+      lineNumber: 2,
+    };
 
-        // No debug output once assertions are stable
-        const lines = merged.split('\n');
-
-        // Expect a single PROJECT1 and PROJECT2 header in the archive body
-        expect(lines.filter((l) => l.trim() === 'PROJECT1:').length).to.equal(1);
-        expect(lines.filter((l) => l.trim() === 'PROJECT2:').length).to.equal(1);
-
-        // Expect a PROJECT3 header created under PROJECT2
-        expect(lines.filter((l) => l.trim() === 'PROJECT3:').length).to.equal(1);
-
-        // Find indices to assert structural order
-        const idxP1 = lines.findIndex((l) => l.trim() === 'PROJECT1:');
-        const idxP2 = lines.findIndex((l) => l.trim() === 'PROJECT2:');
-        const idxP3 = lines.findIndex((l) => l.trim() === 'PROJECT3:');
-
-        expect(idxP1).to.be.greaterThan(-1);
-        expect(idxP2).to.be.greaterThan(idxP1);
-        expect(idxP3).to.be.greaterThan(idxP2);
-
-        // The new finished task should appear under PROJECT3 and be properly indented
-        const newTaskLine = lines.find((l) => l.indexOf('new finished task') !== -1) || '';
-        expect(newTaskLine).to.contain('<o> new finished task');
-        // It should be more indented than the PROJECT3 header in the body
-        const project3Line = lines[idxP3] || '';
-        expect(newTaskLine.length).to.be.greaterThan(project3Line.length);
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(beforeArchiveBody, [insertItem], {
+      indentation: '    ', // helper config wants 4 spaces, but existing body uses 2
     });
 
-    it('uses helperConfig.indentation when no existing project indentation', () => {
-        const beforeArchiveBody = '';
+    const lines = merged.split('\n');
+    // The new PROJECT2 header should be indented with double the base indentation (4 spaces)
+    expect(lines).to.include('    PROJECT2:');
+    // The inserted task should be indented relative to PROJECT2 header
+    expect(lines).to.include('      <o> TASK2 @done(2025-11-21 11:03:14 pm)');
+  });
 
-        const insertItem = {
-            obj: {
-                text: 'PROJECT1:\n    <o> TASK1 @done(2025-11-21 11:01:14 pm)',
-                projects: ['PROJECT1'],
-            },
-            lineNumber: 1,
-        };
+  it('does not add a leading blank line when creating a new archive file', () => {
+    const existing = ``; // empty context simulating a new file
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(beforeArchiveBody, [insertItem], {
-            indentation: '    ', // 4 spaces: emulate an editor tabSize=4
-            rootIndentLevel: 1,
-        });
+    const insertItem = {
+      obj: {
+        // In real transformations the insert item text does not include the project header
+        text: `  <o> TASK1 @done(2025-11-21 11:01:14 pm)`,
+        projects: ['PROJECT1'],
+      },
+      lineNumber: 1,
+    };
 
-        // The created PROJECT1 header should be 4 spaces indented relative to the body
-        const lines = merged.split('\n');
-        expect(lines).to.include('    PROJECT1:');
-        expect(lines).to.include('        <o> TASK1 @done(2025-11-21 11:01:14 pm)');
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '  ',
     });
 
-    it('respects existing archive body indentation even if helper config differs', () => {
-        const beforeArchiveBody = [
-            '  PROJECT1:',
-            '    <o> TASK1 @done(2025-11-21 11:01:14 pm)',
-        ].join('\n');
+    // debug removed
 
-        const insertItem = {
-            obj: {
-                text: '      <o> TASK2 @done(2025-11-21 11:03:14 pm)',
-                projects: ['PROJECT1', 'PROJECT2'],
-            },
-            lineNumber: 2,
-        };
+    // There should be no empty first line - merged content should start with PROJECT1
+    const lines = merged.split('\n');
+    expect(lines[0].trim()).to.equal('PROJECT1:');
+    expect(lines[1].trim()).to.contain('<o> TASK1');
+  });
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(beforeArchiveBody, [insertItem], {
-            indentation: '    ', // helper config wants 4 spaces, but existing body uses 2
-        });
+  it('does not insert an extra blank line when appending to an existing archive file that ends with newline', () => {
+    const existing = 'PROJECT1:\n  <o> TASK1 @done(2025-11-21 10:27:24 pm)\n';
 
-        const lines = merged.split('\n');
-        // The new PROJECT2 header should be indented with double the base indentation (4 spaces)
-        expect(lines).to.include('    PROJECT2:');
-        // The inserted task should be indented relative to PROJECT2 header
-        expect(lines).to.include('      <o> TASK2 @done(2025-11-21 11:03:14 pm)');
+    const insertItem = {
+      obj: {
+        text: '  <o> TASK2 @done(2025-11-21 11:01:14 pm)',
+        projects: ['PROJECT1'],
+      },
+      lineNumber: 100,
+    };
+
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '  ',
     });
 
-    it('does not add a leading blank line when creating a new archive file', () => {
-        const existing = ``; // empty context simulating a new file
+    // debug removed
 
-        const insertItem = {
-            obj: {
-                // In real transformations the insert item text does not include the project header
-                text: `  <o> TASK1 @done(2025-11-21 11:01:14 pm)`,
-                projects: ['PROJECT1'],
-            },
-            lineNumber: 1,
-        };
+    // No blank line should be inserted between existing and appended task
+    expect(merged).to.not.include('\n\n  <o> TASK2');
+    expect(merged).to.include('PROJECT1:');
+    expect(merged).to.include('  <o> TASK1');
+    expect(merged).to.include('\n  <o> TASK2');
+  });
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '  ',
-        });
+  it('preserves CRLF line endings when merging into an existing archive file', () => {
+    const existing = 'PROJECT1:\r\n  <o> TASK1 @done(2025-11-21 10:27:24 pm)\r\n';
+    const insertItem = {
+      obj: {
+        text: '  <o> TASK2 @done(2025-11-21 11:01:14 pm)',
+        projects: ['PROJECT1'],
+      },
+      lineNumber: 100,
+    };
 
-        // debug removed
-
-        // There should be no empty first line - merged content should start with PROJECT1
-        const lines = merged.split('\n');
-        expect(lines[0].trim()).to.equal('PROJECT1:');
-        expect(lines[1].trim()).to.contain('<o> TASK1');
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '  ',
     });
 
-    it('does not insert an extra blank line when appending to an existing archive file that ends with newline', () => {
-        const existing = 'PROJECT1:\n  <o> TASK1 @done(2025-11-21 10:27:24 pm)\n';
+    expect(merged).to.equal(
+      'PROJECT1:\r\n  <o> TASK2 @done(2025-11-21 11:01:14 pm)\r\n  <o> TASK1 @done(2025-11-21 10:27:24 pm)'
+    );
+  });
 
-        const insertItem = {
-            obj: {
-                text: '  <o> TASK2 @done(2025-11-21 11:01:14 pm)',
-                projects: ['PROJECT1'],
-            },
-            lineNumber: 100,
-        };
+  it('uses the source CRLF line ending when creating a new archive file', () => {
+    const insertItem = {
+      obj: {
+        text: '  <o> TASK1 @done(2025-11-21 11:01:14 pm)',
+        projects: ['PROJECT1'],
+      },
+      lineNumber: 1,
+    };
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '  ',
-        });
-
-        // debug removed
-
-        // No blank line should be inserted between existing and appended task
-        expect(merged).to.not.include('\n\n  <o> TASK2');
-        expect(merged).to.include('PROJECT1:');
-        expect(merged).to.include('  <o> TASK1');
-        expect(merged).to.include('\n  <o> TASK2');
+    const merged = Archive.mergeInsertItemsIntoArchiveContent('', [insertItem], {
+      indentation: '  ',
+      lineEnding: '\r\n',
     });
 
-    it('preserves CRLF line endings when merging into an existing archive file', () => {
-        const existing = 'PROJECT1:\r\n  <o> TASK1 @done(2025-11-21 10:27:24 pm)\r\n';
-        const insertItem = {
-            obj: {
-                text: '  <o> TASK2 @done(2025-11-21 11:01:14 pm)',
-                projects: ['PROJECT1'],
-            },
-            lineNumber: 100,
-        };
+    expect(merged).to.equal('PROJECT1:\r\n  <o> TASK1 @done(2025-11-21 11:01:14 pm)');
+  });
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '  ',
-        });
+  it('inserts child project items under the existing project header after previously adding parent project items', () => {
+    const existing = [
+      'PROJECT1:',
+      '  PROJECT2:',
+      '    PROJECT3:',
+      '      <o> EXISTING @done(2025-11-21 09:00:00 pm)',
+    ].join('\n');
 
-        expect(merged).to.equal(
-            'PROJECT1:\r\n  <o> TASK2 @done(2025-11-21 11:01:14 pm)\r\n  <o> TASK1 @done(2025-11-21 10:27:24 pm)'
-        );
+    // First insert from PROJECT1 (parent)
+    const insertItem1 = {
+      obj: {
+        text: '  <o> FROM_PARENT @done(2025-11-21 09:01:00 pm)',
+        projects: ['PROJECT1'],
+      },
+      lineNumber: 10,
+    };
+
+    const merged1 = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem1], {
+      indentation: '  ',
     });
 
-    it('uses the source CRLF line ending when creating a new archive file', () => {
-        const insertItem = {
-            obj: {
-                text: '  <o> TASK1 @done(2025-11-21 11:01:14 pm)',
-                projects: ['PROJECT1'],
-            },
-            lineNumber: 1,
-        };
+    // Now insert from PROJECT3 (descendant)
+    const insertItem2 = {
+      obj: {
+        text: '      <o> FROM_CHILD @done(2025-11-21 09:02:00 pm)',
+        projects: ['PROJECT1', 'PROJECT2', 'PROJECT3'],
+      },
+      lineNumber: 11,
+    };
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent('', [insertItem], {
-            indentation: '  ',
-            lineEnding: '\r\n',
-        });
-
-        expect(merged).to.equal('PROJECT1:\r\n  <o> TASK1 @done(2025-11-21 11:01:14 pm)');
+    const merged2 = Archive.mergeInsertItemsIntoArchiveContent(merged1, [insertItem2], {
+      indentation: '  ',
     });
 
-    it('inserts child project items under the existing project header after previously adding parent project items', () => {
-        const existing = [
-            'PROJECT1:',
-            '  PROJECT2:',
-            '    PROJECT3:',
-            '      <o> EXISTING @done(2025-11-21 09:00:00 pm)',
-        ].join('\n');
+    // No debug output
+    // Child item should be placed under PROJECT3, not appended at the end. Do strict
+    // ordering check inside the project subsection rather than global indexes.
+    expect(merged2.includes('PROJECT1:')).to.equal(true);
+    expect(merged2.includes('PROJECT2:')).to.equal(true);
+    expect(merged2.includes('PROJECT3:')).to.equal(true);
 
-        // First insert from PROJECT1 (parent)
-        const insertItem1 = {
-            obj: {
-                text: '  <o> FROM_PARENT @done(2025-11-21 09:01:00 pm)',
-                projects: ['PROJECT1'],
-            },
-            lineNumber: 10,
-        };
+    const idxP3 = merged2.indexOf('PROJECT3:');
+    const idxFromChild = merged2.indexOf('FROM_CHILD');
+    const idxFromParent = merged2.indexOf('FROM_PARENT');
 
-        const merged1 = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem1], {
-            indentation: '  ',
-        });
+    expect(idxFromChild).to.be.greaterThan(idxP3);
+    // debug removed
+  });
 
-        // Now insert from PROJECT3 (descendant)
-        const insertItem2 = {
-            obj: {
-                text: '      <o> FROM_CHILD @done(2025-11-21 09:02:00 pm)',
-                projects: ['PROJECT1', 'PROJECT2', 'PROJECT3'],
-            },
-            lineNumber: 11,
-        };
+  it('prepends new archived items to the top of the project group', () => {
+    const existing = `PROJECT1:\n  <x> Old Item @done(2025-01-01)`;
 
-        const merged2 = Archive.mergeInsertItemsIntoArchiveContent(merged1, [insertItem2], {
-            indentation: '  ',
-        });
+    const insertItem = {
+      obj: {
+        text: '  <x> New Item @done(2025-11-25)',
+        projects: ['PROJECT1'],
+      },
+      lineNumber: 100,
+    };
 
-        // No debug output
-        // Child item should be placed under PROJECT3, not appended at the end. Do strict
-        // ordering check inside the project subsection rather than global indexes.
-        expect(merged2.includes('PROJECT1:')).to.equal(true);
-        expect(merged2.includes('PROJECT2:')).to.equal(true);
-        expect(merged2.includes('PROJECT3:')).to.equal(true);
-
-        const idxP3 = merged2.indexOf('PROJECT3:');
-        const idxFromChild = merged2.indexOf('FROM_CHILD');
-        const idxFromParent = merged2.indexOf('FROM_PARENT');
-
-        expect(idxFromChild).to.be.greaterThan(idxP3);
-        // debug removed
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '  ',
     });
 
-    it('prepends new archived items to the top of the project group', () => {
-        const existing = `PROJECT1:\n  <x> Old Item @done(2025-01-01)`;
+    const indexOfNew = merged.indexOf('New Item');
+    const indexOfOld = merged.indexOf('Old Item');
+    expect(indexOfNew).to.be.lessThan(indexOfOld);
+  });
 
-        const insertItem = {
-            obj: {
-                text: '  <x> New Item @done(2025-11-25)',
-                projects: ['PROJECT1'],
-            },
-            lineNumber: 100,
-        };
+  it('prepends under headers that contain statistics or text after the colon', () => {
+    const existing = `PROJECT1: (0) 0s\n  <x> Old Item @done(2025-01-01)`;
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '  ',
-        });
+    const insertItem = {
+      obj: {
+        text: '  <x> New Item @done(2025-11-25)',
+        projects: ['PROJECT1'],
+      },
+      lineNumber: 100,
+    };
 
-        const indexOfNew = merged.indexOf('New Item');
-        const indexOfOld = merged.indexOf('Old Item');
-        expect(indexOfNew).to.be.lessThan(indexOfOld);
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(
+      existing,
+      [insertItem],
+      { indentation: '  ' },
+      (line) => /^\s*<x>\s/.test(line)
+    );
+
+    const indexOfNew = merged.indexOf('New Item');
+    const indexOfOld = merged.indexOf('Old Item');
+    expect(merged.split('\n').filter((line) => line.startsWith('PROJECT1:'))).to.have.length(1);
+    expect(indexOfNew).to.be.lessThan(indexOfOld);
+  });
+
+  it('preserves the supplied newest-first order when prepending root-level items', () => {
+    const existing = `PROJECT1:\n  <o> Old Item @done(2024-01-01)`;
+
+    const insertItems = [
+      {
+        obj: {
+          text: '  <x> Root Oldest @cancelled(2025-11-25 08:15:52 pm)',
+        },
+        lineNumber: 1,
+      },
+      {
+        obj: {
+          text: '  <o> Root Newest @done(2025-11-25 08:15:56 pm)',
+        },
+        lineNumber: 2,
+      },
+    ];
+
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, insertItems.reverse(), {
+      indentation: '  ',
     });
 
-    it('prepends under headers that contain statistics or text after the colon', () => {
-        const existing = `PROJECT1: (0) 0s\n  <x> Old Item @done(2025-01-01)`;
+    // Both root-level items should appear before the first project header
+    const idxProject = merged.indexOf('PROJECT1:');
+    const idxNewest = merged.indexOf('Root Newest');
+    const idxOldest = merged.indexOf('Root Oldest');
+    expect(idxNewest).to.be.lessThan(idxProject);
+    expect(idxOldest).to.be.lessThan(idxProject);
+    // Newest root item should be above the older one (prepend behavior)
+    expect(idxNewest).to.be.lessThan(idxOldest);
+  });
 
-        const insertItem = {
-            obj: {
-                text: '  <x> New Item @done(2025-11-25)',
-                projects: ['PROJECT1'],
-            },
-            lineNumber: 100,
-        };
+  it('indents newly created project headers according to rootIndentLevel for same-file archives', () => {
+    const existing = ``;
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(
-            existing,
-            [insertItem],
-            { indentation: '  ' },
-            (line) => /^\s*<x>\s/.test(line)
-        );
+    const insertItem = {
+      obj: {
+        text: '        <o> Deep Task @done(2025-11-25 11:11:11 pm)',
+        projects: ['PROJECT1', 'PROJECT2', 'PROJECT3'],
+      },
+      lineNumber: 1,
+    };
 
-        const indexOfNew = merged.indexOf('New Item');
-        const indexOfOld = merged.indexOf('Old Item');
-        expect(merged.split('\n').filter((line) => line.startsWith('PROJECT1:'))).to.have.length(1);
-        expect(indexOfNew).to.be.lessThan(indexOfOld);
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '  ',
+      rootIndentLevel: 1, // Archive header is level 0, Archive body starts at level 1
     });
 
-    it('prepends root-level items (without projects) to the top of the archive body', () => {
-        const existing = `PROJECT1:\n  <o> Old Item @done(2024-01-01)`;
+    const lines = merged.split('\n');
+    expect(lines[0]).to.equal('  PROJECT1:');
+    expect(lines[1]).to.equal('    PROJECT2:');
+    expect(lines[2]).to.equal('      PROJECT3:');
+    expect(lines[3].trim()).to.contain('Deep Task');
+    // Item should be indented deeper than PROJECT3 (level 3 + 1 = 4)
+    expect(lines[3].startsWith('        ')).to.equal(true);
+  });
 
-        const insertItems = [
-            {
-                obj: {
-                    text: '  <x> Root Oldest @cancelled(2025-11-25 08:15:52 pm)',
-                },
-                lineNumber: 1,
-            },
-            {
-                obj: {
-                    text: '  <o> Root Newest @done(2025-11-25 08:15:56 pm)',
-                },
-                lineNumber: 2,
-            },
-        ];
+  it('recognizes sibling projects indented beneath a same-file Archive header', () => {
+    const existing = ['  First:', '    ✔ First task', '  Second:', '    ✔ Old task'].join('\n');
+    const merged = mergeHelper(
+      existing,
+      [{ obj: { projects: ['Second'], text: '  ✔ New task' } }],
+      { indentation: '  ', rootIndentLevel: 1 },
+      (line) => /^\s*✔/.test(line)
+    );
 
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, insertItems, {
-            indentation: '  ',
-        });
+    expect(merged).to.equal(
+      ['  First:', '    ✔ First task', '  Second:', '    ✔ New task', '    ✔ Old task'].join('\n')
+    );
+  });
 
-        // Both root-level items should appear before the first project header
-        const idxProject = merged.indexOf('PROJECT1:');
-        const idxNewest = merged.indexOf('Root Newest');
-        const idxOldest = merged.indexOf('Root Oldest');
-        expect(idxNewest).to.be.lessThan(idxProject);
-        expect(idxOldest).to.be.lessThan(idxProject);
-        // Newest root item should be above the older one (prepend behavior)
-        expect(idxNewest).to.be.lessThan(idxOldest);
+  it('keeps task comment indentation when moving a deeply nested source block', () => {
+    const merged = mergeHelper(
+      '',
+      [{ obj: { projects: ['Work'], text: '      ✔ Task\n        Note' } }],
+      { indentation: '  ' },
+      (line) => /^\s*✔/.test(line)
+    );
+
+    expect(merged).to.equal('Work:\n  ✔ Task\n    Note');
+  });
+
+  it('does not split blocks at internal blank lines when inserting another task', () => {
+    const merged = mergeHelper(
+      '',
+      [
+        { obj: { projects: ['Work'], text: '  ✔ First\n\n    Note' } },
+        { obj: { projects: ['Work'], text: '  ✔ Second' } },
+      ],
+      { indentation: '  ' },
+      (line) => /^\s*✔/.test(line)
+    );
+
+    expect(merged).to.equal('Work:\n  ✔ First\n\n    Note\n  ✔ Second');
+  });
+
+  it('keeps insertion counts independent for flat and nested names containing separators', () => {
+    const merged = mergeHelper(
+      'A.B:\n  ✔ Flat old\nA:\n  B:\n    ✔ Nested old',
+      [
+        { obj: { projects: ['A.B'], text: '  ✔ Flat new' } },
+        { obj: { projects: ['A', 'B'], text: '    ✔ Nested new' } },
+      ],
+      { indentation: '  ' },
+      (line) => /^\s*✔/.test(line)
+    );
+
+    expect(merged).to.equal(
+      'A.B:\n  ✔ Flat new\n  ✔ Flat old\nA:\n  B:\n    ✔ Nested new\n    ✔ Nested old'
+    );
+  });
+
+  it('ignores project header text included in insert items to avoid duplicate headers', () => {
+    const existing = `PROJECT1:\n  <o> Original @done(2025-01-01)`;
+
+    const insertItem = {
+      obj: {
+        text: 'PROJECT1:\n  <o> New Task @done(2025-11-25)',
+        projects: ['PROJECT1'],
+      },
+      lineNumber: 50,
+    };
+
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
+      indentation: '  ',
     });
 
-    it('indents newly created project headers according to rootIndentLevel for same-file archives', () => {
-        const existing = ``;
-
-        const insertItem = {
-            obj: {
-                text: '        <o> Deep Task @done(2025-11-25 11:11:11 pm)',
-                projects: ['PROJECT1', 'PROJECT2', 'PROJECT3'],
-            },
-            lineNumber: 1,
-        };
-
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '  ',
-            rootIndentLevel: 1, // Archive header is level 0, Archive body starts at level 1
-        });
-
-        const lines = merged.split('\n');
-        expect(lines[0]).to.equal('  PROJECT1:');
-        expect(lines[1]).to.equal('    PROJECT2:');
-        expect(lines[2]).to.equal('      PROJECT3:');
-        expect(lines[3].trim()).to.contain('Deep Task');
-        // Item should be indented deeper than PROJECT3 (level 3 + 1 = 4)
-        expect(lines[3].startsWith('        ')).to.equal(true);
-    });
-
-    it('ignores project header text included in insert items to avoid duplicate headers', () => {
-        const existing = `PROJECT1:\n  <o> Original @done(2025-01-01)`;
-
-        const insertItem = {
-            obj: {
-                text: 'PROJECT1:\n  <o> New Task @done(2025-11-25)',
-                projects: ['PROJECT1'],
-            },
-            lineNumber: 50,
-        };
-
-        const merged = Archive.mergeInsertItemsIntoArchiveContent(existing, [insertItem], {
-            indentation: '  ',
-        });
-
-        const projectCount = merged
-            .split('\n')
-            .filter((l) => l.trim().startsWith('PROJECT1:')).length;
-        expect(projectCount).to.equal(1);
-        expect(merged).to.include('New Task');
-    });
+    const projectCount = merged.split('\n').filter((l) => l.trim().startsWith('PROJECT1:')).length;
+    expect(projectCount).to.equal(1);
+    expect(merged).to.include('New Task');
+  });
 });
 
 describe('Archive empty-line pruning helpers', () => {
-    it('preserves blank separator lines immediately before the same-file Archive header', () => {
-        const lines = ['Todo:', '', '', 'Archive:', '  ✔ Done'];
-        const preserveFromLine = getTrailingEmptySeparatorStart(lines, 3);
+  it('preserves blank separator lines immediately before the same-file Archive header', () => {
+    const lines = ['Todo:', '', '', 'Archive:', '  ✔ Done'];
+    const preserveFromLine = getTrailingEmptySeparatorStart(lines, 3);
 
-        expect(preserveFromLine).to.equal(1);
-        expect(getRemovableEmptyLineNumbers(lines, 0, [], preserveFromLine)).to.deep.equal([]);
-    });
+    expect(preserveFromLine).to.equal(1);
+    expect(getRemovableEmptyLineNumbers(lines, 0, [], preserveFromLine)).to.deep.equal([]);
+  });
 
-    it('still removes excess empty lines before the protected Archive separator', () => {
-        const lines = ['Todo:', '', '', '  ✔ Done', '', '', 'Archive:'];
-        const preserveFromLine = getTrailingEmptySeparatorStart(lines, 6);
+  it('still removes excess empty lines before the protected Archive separator', () => {
+    const lines = ['Todo:', '', '', '  ✔ Done', '', '', 'Archive:'];
+    const preserveFromLine = getTrailingEmptySeparatorStart(lines, 6);
 
-        expect(preserveFromLine).to.equal(4);
-        expect(getRemovableEmptyLineNumbers(lines, 1, [], preserveFromLine)).to.deep.equal([2]);
-    });
+    expect(preserveFromLine).to.equal(4);
+    expect(getRemovableEmptyLineNumbers(lines, 1, [], preserveFromLine)).to.deep.equal([2]);
+  });
 });

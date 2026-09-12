@@ -9,71 +9,69 @@ import { findClosestRootPath, getRootPathsRegExp, isPathWithinRoot } from './fil
 /* FOLDER */
 
 const Folder = {
-    getAllRootPaths() {
-        const { workspaceFolders } = vscode.workspace;
+  getAllRootPaths() {
+    const { workspaceFolders } = vscode.workspace;
 
-        if (!workspaceFolders) return [];
+    if (!workspaceFolders) return [];
 
-        return workspaceFolders.map((folder) => folder.uri.fsPath);
-    },
+    return workspaceFolders.map((folder) => folder.uri.fsPath);
+  },
 
-    getRootPath(basePath?) {
-        const { workspaceFolders } = vscode.workspace;
+  getRootPath(basePath?) {
+    const { workspaceFolders } = vscode.workspace;
 
-        if (!workspaceFolders) return;
+    if (!workspaceFolders || !workspaceFolders.length) return;
 
-        const firstRootPath = workspaceFolders[0].uri.fsPath;
+    const firstRootPath = workspaceFolders[0].uri.fsPath;
 
-        if (!basePath || !absolute(basePath)) return firstRootPath;
+    if (!basePath || !absolute(basePath)) return firstRootPath;
 
-        const rootPaths = workspaceFolders.map((folder) => folder.uri.fsPath);
+    const rootPaths = workspaceFolders.map((folder) => folder.uri.fsPath);
 
-        return findClosestRootPath(basePath, rootPaths);
-    },
+    return findClosestRootPath(basePath, rootPaths);
+  },
 
-    async getWrapperPathOf(rootPath, cwdPath, findPath) {
-        const foundPath = await findUp(findPath, { cwd: cwdPath });
+  async getWrapperPathOf(rootPath, cwdPath, findPath) {
+    const foundPath = await findUp(findPath, { cwd: cwdPath });
 
-        if (foundPath) {
-            const wrapperPath = path.dirname(foundPath);
+    if (foundPath) {
+      const wrapperPath = path.dirname(foundPath);
 
-            if (isPathWithinRoot(wrapperPath, rootPath)) {
-                return wrapperPath;
-            }
-        }
-    },
+      if (isPathWithinRoot(wrapperPath, rootPath)) {
+        return wrapperPath;
+      }
+    }
+  },
 
-    rootsRe: undefined,
+  rootsRe: undefined,
 
-    initRootsRe() {
-        Folder.rootsRe = getRootPathsRegExp(Folder.getAllRootPaths());
-    },
+  initRootsRe() {
+    Folder.rootsRe = getRootPathsRegExp(Folder.getAllRootPaths());
+  },
 
-    parsePath(filePath): any {
-        //TSC
+  parsePath(filePath): any {
+    //TSC
 
-        if (!Folder.rootsRe) return {};
+    const match = Folder.rootsRe && Folder.rootsRe.exec(filePath);
 
-        const match = Folder.rootsRe.exec(filePath);
+    if (match) {
+      // Interal path
 
-        if (match) {
-            // Interal path
+      return {
+        root: path.basename(match[1]),
+        rootPath: match[1],
+        relativePath: match[2],
+      };
+    } else {
+      // External path
 
-            return {
-                root: path.basename(match[1]),
-                rootPath: match[1],
-                relativePath: match[2],
-            };
-        } else {
-            // External path
-
-            return {
-                root: path.basename(path.dirname(filePath)),
-                rootPath: path.dirname(filePath),
-                relativePath: path.basename(filePath),
-            };
-        }
-    },
+      return {
+        root: path.basename(path.dirname(filePath)),
+        rootPath: path.dirname(filePath),
+        relativePath: path.basename(filePath),
+      };
+    }
+  },
 };
 
 /* EXPORT */
