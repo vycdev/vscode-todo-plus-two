@@ -9,6 +9,7 @@ interface SubscriptionContext {
 interface RefreshableView {
     id: string;
     refresh(): void;
+    setTreeView?(treeView: DisposableLike): void;
 }
 
 type RegisterTreeDataProvider<T> = (id: string, view: T) => DisposableLike;
@@ -20,7 +21,13 @@ export const registerViews = <T extends RefreshableView>(
     registerTreeDataProvider: RegisterTreeDataProvider<T>,
     onDidChangeConfiguration: OnDidChangeConfiguration
 ): void => {
-    const registrations = views.map((view) => registerTreeDataProvider(view.id, view));
+    const registrations = views.map((view) => {
+        const registration = registerTreeDataProvider(view.id, view);
+
+        if (view.setTreeView) view.setTreeView(registration);
+
+        return registration;
+    });
     const configurationListener = onDidChangeConfiguration(() => {
         views.forEach((view) => view.refresh());
     });

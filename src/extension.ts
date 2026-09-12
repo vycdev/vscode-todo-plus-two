@@ -63,7 +63,10 @@ const activate = function (context: vscode.ExtensionContext) {
     let dueRefreshTimer;
     const dueRefresh = () => {
         clearTimeout(dueRefreshTimer);
-        dueRefreshTimer = setTimeout(() => Due.refresh(), 250);
+        dueRefreshTimer = setTimeout(() => {
+            Due.refresh();
+            ViewFiles.refreshActivityBarBadge();
+        }, 250);
     };
     const refreshDueDocument = (document: vscode.TextDocument) => {
         if (document.uri.scheme !== 'file') return;
@@ -134,8 +137,9 @@ const activate = function (context: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeWorkspaceFolders(
             () => Utils.embedded.provider && Utils.embedded.provider.unwatchPaths()
         ),
-        vscode.workspace.onDidChangeWorkspaceFolders(Utils.files.unwatchPaths),
-        vscode.workspace.onDidChangeWorkspaceFolders(Utils.folder.initRootsRe)
+        vscode.workspace.onDidChangeWorkspaceFolders(() => Utils.files.unwatchPaths()),
+        vscode.workspace.onDidChangeWorkspaceFolders(Utils.folder.initRootsRe),
+        vscode.workspace.onDidChangeWorkspaceFolders(() => ViewFiles.refresh())
     );
 
     Utils.init.views(context);
