@@ -26,8 +26,30 @@ class Files {
     configSignature = undefined;
     filesData = undefined; // { [filePath]: todo | undefined }
     watchers: vscode.FileSystemWatcher[] = [];
+    private loading: Promise<void> | undefined;
 
     async get(rootPaths = Folder.getAllRootPaths(), filter: string | false = false) {
+        // The badge, Files tree, and Due tree can request data simultaneously.
+        // Serialize cache mutation and recheck configuration after each load.
+        while (this.loading) {
+            try {
+                await this.loading;
+            } catch {
+                // This caller still gets its own attempt after a failed load.
+            }
+        }
+        this.loading = this.load(rootPaths);
+        try {
+            await this.loading;
+        } finally {
+            this.loading = undefined;
+        }
+
+        this.updateContext();
+        return this.getTodos(filter);
+    }
+
+    private async load(rootPaths) {
         rootPaths = _.castArray(rootPaths);
 
         const config = Config.get();
@@ -55,10 +77,6 @@ class Files {
         } else {
             await this.updateFilesData();
         }
-
-        this.updateContext();
-
-        return this.getTodos(filter);
     }
 
     async watchPaths() {
@@ -268,7 +286,9 @@ class Files {
             .map((filePath) => ({ filePath, data: this.filesData[filePath] }))
             .filter(({ filePath, data }) => {
                 if (!data) return false;
-                return matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()]);
+                return (
+                    !filter || matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()])
+                );
             });
         const rootKeys = getUniqueRootKeys(
             visibleFiles.map(({ data }) => ({ root: data.root, rootPath: data.rootPath }))
