@@ -121,6 +121,91 @@ describe('File service concurrency', () => {
     provider.dispose();
   });
 
+  it('parses bare markers from multiline Liquid comments through the provider path', () => {
+    const properties = require('../package.json').contributes.configuration.properties,
+      todoEmbedded = new RegExp(
+        properties['todo.embedded.regex'].default,
+        properties['todo.embedded.regexFlags'].default
+      ),
+      Abstract = loadService('../src/utils/embedded/providers/abstract', {
+        '../../../consts': { default: { regexes: { todoEmbedded } } },
+        '../../folder': {
+          default: {
+            getAllRootPaths: () => ['/workspace'],
+            parsePath: () => ({
+              root: 'workspace',
+              rootPath: '/workspace',
+              relativePath: 'template.liquid',
+            }),
+          },
+        },
+      }),
+      provider = new Abstract();
+
+    provider.getFollowingContext = () => undefined;
+    const data = provider.parseContent(
+      '/workspace/template.liquid',
+      ['{% comment %}', '  TODO: first', '  FIXME: second', '{% endcomment %}'].join('\n')
+    );
+
+    expect(
+      data.map(({ type, message, lineNr, column }) => ({ type, message, lineNr, column }))
+    ).to.deep.equal([
+      { type: 'TODO', message: ' first', lineNr: 1, column: 2 },
+      { type: 'FIXME', message: ' second', lineNr: 2, column: 2 },
+    ]);
+    provider.dispose();
+  });
+
+  it('does not skip Liquid files whose only markers are inside blocks', async () => {
+    const JS = loadService('../src/utils/embedded/providers/js', {
+        '../../file': { default: { read: async () => 'TODO: inside a Liquid comment block' } },
+      }),
+      provider = new JS(),
+      filePath = '/workspace/template.liquid';
+
+    provider.getOpenDocument = () => undefined;
+    provider.parseContent = (parsedPath, content) => [{ filePath: parsedPath, message: content }];
+
+    expect(await provider.getFileData(filePath)).to.deep.equal([
+      { filePath, message: 'TODO: inside a Liquid comment block' },
+    ]);
+    provider.dispose();
+  });
+
+  it('fully scans Liquid files when an external search cannot see block contents', async () => {
+    const reads: string[] = [],
+      AG = loadService('../src/utils/embedded/providers/ag', {
+        '../../file': {
+          default: {
+            read: async (filePath: string) => {
+              reads.push(filePath);
+              return 'TODO: from a Liquid comment block';
+            },
+          },
+        },
+      }),
+      provider = new AG(),
+      liquidPath = '/workspace/template.liquid',
+      sourcePath = '/workspace/app.ts';
+
+    provider.getFilePaths = async () => [liquidPath, sourcePath];
+    provider.getAckmate = async () => [];
+    provider.filterAckmate = (matches) => matches;
+    provider.ackmate2data = async () => undefined;
+    provider.getOpenDocument = () => undefined;
+    provider.parseContent = (filePath, content) => [{ filePath, message: content }];
+
+    await provider.initFilesData(['/workspace']);
+
+    expect(reads).to.deep.equal([liquidPath]);
+    expect(provider.filesData[liquidPath]).to.deep.equal([
+      { filePath: liquidPath, message: 'TODO: from a Liquid comment block' },
+    ]);
+    expect(provider.filesData).to.not.have.property(sourcePath);
+    provider.dispose();
+  });
+
   ['files', 'embedded'].forEach((name) => {
     it(`serializes concurrent ${name} scans and installs one set of watchers`, async () => {
       const loaded = loadService(

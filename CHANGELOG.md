@@ -35,7 +35,7 @@
 - Fixed embedded todo parsing for file paths that start with a number.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
 - Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
-- Added embedded todo detection for inline Liquid `{% comment %} ... {% endcomment %}` tags. Addresses: https://github.com/vycdev/vscode-todo-plus-two/issues/46
+- Added embedded todo detection for inline and multiline Liquid comments, including `comment` blocks inside `{% liquid %}` tags. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/46
 - Added case-insensitive filtering to the Todo files view, including task text and file paths. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/69
 - Added a Todo language surrounding pair so typing `*` wraps selected text in bold markers. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/52
 - Added an opt-in `todo.automaticSymbol` setting that inserts a new todo box when Enter is pressed at the end of a non-empty todo. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/83
