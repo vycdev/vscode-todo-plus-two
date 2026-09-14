@@ -274,7 +274,14 @@ class Abstract {
       liquidMatches = isLiquidFilePath(filePath)
         ? parseLiquidBlockCommentMatches(lines, Consts.regexes.todoEmbedded)
         : [],
-      liquidMatchLines = new Set(liquidMatches.map((match) => match.lineNr));
+      liquidMatchLines = new Set(liquidMatches.map((match) => match.lineNr)),
+      liquidMatchesByLine = new Map<number, typeof liquidMatches>();
+
+    liquidMatches.forEach((match) => {
+      const matches = liquidMatchesByLine.get(match.lineNr) || [];
+      matches.push(match);
+      liquidMatchesByLine.set(match.lineNr, matches);
+    });
 
     if (!content) return data;
 
@@ -282,9 +289,22 @@ class Abstract {
 
     lines.forEach((rawLine, lineNr) => {
       const line = _.trimStart(rawLine),
-        matches = parseEmbeddedMatches(line, Consts.regexes.todoEmbedded).concat(
-          liquidMatches.filter((match) => match.lineNr === lineNr)
-        );
+        ordinaryMatches = parseEmbeddedMatches(line, Consts.regexes.todoEmbedded).map((match) => ({
+          ...match,
+          column: rawLine.length - line.length + match.column,
+        })),
+        matches = ordinaryMatches
+          .concat(
+            (liquidMatchesByLine.get(lineNr) || []).filter(
+              (match) =>
+                !ordinaryMatches.some(
+                  (ordinary) =>
+                    ordinary.column <= match.column &&
+                    ordinary.column + ordinary.todo.length > match.column
+                )
+            )
+          )
+          .sort((a, b) => a.column - b.column);
 
       if (!matches.length) return;
 
@@ -295,7 +315,6 @@ class Abstract {
       matches.forEach((match) => {
         data.push({
           ...match,
-          column: 'lineNr' in match ? match.column : rawLine.length - line.length + match.column,
           rawLine,
           line,
           lineNr,

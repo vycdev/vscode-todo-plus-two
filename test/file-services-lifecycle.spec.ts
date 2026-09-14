@@ -154,7 +154,101 @@ describe('File service concurrency', () => {
       { type: 'TODO', message: ' first', lineNr: 1, column: 2 },
       { type: 'FIXME', message: ' second', lineNr: 2, column: 2 },
     ]);
+    const prefixed = provider.parseContent(
+      '/workspace/template.liquid',
+      ['{% comment %}', '  // TODO: once', '{% endcomment %}'].join('\n')
+    );
+    expect(prefixed).to.have.length(1);
+    expect(prefixed[0]).to.include({ column: 2, message: ' once' });
+    const inline = provider.parseContent(
+      '/workspace/template.liquid',
+      '{% comment %} TODO: once {% endcomment %}'
+    );
+    expect(inline).to.have.length(1);
+    expect(inline[0]).to.include({ column: 0, message: ' once' });
     provider.dispose();
+  });
+
+  it('bounds concurrent Liquid reads by the configured batch size', async () => {
+    let active = 0;
+    let maximum = 0;
+    const AG = loadService('../src/utils/embedded/providers/ag', {
+      '../../../config': { default: { get: () => ({ embedded: { batchSize: 2 } }) } },
+      '../../file': {
+        default: {
+          read: async () => {
+            active += 1;
+            maximum = Math.max(maximum, active);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            active -= 1;
+            return 'TODO';
+          },
+        },
+      },
+    });
+    const provider = new AG();
+    provider.filesData = {};
+    provider.parseContent = () => [];
+    provider.getOpenDocument = () => undefined;
+    await provider.loadLiquidFilesData(
+      Array.from({ length: 7 }, (_, i) => `/workspace/${i}.liquid`)
+    );
+    expect(maximum).to.equal(2);
+    provider.dispose();
+  });
+
+  it('does not read saved Liquid contents over an open document', async () => {
+    let reads = 0;
+    const AG = loadService('../src/utils/embedded/providers/ag', {
+      '../../file': {
+        default: {
+          read: async () => {
+            reads += 1;
+            return 'saved';
+          },
+        },
+      },
+    });
+    const provider = new AG();
+    provider.filesData = {};
+    provider.getOpenDocument = () => ({ getText: () => 'unsaved' });
+    provider.parseContent = (_filePath, content) => [{ message: content }];
+    await provider.loadLiquidFilesData(['/workspace/template.liquid']);
+    expect(reads).to.equal(0);
+    expect(provider.filesData['/workspace/template.liquid']).to.deep.equal([
+      { message: 'unsaved' },
+    ]);
+    provider.dispose();
+  });
+
+  it('stops Liquid batches and discards pending reads after disposal', async () => {
+    let reads = 0;
+    let release: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const AG = loadService('../src/utils/embedded/providers/ag', {
+      '../../../config': { default: { get: () => ({ embedded: { batchSize: 1 } }) } },
+      '../../file': {
+        default: {
+          read: async () => {
+            reads += 1;
+            await gate;
+            return 'saved';
+          },
+        },
+      },
+    });
+    const provider = new AG();
+    provider.filesData = {};
+    provider.getOpenDocument = () => undefined;
+    provider.parseContent = (_filePath, content) => [{ message: content }];
+    const pending = provider.loadLiquidFilesData(['/workspace/1.liquid', '/workspace/2.liquid']);
+    provider.dispose();
+    release!();
+    await pending;
+    expect(reads).to.equal(1);
+    expect(provider.filesData).to.deep.equal({});
   });
 
   it('does not skip Liquid files whose only markers are inside blocks', async () => {

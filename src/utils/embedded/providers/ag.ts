@@ -127,15 +127,25 @@ class AG extends Abstract {
   }
 
   async loadLiquidFilesData(filePaths: string[]) {
-    await Promise.all(
-      filePaths.filter(isLiquidFilePath).map(async (filePath) => {
-        const content = await File.read(filePath),
-          data = content === undefined ? [] : this.parseContent(filePath, content);
+    const liquidPaths = filePaths.filter(isLiquidFilePath),
+      batchSize = getBatchSize(Config.get().embedded.batchSize);
 
-        if (data.length) this.filesData[filePath] = data;
-        else delete this.filesData[filePath];
-      })
-    );
+    for (let offset = 0; offset < liquidPaths.length; offset += batchSize) {
+      if (this.disposed) return;
+      await Promise.all(
+        liquidPaths.slice(offset, offset + batchSize).map(async (filePath) => {
+          const revision = this.fileDataRevisions[filePath] || 0,
+            document = this.getOpenDocument(filePath),
+            content = document ? document.getText() : await File.read(filePath);
+
+          if (this.disposed || revision !== (this.fileDataRevisions[filePath] || 0)) return;
+          const data = content === undefined ? [] : this.parseContent(filePath, content);
+          if (data.length) this.filesData[filePath] = data;
+          else delete this.filesData[filePath];
+        })
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   }
 
   async initFilesData(rootPaths) {
