@@ -13,6 +13,7 @@ import { getFollowingContext } from '../context';
 import { updateEmbeddedDocumentCache } from '../document-cache';
 import { matchesEmbeddedFilter } from '../filter';
 import { splitLines } from '../../line-splitting';
+import { isLiquidFilePath, parseLiquidBlockCommentMatches } from '../liquid-comments';
 import { parseEmbeddedMatches } from '../regex';
 import { isAllowedFilePath } from '../../file-discovery';
 
@@ -269,7 +270,18 @@ class Abstract {
 
   parseContent(filePath: string, content: string) {
     const data = [],
-      lines = splitLines(content);
+      lines = splitLines(content),
+      liquidMatches = isLiquidFilePath(filePath)
+        ? parseLiquidBlockCommentMatches(lines, Consts.regexes.todoEmbedded)
+        : [],
+      liquidMatchLines = new Set(liquidMatches.map((match) => match.lineNr)),
+      liquidMatchesByLine = new Map<number, typeof liquidMatches>();
+
+    liquidMatches.forEach((match) => {
+      const matches = liquidMatchesByLine.get(match.lineNr) || [];
+      matches.push(match);
+      liquidMatchesByLine.set(match.lineNr, matches);
+    });
 
     if (!content) return data;
 
@@ -277,7 +289,22 @@ class Abstract {
 
     lines.forEach((rawLine, lineNr) => {
       const line = _.trimStart(rawLine),
-        matches = parseEmbeddedMatches(line, Consts.regexes.todoEmbedded);
+        ordinaryMatches = parseEmbeddedMatches(line, Consts.regexes.todoEmbedded).map((match) => ({
+          ...match,
+          column: rawLine.length - line.length + match.column,
+        })),
+        matches = ordinaryMatches
+          .concat(
+            (liquidMatchesByLine.get(lineNr) || []).filter(
+              (match) =>
+                !ordinaryMatches.some(
+                  (ordinary) =>
+                    ordinary.column <= match.column &&
+                    ordinary.column + ordinary.todo.length > match.column
+                )
+            )
+          )
+          .sort((a, b) => a.column - b.column);
 
       if (!matches.length) return;
 
@@ -288,11 +315,10 @@ class Abstract {
       matches.forEach((match) => {
         data.push({
           ...match,
-          column: rawLine.length - line.length + match.column,
           rawLine,
           line,
           lineNr,
-          context: this.getFollowingContext(lines, lineNr),
+          context: this.getFollowingContext(lines, lineNr, liquidMatchLines),
           filePath,
           root: parsedPath.root,
           rootPath: parsedPath.rootPath,
@@ -304,11 +330,14 @@ class Abstract {
     return data;
   }
 
-  getFollowingContext(lines: string[], lineNr: number) {
+  getFollowingContext(lines: string[], lineNr: number, extraTodoLines?: Set<number>) {
     if (!Config.getKey('embedded.view.showContext')) return;
 
     return getFollowingContext(lines, lineNr, (line) => {
-      return !!parseEmbeddedMatches(_.trimStart(line), Consts.regexes.todoEmbedded).length;
+      return (
+        (!!extraTodoLines && extraTodoLines.has(lineNr + 1)) ||
+        !!parseEmbeddedMatches(_.trimStart(line), Consts.regexes.todoEmbedded).length
+      );
     });
   }
 

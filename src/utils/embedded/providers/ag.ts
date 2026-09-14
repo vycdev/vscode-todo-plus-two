@@ -12,6 +12,7 @@ import { discoverFiles } from '../../file-discovery';
 import { getBatchSize } from '../../batch-size';
 import { getSearchFileBatches } from '../search-batches';
 import { splitLines } from '../../line-splitting';
+import { isLiquidFilePath } from '../liquid-comments';
 import { parseEmbeddedMatches } from '../regex';
 import Abstract from './abstract';
 
@@ -125,6 +126,28 @@ class AG extends Abstract {
     });
   }
 
+  async loadLiquidFilesData(filePaths: string[]) {
+    const liquidPaths = filePaths.filter(isLiquidFilePath),
+      batchSize = getBatchSize(Config.get().embedded.batchSize);
+
+    for (let offset = 0; offset < liquidPaths.length; offset += batchSize) {
+      if (this.disposed) return;
+      await Promise.all(
+        liquidPaths.slice(offset, offset + batchSize).map(async (filePath) => {
+          const revision = this.fileDataRevisions[filePath] || 0,
+            document = this.getOpenDocument(filePath),
+            content = document ? document.getText() : await File.read(filePath);
+
+          if (this.disposed || revision !== (this.fileDataRevisions[filePath] || 0)) return;
+          const data = content === undefined ? [] : this.parseContent(filePath, content);
+          if (data.length) this.filesData[filePath] = data;
+          else delete this.filesData[filePath];
+        })
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
   async initFilesData(rootPaths) {
     // Limit the initial external search to the include globs to avoid scanning the whole workspace.
     // This mirrors the JS provider behavior and massively reduces unnecessary IO when includes are narrow (e.g. only **/*.md).
@@ -134,6 +157,7 @@ class AG extends Abstract {
     this.filesData = {};
 
     await this.ackmate2data(ackmate);
+    await this.loadLiquidFilesData(filePaths);
 
     // Update non-empty set to only include files that actually have todos
     this.nonEmptyFiles = new Set(Object.keys(this.filesData));
@@ -147,6 +171,7 @@ class AG extends Abstract {
     const ackmate = await this.getAckmate(pending);
 
     await this.ackmate2data(ackmate);
+    await this.loadLiquidFilesData(pending);
 
     // Prune files that still have no results
     this.filesData = _.transform(

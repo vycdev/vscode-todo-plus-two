@@ -9,6 +9,7 @@ import { getBatchSize } from '../../batch-size';
 import { getWorkspaceExcludeRules } from '../../workspace-excludes';
 import { discoverFiles } from '../../file-discovery';
 import { hasEmbeddedMatch } from '../regex';
+import { isLiquidFilePath } from '../liquid-comments';
 import Abstract from './abstract';
 
 /* JS */
@@ -114,7 +115,9 @@ class JS extends Abstract {
     if (!content) return [];
 
     // Skip full parsing when no line matches the configured embedded regex.
-    if (!hasEmbeddedMatch(content, Consts.regexes.todoEmbedded)) return [];
+    // Liquid block comments can contain bare markers that need stateful parsing.
+    if (!isLiquidFilePath(filePath) && !hasEmbeddedMatch(content, Consts.regexes.todoEmbedded))
+      return [];
 
     return this.parseContent(filePath, content);
   }

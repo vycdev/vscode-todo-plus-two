@@ -22,7 +22,7 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Time estimates**: you can estimate the time it will take to complete a todo by adding a tag to it that looks like this: `@est(3 hours)`, `@est(2h30m)` or `@2h30m`. Then you can use the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens in statistics
 - **Task dependencies**: give a task a manual `@id(release-api)` and reference it from any Todo file with `@depends(release-api)`. The extension validates links, helps insert and rename references, and blocks premature completion.
 - **Statistics**: statistics about your entire file and/or project-level statistics about your individual projects
-- **Embedded todos**: it's common to have `//TODO` or `//FIXME` comments in our code, this extension can find those as well, including inline Liquid comments such as `{% comment %} TODO: update this {% endcomment %}`
+- **Embedded todos**: it's common to have `//TODO` or `//FIXME` comments in our code, this extension can find those as well, including inline and multiline Liquid comment blocks
 - **Activity bar views**: you can view your todo file and your embedded todos from a custom activity bar section
 
 ## Install

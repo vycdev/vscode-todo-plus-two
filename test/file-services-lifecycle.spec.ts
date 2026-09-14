@@ -121,6 +121,185 @@ describe('File service concurrency', () => {
     provider.dispose();
   });
 
+  it('parses bare markers from multiline Liquid comments through the provider path', () => {
+    const properties = require('../package.json').contributes.configuration.properties,
+      todoEmbedded = new RegExp(
+        properties['todo.embedded.regex'].default,
+        properties['todo.embedded.regexFlags'].default
+      ),
+      Abstract = loadService('../src/utils/embedded/providers/abstract', {
+        '../../../consts': { default: { regexes: { todoEmbedded } } },
+        '../../folder': {
+          default: {
+            getAllRootPaths: () => ['/workspace'],
+            parsePath: () => ({
+              root: 'workspace',
+              rootPath: '/workspace',
+              relativePath: 'template.liquid',
+            }),
+          },
+        },
+      }),
+      provider = new Abstract();
+
+    provider.getFollowingContext = () => undefined;
+    const data = provider.parseContent(
+      '/workspace/template.liquid',
+      ['{% comment %}', '  TODO: first', '  FIXME: second', '{% endcomment %}'].join('\n')
+    );
+
+    expect(
+      data.map(({ type, message, lineNr, column }) => ({ type, message, lineNr, column }))
+    ).to.deep.equal([
+      { type: 'TODO', message: ' first', lineNr: 1, column: 2 },
+      { type: 'FIXME', message: ' second', lineNr: 2, column: 2 },
+    ]);
+    const prefixed = provider.parseContent(
+      '/workspace/template.liquid',
+      ['{% comment %}', '  // TODO: once', '{% endcomment %}'].join('\n')
+    );
+    expect(prefixed).to.have.length(1);
+    expect(prefixed[0]).to.include({ column: 2, message: ' once' });
+    const inline = provider.parseContent(
+      '/workspace/template.liquid',
+      '{% comment %} TODO: once {% endcomment %}'
+    );
+    expect(inline).to.have.length(1);
+    expect(inline[0]).to.include({ column: 0, message: ' once' });
+    provider.dispose();
+  });
+
+  it('bounds concurrent Liquid reads by the configured batch size', async () => {
+    let active = 0;
+    let maximum = 0;
+    const AG = loadService('../src/utils/embedded/providers/ag', {
+      '../../../config': { default: { get: () => ({ embedded: { batchSize: 2 } }) } },
+      '../../file': {
+        default: {
+          read: async () => {
+            active += 1;
+            maximum = Math.max(maximum, active);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            active -= 1;
+            return 'TODO';
+          },
+        },
+      },
+    });
+    const provider = new AG();
+    provider.filesData = {};
+    provider.parseContent = () => [];
+    provider.getOpenDocument = () => undefined;
+    await provider.loadLiquidFilesData(
+      Array.from({ length: 7 }, (_, i) => `/workspace/${i}.liquid`)
+    );
+    expect(maximum).to.equal(2);
+    provider.dispose();
+  });
+
+  it('does not read saved Liquid contents over an open document', async () => {
+    let reads = 0;
+    const AG = loadService('../src/utils/embedded/providers/ag', {
+      '../../file': {
+        default: {
+          read: async () => {
+            reads += 1;
+            return 'saved';
+          },
+        },
+      },
+    });
+    const provider = new AG();
+    provider.filesData = {};
+    provider.getOpenDocument = () => ({ getText: () => 'unsaved' });
+    provider.parseContent = (_filePath, content) => [{ message: content }];
+    await provider.loadLiquidFilesData(['/workspace/template.liquid']);
+    expect(reads).to.equal(0);
+    expect(provider.filesData['/workspace/template.liquid']).to.deep.equal([
+      { message: 'unsaved' },
+    ]);
+    provider.dispose();
+  });
+
+  it('stops Liquid batches and discards pending reads after disposal', async () => {
+    let reads = 0;
+    let release: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const AG = loadService('../src/utils/embedded/providers/ag', {
+      '../../../config': { default: { get: () => ({ embedded: { batchSize: 1 } }) } },
+      '../../file': {
+        default: {
+          read: async () => {
+            reads += 1;
+            await gate;
+            return 'saved';
+          },
+        },
+      },
+    });
+    const provider = new AG();
+    provider.filesData = {};
+    provider.getOpenDocument = () => undefined;
+    provider.parseContent = (_filePath, content) => [{ message: content }];
+    const pending = provider.loadLiquidFilesData(['/workspace/1.liquid', '/workspace/2.liquid']);
+    provider.dispose();
+    release!();
+    await pending;
+    expect(reads).to.equal(1);
+    expect(provider.filesData).to.deep.equal({});
+  });
+
+  it('does not skip Liquid files whose only markers are inside blocks', async () => {
+    const JS = loadService('../src/utils/embedded/providers/js', {
+        '../../file': { default: { read: async () => 'TODO: inside a Liquid comment block' } },
+      }),
+      provider = new JS(),
+      filePath = '/workspace/template.liquid';
+
+    provider.getOpenDocument = () => undefined;
+    provider.parseContent = (parsedPath, content) => [{ filePath: parsedPath, message: content }];
+
+    expect(await provider.getFileData(filePath)).to.deep.equal([
+      { filePath, message: 'TODO: inside a Liquid comment block' },
+    ]);
+    provider.dispose();
+  });
+
+  it('fully scans Liquid files when an external search cannot see block contents', async () => {
+    const reads: string[] = [],
+      AG = loadService('../src/utils/embedded/providers/ag', {
+        '../../file': {
+          default: {
+            read: async (filePath: string) => {
+              reads.push(filePath);
+              return 'TODO: from a Liquid comment block';
+            },
+          },
+        },
+      }),
+      provider = new AG(),
+      liquidPath = '/workspace/template.liquid',
+      sourcePath = '/workspace/app.ts';
+
+    provider.getFilePaths = async () => [liquidPath, sourcePath];
+    provider.getAckmate = async () => [];
+    provider.filterAckmate = (matches) => matches;
+    provider.ackmate2data = async () => undefined;
+    provider.getOpenDocument = () => undefined;
+    provider.parseContent = (filePath, content) => [{ filePath, message: content }];
+
+    await provider.initFilesData(['/workspace']);
+
+    expect(reads).to.deep.equal([liquidPath]);
+    expect(provider.filesData[liquidPath]).to.deep.equal([
+      { filePath: liquidPath, message: 'TODO: from a Liquid comment block' },
+    ]);
+    expect(provider.filesData).to.not.have.property(sourcePath);
+    provider.dispose();
+  });
+
   ['files', 'embedded'].forEach((name) => {
     it(`serializes concurrent ${name} scans and installs one set of watchers`, async () => {
       const loaded = loadService(
