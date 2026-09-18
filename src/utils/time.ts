@@ -56,14 +56,15 @@ const Time = {
     let remaining = secondsAbs,
       parts = [];
 
-    const sections: [string, number][] = [
-      ['y', 31536000],
-      ['w', 604800],
-      ['d', normalizedHoursPerDay * 3600],
-      ['h', 3600],
-      ['m', 60],
-      ['s', 1],
-    ];
+    const daySeconds = normalizedHoursPerDay * 3600,
+      sections: [string, number][] = [
+        ['y', 365 * daySeconds],
+        ['w', 7 * daySeconds],
+        ['d', daySeconds],
+        ['h', 3600],
+        ['m', 60],
+        ['s', 1],
+      ];
 
     sections.forEach(([token, seconds]) => {
       const times = Math.floor(remaining / seconds);
