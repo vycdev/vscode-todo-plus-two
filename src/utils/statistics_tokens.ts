@@ -36,6 +36,40 @@ class StatisticsTokens {
   estTotalSeconds = 0;
   lastedSeconds = 0;
   wastedSeconds = 0;
+  tagNames: string[] = [];
+  taggedTodos: StatisticsTokens[] = [];
+
+  getTagMetric(selector: string, metric = 'all') {
+    return this.getTagTokens(selector)[metric];
+  }
+
+  getTagTokens(selector: string) {
+    const clauses = selector.split('|').map((clause) =>
+        clause
+          .split('&')
+          .map((tag) => tag.replace(/^@/, ''))
+          .filter(Boolean)
+      ),
+      matching = this.taggedTodos.filter((todo) =>
+        clauses.some(
+          (clause) => clause.length && clause.every((tag) => todo.tagNames.indexOf(tag) >= 0)
+        )
+      ),
+      tokens = new StatisticsTokens();
+
+    matching.forEach((todo) => {
+      tokens.tags += todo.tags;
+      tokens.pending += todo.pending;
+      tokens.done += todo.done;
+      tokens.cancelled += todo.cancelled;
+      tokens.estSeconds += todo.estSeconds;
+      tokens.estTotalSeconds += todo.estTotalSeconds;
+      tokens.lastedSeconds += todo.lastedSeconds;
+      tokens.wastedSeconds += todo.wastedSeconds;
+    });
+
+    return tokens;
+  }
 
   @memoize
   get finished() {

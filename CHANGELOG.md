@@ -98,6 +98,7 @@
 - Added optional whole-line background colors for configured special tags with `todo.colors.tags.lineBackground`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/93
 - Added TextMate syntax scopes so Todo projects, standard statuses, tags, and formatting are visible in the editor minimap. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/70
 - Added a command to copy the project at the cursor with its rendered statistics included as text. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/73
+- Added tag-scoped statistics tokens for todo counts, completion, estimates, and elapsed time, including AND/OR tag selectors. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/81
 - Fixed invalid statistics visibility expressions so they hide the affected statistics instead of interrupting extension updates.
 - Fixed the Due view so `todo.due.soonDays: 0` keeps future tasks out of the soon window.
 - Added a pending-task badge to the Todo activity bar icon on supported VS Code versions. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/90
