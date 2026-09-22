@@ -72,6 +72,26 @@ describe('View type icons', () => {
     });
   });
 
+  it('uses theme-specific type colors for light and dark icons', () => {
+    withView(
+      {
+        types: { TODO: '#ff0000' },
+        dark: { types: { TODO: '#00ff00' } },
+        light: { types: { TODO: '#0000ff' } },
+      },
+      (view, writtenPaths) => {
+        expect(view.getTypeIcon('TODO')).to.deep.equal({
+          dark: path.join('/storage', 'type-color-hash-#00ff00.svg'),
+          light: path.join('/storage', 'type-color-hash-#0000ff.svg'),
+        });
+        expect(writtenPaths).to.deep.equal([
+          path.join('/storage', 'type-color-hash-#00ff00.svg'),
+          path.join('/storage', 'type-color-hash-#0000ff.svg'),
+        ]);
+      }
+    );
+  });
+
   it('uses extension-wide storage when no workspace is open', () => {
     withView(
       { types: { TODO: '#ff0000' } },
