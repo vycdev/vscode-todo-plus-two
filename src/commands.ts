@@ -517,21 +517,23 @@ function toggleCancelled() {
   return callTodosMethod({ method: 'toggleCancelled', blockOnOpenDependencies: true });
 }
 
-async function toggleStart() {
+async function toggleStart(textEditor = vscode.window.activeTextEditor) {
   const autoToggle = Config.getKey('timekeeping.autoToggle');
   if (!autoToggle) {
-    return callTodosMethod({
-      checkValidity: true,
-      filter: (todo) => todo.isBox(),
-      method: 'toggleStart',
-      errors: {
-        invalid: 'Only todos can be started',
-        filtered: 'Only not done/cancelled todos can be started',
+    return callTodosMethod(
+      {
+        checkValidity: true,
+        filter: (todo) => todo.isBox(),
+        method: 'toggleStart',
+        errors: {
+          invalid: 'Only todos can be started',
+          filtered: 'Only not done/cancelled todos can be started',
+        },
       },
-    });
+      textEditor
+    );
   }
 
-  const textEditor = vscode.window.activeTextEditor;
   if (!textEditor) return;
 
   const doc = new Document(textEditor);
@@ -564,50 +566,74 @@ async function toggleStart() {
   if (startingTodos.length) {
     // Find all other active timers in the workspace
     const allTodos = await Files.get();
+    if (!isCurrentDocument(textEditor.document, version)) return;
+
+    const documents = new Map<string, vscode.TextDocument>();
+    documents.set(textEditor.document.uri.toString(), textEditor.document);
     if (allTodos) {
-      // Iterate through all roots and files
       for (const root of Object.keys(allTodos)) {
         const rootFiles = allTodos[root];
         for (const filePath of Object.keys(rootFiles)) {
           const fileData = rootFiles[filePath];
           if (!fileData || !fileData.textEditor) continue;
-
-          // Skip the current document
-          if (fileData.textEditor.document === textEditor.document) continue;
-
-          const fileDoc = new Document(fileData.textEditor);
-          const fileTodos = fileDoc.getTodosBoxStarted() as Todo[];
-
-          const edits: vscode.TextEdit[] = [];
-          for (const fileTodo of fileTodos) {
-            const timerState = getTimerState(fileTodo.text, format);
-            if (timerState && timerState.active) {
-              // This timer is active, add a @toggle tag to pause it
-              fileTodo.addTag(getToggleTag(format));
-              const todoEdits = fileTodo.makeEdit();
-              if (todoEdits) edits.push(...todoEdits);
-            }
-          }
-
-          // Apply edits to this file
-          if (edits.length) {
-            await Utils.editor.edits.apply(fileData.textEditor, edits);
+          const fileDocument = fileData.textEditor as vscode.TextDocument;
+          if (!documents.has(fileDocument.uri.toString())) {
+            documents.set(fileDocument.uri.toString(), fileDocument);
           }
         }
       }
     }
+
+    const selectedLines = new Set(lines);
+    const workspaceEdit = new vscode.WorkspaceEdit();
+    let hasEdits = false;
+    const toggleTag = getToggleTag(format);
+
+    for (const fileDocument of documents.values()) {
+      const fileDoc = new Document(fileDocument);
+      const edits: vscode.TextEdit[] = [];
+
+      for (const fileTodo of fileDoc.getTodosBoxStarted() as Todo[]) {
+        if (
+          fileDocument.uri.toString() === textEditor.document.uri.toString() &&
+          selectedLines.has(fileTodo.line.lineNumber)
+        ) {
+          continue;
+        }
+
+        const timerState = getTimerState(fileTodo.text, format);
+        if (!timerState || !timerState.active) continue;
+
+        fileTodo.addTag(toggleTag);
+        const todoEdits = fileTodo.makeEdit();
+        if (todoEdits) edits.push(...todoEdits);
+      }
+
+      if (edits.length) {
+        workspaceEdit.set(fileDocument.uri, edits);
+        hasEdits = true;
+      }
+    }
+
+    if (hasEdits) {
+      if (!isCurrentDocument(textEditor.document, version)) return;
+      if (!(await vscode.workspace.applyEdit(workspaceEdit))) return;
+    }
   }
 
   // Now perform the normal toggleStart on the selected todos
-  return callTodosMethod({
-    checkValidity: true,
-    filter: (todo) => todo.isBox(),
-    method: 'toggleStart',
-    errors: {
-      invalid: 'Only todos can be started',
-      filtered: 'Only not done/cancelled todos can be started',
+  return callTodosMethod(
+    {
+      checkValidity: true,
+      filter: (todo) => todo.isBox(),
+      method: 'toggleStart',
+      errors: {
+        invalid: 'Only todos can be started',
+        filtered: 'Only not done/cancelled todos can be started',
+      },
     },
-  });
+    textEditor
+  );
 }
 
 function toggleTimer() {
@@ -772,16 +798,13 @@ function viewToggleCancelled(todo: ItemTodo) {
   });
 }
 
-function viewToggleStart(todo: ItemTodo) {
-  return viewCallTodosMethod(todo, {
-    checkValidity: true,
-    filter: (item) => item.isBox(),
-    method: 'toggleStart',
-    errors: {
-      invalid: 'Only todos can be started',
-      filtered: 'Only not done/cancelled todos can be started',
-    },
-  });
+async function viewToggleStart(todo: ItemTodo) {
+  if (!todo || !todo.obj || !todo.obj.filePath || !_.isNumber(todo.obj.lineNr)) return;
+
+  const textEditor = await viewRevealTodo(todo);
+  if (!textEditor) return;
+
+  return toggleStart(textEditor);
 }
 
 function openDependencyTarget(target: DependencyTarget) {
