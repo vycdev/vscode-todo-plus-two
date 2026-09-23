@@ -23,6 +23,18 @@ describe('Time utilities', () => {
     expect(Time.diff(to, from, 'short-compact', 8)).to.equal('3d1h');
   });
 
+  it('uses the configured day length for short weeks and years', () => {
+    const from = new Date('2020-01-01T00:00:00Z'),
+      configuredDay = 8 * 3600 * 1000;
+
+    expect(Time.diff(new Date(from.getTime() + 8 * configuredDay), from, 'short', 8)).to.equal(
+      '1w 1d'
+    );
+    expect(
+      Time.diff(new Date(from.getTime() + 366 * configuredDay), from, 'short-compact', 8)
+    ).to.equal('1y1d');
+  });
+
   it('renders zero short durations as 0s', () => {
     const instant = new Date('2020-01-01T00:00:00Z');
 
