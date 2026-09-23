@@ -114,6 +114,9 @@ const Statistics = {
       ]; // Global settings where tokens could be in use
 
       Statistics.tokens.updateDisabled(Statistics.tokens.disabled.global, tokens, globalSettings);
+      Statistics.tokens.disabled.global.tagged = !globalSettings.some((setting) =>
+        _.includes(Config.getKey(setting), '[tag:')
+      );
 
       const projectsSettings = ['statistics.project.enabled', 'statistics.project.text']; // Local settings where tokens could be in use
 
@@ -121,6 +124,9 @@ const Statistics = {
         Statistics.tokens.disabled.projects,
         tokens,
         projectsSettings
+      );
+      Statistics.tokens.disabled.projects.tagged = !projectsSettings.some((setting) =>
+        _.includes(Config.getKey(setting), '[tag:')
       );
     },
 
@@ -136,6 +142,28 @@ const Statistics = {
     },
 
     global: {},
+
+    createTaggedTodo(item) {
+      const todo = new Tokens();
+
+      if (item instanceof TodoBox) {
+        todo.pending = 1;
+      } else if (item instanceof TodoDone) {
+        todo.done = 1;
+      } else if (item instanceof TodoCancelled) {
+        todo.cancelled = 1;
+      } else {
+        return;
+      }
+
+      return todo;
+    },
+
+    addTaggedTodoTag(tag: Tag, todo: Tokens, disabledTokens) {
+      todo.tags++;
+      todo.tagNames.push(tag.text.replace(/^@/, '').replace(/\([^)]*\)$/, ''));
+      Statistics.timeTags.add(tag.text, todo, disabledTokens, todo.pending === 0);
+    },
 
     updateGlobal(items) {
       if (items.archive && Config.getKey('statistics.statusbar.ignoreArchive')) {
@@ -173,7 +201,8 @@ const Statistics = {
 
       const lines = getStatisticsLines(items);
 
-      let wasPending = false;
+      let wasPending = false,
+        taggedTodo: Tokens | undefined;
 
       for (let i = 0, l = lines.length; i < l; i++) {
         const nextItem: any = lines[i];
@@ -186,12 +215,29 @@ const Statistics = {
             Statistics.tokens.disabled.global,
             !wasPending
           );
+
+          if (taggedTodo) {
+            Statistics.tokens.addTaggedTodoTag(
+              nextItem,
+              taggedTodo,
+              Statistics.tokens.disabled.global
+            );
+          }
         } else {
+          if (taggedTodo) tokens.taggedTodos.push(taggedTodo);
+
+          taggedTodo =
+            Statistics.tokens.disabled.global.tagged === true
+              ? undefined
+              : Statistics.tokens.createTaggedTodo(nextItem);
+
           // Only tags attached to a pending todo contribute remaining estimates.
           // Comments, projects and finished todos all end the pending context.
           wasPending = nextItem instanceof TodoBox;
         }
       }
+
+      if (taggedTodo) tokens.taggedTodos.push(taggedTodo);
 
       Statistics.tokens.global = tokens;
     },
@@ -244,7 +290,8 @@ const Statistics = {
           includeRemainingDocument
         );
 
-      let wasPending = false;
+      let wasPending = false,
+        taggedTodo: Tokens | undefined;
 
       for (let i = lineNr + 1; i < scopeEnd; i++) {
         const nextItem = lines[i];
@@ -258,7 +305,21 @@ const Statistics = {
             Statistics.tokens.disabled.projects,
             !wasPending
           );
+
+          if (taggedTodo) {
+            Statistics.tokens.addTaggedTodoTag(
+              nextItem,
+              taggedTodo,
+              Statistics.tokens.disabled.projects
+            );
+          }
         } else {
+          if (taggedTodo) tokens.taggedTodos.push(taggedTodo);
+
+          taggedTodo =
+            Statistics.tokens.disabled.projects.tagged === true
+              ? undefined
+              : Statistics.tokens.createTaggedTodo(nextItem);
           nextItem.level = nextItem.level || AST.getLevel(textDocument, nextItem.line.text);
 
           wasPending = nextItem instanceof TodoBox;
@@ -282,6 +343,7 @@ const Statistics = {
             tokens.estTotalSeconds += nextTokens.estTotalSeconds;
             tokens.lastedSeconds += nextTokens.lastedSeconds;
             tokens.wastedSeconds += nextTokens.wastedSeconds;
+            tokens.taggedTodos.push(...nextTokens.taggedTodos);
 
             i +=
               nextTokens.comments +
@@ -302,6 +364,8 @@ const Statistics = {
           }
         }
       }
+
+      if (taggedTodo) tokens.taggedTodos.push(taggedTodo);
 
       Statistics.tokens.projects[project.lineNumber] = tokens;
 

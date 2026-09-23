@@ -31,10 +31,12 @@ describe('Statistics derived token settings', () => {
     expect(statistics.tokens.disabled.global.lasted).to.equal(false);
     expect(statistics.tokens.disabled.global.wasted).to.equal(false);
     expect(statistics.tokens.disabled.global.est).to.equal(true);
+    expect(statistics.tokens.disabled.global.tagged).to.equal(true);
 
-    settings['statistics.statusbar.text'] = '[pending]';
+    settings['statistics.statusbar.text'] = '[tag:high:elapsed]';
     statistics.tokens.updateDisabledAll();
-    expect(statistics.tokens.disabled.global.lasted).to.equal(true);
-    expect(statistics.tokens.disabled.global.wasted).to.equal(true);
+    expect(statistics.tokens.disabled.global.lasted).to.equal(false);
+    expect(statistics.tokens.disabled.global.wasted).to.equal(false);
+    expect(statistics.tokens.disabled.global.tagged).to.equal(false);
   });
 });
