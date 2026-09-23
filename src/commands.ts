@@ -12,11 +12,12 @@ import StatusbarTimer from './statusbars/timer';
 import Utils from './utils';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
+import Files from './utils/files';
 import DependencyIndex from './utils/dependency_index';
 import { Comment, Project, Todo, TodoFinished } from './todo/items';
 import { unarchiveItemsFromSameFileContent } from './utils/unarchive-helpers';
 import { AutoCompleteLine, getAutoCompletableParentLines } from './utils/auto-complete';
-import { getTimerState } from './utils/timekeeping';
+import { getTimerState, getToggleTag } from './utils/timekeeping';
 import { HtmlExportLine, renderTodoHtml } from './utils/html-export';
 import { renderTodoMarkdown } from './utils/markdown-export';
 import DocumentDecorator from './todo/decorators/document';
@@ -516,7 +517,88 @@ function toggleCancelled() {
   return callTodosMethod({ method: 'toggleCancelled', blockOnOpenDependencies: true });
 }
 
-function toggleStart() {
+async function toggleStart() {
+  const autoToggle = Config.getKey('timekeeping.autoToggle');
+  if (!autoToggle) {
+    return callTodosMethod({
+      checkValidity: true,
+      filter: (todo) => todo.isBox(),
+      method: 'toggleStart',
+      errors: {
+        invalid: 'Only todos can be started',
+        filtered: 'Only not done/cancelled todos can be started',
+      },
+    });
+  }
+
+  const textEditor = vscode.window.activeTextEditor;
+  if (!textEditor) return;
+
+  const doc = new Document(textEditor);
+  if (!doc.isSupported()) return;
+
+  const version = textEditor.document.version;
+  const lines = getSelectedLines(textEditor);
+  const todos = _.filter(lines.map((line) => doc.getTodoAt(line, true))) as Todo[];
+
+  if (todos.length !== lines.length) {
+    vscode.window.showErrorMessage('Only todos can be started');
+    return;
+  }
+
+  if (!todos.length) return;
+
+  const todosFiltered = todos.filter((todo) => todo.isBox());
+
+  if (todosFiltered.length !== todos.length) {
+    vscode.window.showErrorMessage('Only not done/cancelled todos can be started');
+    return;
+  }
+
+  if (!todosFiltered.length) return;
+
+  // Find which todos are being started (don't have @started tag yet)
+  const format = Config.getKey('timekeeping.started.format');
+  const startingTodos = todosFiltered.filter((todo) => !todo.hasTag(Consts.regexes.tagStarted));
+
+  if (startingTodos.length) {
+    // Find all other active timers in the workspace
+    const allTodos = await Files.get();
+    if (allTodos) {
+      // Iterate through all roots and files
+      for (const root of Object.keys(allTodos)) {
+        const rootFiles = allTodos[root];
+        for (const filePath of Object.keys(rootFiles)) {
+          const fileData = rootFiles[filePath];
+          if (!fileData || !fileData.textEditor) continue;
+
+          // Skip the current document
+          if (fileData.textEditor.document === textEditor.document) continue;
+
+          const fileDoc = new Document(fileData.textEditor);
+          const fileTodos = fileDoc.getTodosBoxStarted() as Todo[];
+
+          const edits: vscode.TextEdit[] = [];
+          for (const fileTodo of fileTodos) {
+            const timerState = getTimerState(fileTodo.text, format);
+            if (timerState && timerState.active) {
+              // This timer is active, add a @toggle tag to pause it
+              fileTodo.addTag(getToggleTag(format));
+              const todoEdits = fileTodo.makeEdit();
+              if (todoEdits) edits.push(...todoEdits);
+            }
+          }
+
+          // Apply edits to this file
+          if (edits.length) {
+            await Utils.editor.edits.apply(fileData.textEditor, edits);
+          }
+        }
+      }
+    }
+  }
+
+  // Now perform the normal toggleStart on the selected todos
   return callTodosMethod({
     checkValidity: true,
     filter: (todo) => todo.isBox(),
