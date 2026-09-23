@@ -50,6 +50,7 @@
 - Replaced Moment with the `moment-mini` package alias to reduce bundled date-library size. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/55
 - Added default `@today` cleanup when archiving or marking todos done/cancelled, configurable with `todo.archive.remove.tags` and `todo.timekeeping.finished.remove.tags`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/30, https://github.com/vycdev/vscode-todo-plus-two/issues/13
 - Added `todo.hoursPerDay` for configurable day length in short duration formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/16
+- Fixed short-duration weeks and years to use the configured `todo.hoursPerDay` day length consistently.
 - Fixed project and special-tag decorations so color/tag settings refresh without restart. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/24, https://github.com/vycdev/vscode-todo-plus-two/issues/2
 - Added `@created` and `@now` completions for inserting the current date/time anywhere in todo files. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/38
 - Fixed timestamp completions being offered inside inline code spans.
@@ -96,9 +97,11 @@
 - Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
 - Preserved CRLF line endings when merging tasks into existing archive files.
 - Fixed embedded todo type icons so changes to `todo.colors.types` apply without restarting VS Code.
+- Fixed embedded todo type icons so `todo.colors.dark.types` and `todo.colors.light.types` apply in their matching themes.
 - Added optional whole-line background colors for configured special tags with `todo.colors.tags.lineBackground`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/93
 - Added TextMate syntax scopes so Todo projects, standard statuses, tags, and formatting are visible in the editor minimap. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/70
 - Added a command to copy the project at the cursor with its rendered statistics included as text. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/73
+- Added tag-scoped statistics tokens for todo counts, completion, estimates, and elapsed time, including AND/OR tag selectors. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/81
 - Fixed invalid statistics visibility expressions so they hide the affected statistics instead of interrupting extension updates.
 - Fixed the Due view so `todo.due.soonDays: 0` keeps future tasks out of the soon window.
 - Added a pending-task badge to the Todo activity bar icon on supported VS Code versions. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/90
