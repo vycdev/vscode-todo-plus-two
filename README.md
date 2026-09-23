@@ -264,6 +264,14 @@ The following tokens can be used in `todo.statistics.project.text`, `todo.statis
 | `[wasted]`                  | Time wasted on task                            |
 | `[elapsed]`                 | Sum of `[lasted]` and `[wasted]`               |
 
+Tag-scoped tokens use `[tag:selector:metric]`. The metric can be any task or time token
+from the table, and defaults to `all`, so `[tag:high]` counts todos tagged `@high` while
+`[tag:high:elapsed]` reports their elapsed time. Join tag names with `&` to require every
+tag or `|` to accept any tag: `[tag:frontend&high:pending]` and
+`[tag:frontend|backend:done]`. `&` is evaluated before `|`, the leading `@` is optional,
+and tag arguments do not affect matching (`@high(review)` matches `high`). These tokens
+work in project text, status bar text and status bar tooltips.
+
 ## Demo
 
 ### [Example todo file](https://github.com/vycdev/vscode-todo-plus-two/blob/master/resources/readme.todo)
