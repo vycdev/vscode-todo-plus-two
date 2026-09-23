@@ -55,7 +55,10 @@ const loadArchive = () => {
   }
 };
 
-const transform = (content: string) => {
+const transform = (
+  content: string,
+  options: { archiveLine?: number; emptyLines?: number } = {}
+) => {
   const Archive = loadArchive(),
     lines = content.split('\n').map((text, lineNumber) => ({ text, lineNumber })),
     doc = {
@@ -69,12 +72,35 @@ const transform = (content: string) => {
         lines.filter((line) => /^\s*✔/.test(line.text)).map((line) => ({ line })),
       getProjects: () =>
         lines.filter((line) => /^\s*[^:]+:\s*$/.test(line.text)).map((line) => ({ line })),
+      getArchive: () => undefined,
     },
-    data = { remove: [], insert: {} };
+    data = {
+      remove: [],
+      insert: {},
+      archiveLine: options.archiveLine,
+    };
 
-  ['addTodosFinished', 'addTodosComments', 'addProjectHeaders', 'removeEmptyProjects'].forEach(
-    (name) => Archive.transformations[name](doc, data)
-  );
+  const mockConfig = require.cache[require.resolve('../src/config')]?.exports?.default;
+  if (mockConfig) {
+    mockConfig.getKey = (key: string) => {
+      if (key === 'archive.remove.emptyLines') return options.emptyLines ?? 1;
+      if (key === 'archive.remove.emptyProjects') return true;
+      if (key === 'archive.remove.tags') return ['today'];
+      if (key === 'archive.sortByDate') return false;
+      if (key === 'archive.project.enabled') return true;
+      if (key === 'archive.project.separator') return '.';
+      if (key === 'timekeeping.finished.format') return 'YY-MM-DD HH:mm';
+      return true;
+    };
+  }
+
+  [
+    'addTodosFinished',
+    'addTodosComments',
+    'addProjectHeaders',
+    'removeEmptyProjects',
+    'removeEmptyLines',
+  ].forEach((name) => Archive.transformations[name](doc, data));
 
   return data;
 };
@@ -101,7 +127,9 @@ describe('Archive transformations', () => {
   });
 
   it('archives complete project paths without overwriting finished task metadata', () => {
-    const data = transform('Work:\n  Child:\n    ✔ Finished\n      Attached note');
+    const data = transform('Work:\n  Child:\n    ✔ Finished\n      Attached note', {
+      archiveLine: 4,
+    });
 
     expect(data.insert[0]).to.deep.equal({ text: '', projects: ['Work'] });
     expect(data.insert[1]).to.deep.equal({ text: '', projects: ['Work', 'Child'] });
@@ -110,5 +138,48 @@ describe('Archive transformations', () => {
       projects: ['Work', 'Child'],
     });
     expect(data.insert[3]).to.equal(undefined);
+  });
+
+  it('preserves all trailing empty lines before archive regardless of emptyLines limit', () => {
+    // All empty lines at the end are considered the "trailing separator" and preserved
+    // Line 0: Project header
+    // Line 1: Active task
+    // Line 2: Empty
+    // Line 3: Empty
+    // Line 4: Empty
+    // Line 5: Empty
+    // Line 6: Empty
+    // Archive header at line 7
+    const content = 'Work:\n  ☐ Active\n\n\n\n\n\n';
+    const data = transform(content, { archiveLine: 7, emptyLines: 1 });
+
+    // No finished tasks to remove
+    expect(data.remove.map((line) => line.lineNumber)).to.deep.equal([]);
+    // ALL trailing empty lines (2-6) are preserved as the separator
+    expect(data.remove.map((line) => line.lineNumber)).to.not.include(2);
+    expect(data.remove.map((line) => line.lineNumber)).to.not.include(3);
+    expect(data.remove.map((line) => line.lineNumber)).to.not.include(4);
+    expect(data.remove.map((line) => line.lineNumber)).to.not.include(5);
+    expect(data.remove.map((line) => line.lineNumber)).to.not.include(6);
+  });
+
+  it('removes excess empty lines before the trailing separator block', () => {
+    // Empty lines before the last active task are subject to emptyLines limit
+    // Line 0: Project header
+    // Line 1: Empty (excess)
+    // Line 2: Empty (excess)
+    // Line 3: Active task
+    // Line 4: Empty (trailing separator start)
+    // Line 5: Empty (trailing separator)
+    // Archive header at line 6
+    const content = 'Work:\n\n\n  ☐ Active\n\n';
+    const data = transform(content, { archiveLine: 6, emptyLines: 1 });
+
+    // No finished tasks to remove initially
+    // But removeEmptyLines will remove excess empty line at line 2
+    expect(data.remove.map((line) => line.lineNumber)).to.deep.equal([2]);
+    // Trailing empty lines (4, 5) preserved
+    expect(data.remove.map((line) => line.lineNumber)).to.not.include(4);
+    expect(data.remove.map((line) => line.lineNumber)).to.not.include(5);
   });
 });

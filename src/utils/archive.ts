@@ -390,7 +390,10 @@ const Archive = {
         archiveLine = archive ? archive.line.range.start.line : undefined;
       }
 
-      const preserveFromLine = getTrailingEmptySeparatorStart(lines, archiveLine);
+      // The archivable document excludes the Archive header line, so the effective
+      // archive line index for the separator search is one less than the original.
+      const effectiveArchiveLine = typeof archiveLine === 'number' ? archiveLine - 1 : undefined;
+      const preserveFromLine = getTrailingEmptySeparatorStart(lines, effectiveArchiveLine);
       const removedLineNumbers = data.remove.map((line) => line.lineNumber);
 
       getRemovableEmptyLineNumbers(lines, emptyLines, removedLineNumbers, preserveFromLine).forEach(
