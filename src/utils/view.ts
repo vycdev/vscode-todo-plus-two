@@ -26,8 +26,6 @@ const View = {
   icons: {},
 
   getTypeIcon(type) {
-    //TODO: Add support for light/dark colors
-
     const color = Consts.colors.types[type];
 
     if (!color) return;
@@ -37,23 +35,38 @@ const View = {
 
     if (!storagePath) return;
 
-    const colorHash = sha1(color),
-      iconPath = path.join(storagePath, `type-color-${colorHash}.svg`),
-      iconKey = `${type}:${colorHash}`;
+    const getIconPath = (iconColor: string) => {
+      const colorHash = sha1(iconColor),
+        iconPath = path.join(storagePath, `type-color-${colorHash}.svg`),
+        iconKey = `${type}:${colorHash}`;
 
-    if (View.icons[iconKey]) return View.icons[iconKey];
+      if (View.icons[iconKey]) return View.icons[iconKey];
 
-    mkdirp.sync(storagePath);
+      mkdirp.sync(storagePath);
 
-    if (!fs.existsSync(iconPath)) {
-      const image = `<?xml version="1.0" encoding="utf-8"?><svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve"><circle fill="${color}" cx="8" cy="8" r="5.4"/></svg>`;
+      if (!fs.existsSync(iconPath)) {
+        const image = `<?xml version="1.0" encoding="utf-8"?><svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve"><circle fill="${iconColor}" cx="8" cy="8" r="5.4"/></svg>`;
 
-      fs.writeFileSync(iconPath, image);
-    }
+        fs.writeFileSync(iconPath, image);
+      }
 
-    View.icons[iconKey] = iconPath;
+      View.icons[iconKey] = iconPath;
 
-    return iconPath;
+      return iconPath;
+    };
+
+    const darkColor =
+        (Consts.colors.dark && Consts.colors.dark.types && Consts.colors.dark.types[type]) || color,
+      lightColor =
+        (Consts.colors.light && Consts.colors.light.types && Consts.colors.light.types[type]) ||
+        color;
+
+    if (darkColor === color && lightColor === color) return getIconPath(color);
+
+    return {
+      dark: getIconPath(darkColor),
+      light: getIconPath(lightColor),
+    };
   },
 };
 
