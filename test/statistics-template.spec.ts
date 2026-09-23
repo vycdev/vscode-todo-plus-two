@@ -56,4 +56,19 @@ describe('Statistics template rendering', () => {
       '0s|[unknown]|0s'
     );
   });
+
+  it('renders tag-scoped metrics and preserves invalid tag metrics', () => {
+    const tokens = {
+      getTagMetric: (selector: string, metric: string) =>
+        selector === 'high&frontend' && metric === 'pending' ? 2 : '',
+    };
+
+    expect(
+      renderStatisticsTemplate(
+        '[tag:high&frontend:pending]|[tag:high:elapsed]|[tag:high:unknown]',
+        tokens,
+        []
+      )
+    ).to.equal('2|0s|[tag:high:unknown]');
+  });
 });
