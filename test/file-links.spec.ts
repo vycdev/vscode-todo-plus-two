@@ -30,6 +30,32 @@ describe('Relative file links', () => {
     ]);
   });
 
+  it('preserves balanced closing characters in relative filenames', () => {
+    const text = 'See file://./report(2026), (file://./draft[1]), and file://./build{v2}.';
+    const links = findRelativeFileLinks(text, documentPath);
+
+    expect(links.map((link) => text.slice(link.start, link.end))).to.deep.equal([
+      'file://./report(2026)',
+      'file://./draft[1]',
+      'file://./build{v2}',
+    ]);
+    expect(links.map((link) => path.basename(link.targetPath))).to.deep.equal([
+      'report(2026)',
+      'draft[1]',
+      'build{v2}',
+    ]);
+  });
+
+  it('removes only unmatched closing delimiters around balanced filenames', () => {
+    const text = '(file://./report(2026)), [file://./draft[1]]';
+    const links = findRelativeFileLinks(text, documentPath);
+
+    expect(links.map((link) => text.slice(link.start, link.end))).to.deep.equal([
+      'file://./report(2026)',
+      'file://./draft[1]',
+    ]);
+  });
+
   it('ignores absolute, embedded, empty, and malformed file links', () => {
     expect(findRelativeFileLinks('file:///tmp/absolute.txt', documentPath)).to.deep.equal([]);
     expect(
