@@ -2,6 +2,7 @@
 
 #### Review fixes
 
+- Preserved balanced closing parentheses, brackets, and braces in relative file-link filenames while excluding surrounding punctuation.
 - Preserved unsaved archive buffers, serialized simultaneous transfers, and replaced closed archive files only after a complete write. Failed writes, stale source documents, and rejected editor edits keep source tasks intact.
 - Preserved archive task order, sibling project structure, attached comment indentation, and standalone notes when removing empty projects.
 - Fixed dependency indexing for IDs such as `constructor` and `__proto__`, and stopped disposed diagnostic providers from republishing results.

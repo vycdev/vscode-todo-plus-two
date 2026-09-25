@@ -5,7 +5,20 @@ import * as path from 'path';
 /* RELATIVE FILE LINKS */
 
 const relativeFileLinkRegex = /(^|[\s([<{"'`])file:\/\/(?:\.{1,2}\/)[^\s<>"'`]+/g;
-const trailingPunctuationRegex = /[),.;:!?\]}]+$/;
+const trailingPunctuationRegex = /[),.;:!?\]}]$/;
+const openingDelimiter = { ')': '(', ']': '[', '}': '{' };
+
+const trimTrailingPunctuation = (link: string): string => {
+  while (trailingPunctuationRegex.test(link)) {
+    const closing = link[link.length - 1],
+      opening = openingDelimiter[closing];
+
+    // A balanced closer belongs to the filename; an unmatched one wraps the link.
+    if (opening && link.split(opening).length >= link.split(closing).length) break;
+    link = link.slice(0, -1);
+  }
+  return link;
+};
 
 export interface RelativeFileLink {
   start: number;
@@ -21,7 +34,7 @@ export const findRelativeFileLinks = (text: string, documentPath: string): Relat
 
   while ((match = relativeFileLinkRegex.exec(text))) {
     const prefixLength = match[1].length,
-      value = match[0].slice(prefixLength).replace(trailingPunctuationRegex, ''),
+      value = trimTrailingPunctuation(match[0].slice(prefixLength)),
       relativePath = value.slice('file://'.length);
 
     if (!relativePath || /[?#]/.test(value)) continue;
