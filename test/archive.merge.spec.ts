@@ -319,6 +319,31 @@ describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
     expect(lines).to.include('        <o> TASK1 @done(2025-11-21 11:01:14 pm)');
   });
 
+  it('preserves source tabs when creating an archive with a space-configured editor', () => {
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(
+      '',
+      [{ obj: { text: '\t✔ Finished', projects: ['Project'] }, lineNumber: 1 }],
+      { indentation: '    ', rootIndentLevel: 1 }
+    );
+
+    expect(merged.split('\n')).to.deep.equal(['\tProject:', '\t\t✔ Finished']);
+  });
+
+  it('keeps nested tab indentation when inserting into a space-indented archive', () => {
+    const merged = Archive.mergeInsertItemsIntoArchiveContent(
+      '  Project:\n    ✔ Old',
+      [{ obj: { text: '\t✔ Parent\n\t\t✔ Child', projects: ['Project'] }, lineNumber: 1 }],
+      { indentation: '    ' }
+    );
+
+    expect(merged.split('\n')).to.deep.equal([
+      '  Project:',
+      '    ✔ Parent',
+      '      ✔ Child',
+      '    ✔ Old',
+    ]);
+  });
+
   it('respects existing archive body indentation even if helper config differs', () => {
     const beforeArchiveBody = ['  PROJECT1:', '    <o> TASK1 @done(2025-11-21 11:01:14 pm)'].join(
       '\n'
