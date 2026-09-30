@@ -2,6 +2,7 @@
 
 #### Review fixes
 
+- Kept tag cleanup and hidden-tag labels working after an unmatched backtick, while preserving tags inside complete inline code spans.
 - Preserved balanced closing parentheses, brackets, and braces in relative file-link filenames while excluding surrounding punctuation.
 - Preserved unsaved archive buffers, serialized simultaneous transfers, and replaced closed archive files only after a complete write. Failed writes, stale source documents, and rejected editor edits keep source tasks intact.
 - Preserved archive task order, sibling project structure, attached comment indentation, and standalone notes when removing empty projects.
