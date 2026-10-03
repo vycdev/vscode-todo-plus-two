@@ -59,5 +59,9 @@ export const removeTodoStatusTag = (text: string, pattern: RegExp): string => {
 
   if (!match) return text;
 
-  return text.slice(0, match.index) + text.slice(match.index + match[0].length);
+  // The tag-boundary regex includes the character before @. Keep punctuation,
+  // but consume the separating whitespace as before.
+  const boundary = match[0][0];
+  const prefix = boundary !== '@' && !/\s/.test(boundary) ? boundary : '';
+  return text.slice(0, match.index) + prefix + text.slice(match.index + match[0].length);
 };

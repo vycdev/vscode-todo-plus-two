@@ -39,4 +39,13 @@ describe('Todo status matching', () => {
     );
     expect(removeTodoStatusTag('☐ Explain `@done`', tagFinished)).to.equal('☐ Explain `@done`');
   });
+
+  it('preserves punctuation before status tags when unfinishing tasks', () => {
+    const tagFinished = /(?:^|[^a-zA-Z0-9])@(?:done|cancelled)(?:\([^)]*\))?/;
+    const tagElapsed = /(?:^|[^a-zA-Z0-9])@(?:lasted|wasted)(?:\([^)]*\))?/;
+
+    expect(removeTodoStatusTag('☐ Ship,@done', tagFinished)).to.equal('☐ Ship,');
+    expect(removeTodoStatusTag('☐ Ship!@cancelled(reason)', tagFinished)).to.equal('☐ Ship!');
+    expect(removeTodoStatusTag('☐ Ship,@lasted(2h)', tagElapsed)).to.equal('☐ Ship,');
+  });
 });
