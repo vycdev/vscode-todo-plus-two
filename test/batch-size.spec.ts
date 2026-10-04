@@ -8,6 +8,12 @@ describe('Batch size configuration', () => {
     });
   });
 
+  it('rejects fractional values below one before flooring them to zero', () => {
+    [0.5, '0.5'].forEach((value) => {
+      expect(getBatchSize(value)).to.equal(50);
+    });
+  });
+
   it('floors positive fractional values', () => {
     expect(getBatchSize(2.9)).to.equal(2);
   });
