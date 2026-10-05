@@ -33,7 +33,7 @@ export const getTagArgumentPrefix = (
 
   const match = beforeCursor.match(/(?:^|[^a-zA-Z0-9`])(@[^\s*~(`]+\([^`)]*)$/);
 
-  if (!match || line[character] === ')') return;
+  if (!match) return;
 
   const text = match[1];
   const openingParenthesis = text.indexOf('(');
@@ -42,7 +42,7 @@ export const getTagArgumentPrefix = (
     text,
     name: text.substring(0, openingParenthesis),
     start: character - text.length,
-    end: character,
+    end: character + (line[character] === ')' ? 1 : 0),
   };
 };
 

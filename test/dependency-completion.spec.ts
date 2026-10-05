@@ -23,11 +23,23 @@ const loadCompletion = () => {
             public kind
           ) {}
         },
-        CompletionItemKind: { Reference: 1 },
+        CompletionItemKind: { Reference: 1, Value: 2 },
       };
-    if (request === '../consts') return { default: { symbols: { tag: '@' } } };
-    if (request === '../config' || request === '../todo/document') return { default: {} };
-    if (request === '../utils/timestamps') return { default: { getPrefix: () => undefined } };
+    if (request === '../consts')
+      return {
+        default: { symbols: { tag: '@' }, regexes: { tagNormal: /^@note/ }, tags: { names: [] } },
+      };
+    if (request === '../config') return { default: { getKey: () => undefined } };
+    if (request === '../todo/document')
+      return {
+        default: class Document {
+          getTags() {
+            return [{ text: '@note(one)' }];
+          }
+        },
+      };
+    if (request === '../utils/timestamps')
+      return { default: { getPrefix: () => undefined, aliases: [] } };
     if (request === '../utils/dependency_index')
       return {
         default: {
@@ -77,5 +89,25 @@ describe('Dependency completions', () => {
       ).to.equal(null);
     }
     expect(getLookups()).to.equal(0);
+  });
+});
+
+describe('Tag argument completions', () => {
+  it('replaces an auto-closed parenthesis without duplicating it', async () => {
+    const { Completion } = loadCompletion();
+    const text = 'Task @note()';
+    const character = text.indexOf(')');
+    const completions = await new Completion().provideCompletionItems(
+      { lineAt: () => ({ text }) },
+      { line: 0, character }
+    );
+    const completion = completions.find((item) => item.label === '@note(one)');
+
+    expect(completion).not.to.equal(undefined);
+    const result =
+      text.slice(0, completion.range.startCharacter) +
+      completion.insertText +
+      text.slice(completion.range.endCharacter);
+    expect(result).to.equal('Task @note(one) ');
   });
 });
