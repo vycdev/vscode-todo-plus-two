@@ -128,6 +128,14 @@ describe('Time utilities', () => {
     expect(Time.diff(formatted, from, 'man-weeks', 24, 6, 3)).to.equal(formatted);
   });
 
+  it('accepts an explicit positive sign on duration expressions', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+
+    expect(Time.durationSeconds('+1h 30m', from)).to.equal(90 * 60);
+    expect(Time.diffSeconds(' + 2md 1h', from, 8, 5)).to.equal(17 * 3600);
+    expect(Time.diff('+1h 30m', from, 'short')).to.equal('1h 30m');
+  });
+
   it('applies a leading sign to complete man-time durations', () => {
     const from = new Date('2020-01-01T00:00:00Z'),
       negativeManDay = Time.diff(
