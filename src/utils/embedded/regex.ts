@@ -33,8 +33,9 @@ export const hasEmbeddedMatch = (content: string, regex: RegExp): boolean => {
   const matcher = new RegExp(regex.source, regex.flags);
 
   return splitLines(content).some((line) => {
+    const trimmed = _.trimStart(line);
     matcher.lastIndex = 0;
 
-    return matcher.test(_.trimStart(line));
+    return matcher.test(trimmed) && parseEmbeddedMatches(trimmed, regex).length > 0;
   });
 };

@@ -48,8 +48,25 @@ describe('Tag completion utilities', () => {
     expect(getTagArgumentPrefix('email@example.com(', 18)).to.equal(undefined);
   });
 
-  it('does not complete before an existing closing parenthesis', () => {
-    expect(getTagArgumentPrefix('Task @note(con)', 14)).to.equal(undefined);
+  it('includes an auto-inserted closing parenthesis in the replacement range', () => {
+    expect(getTagArgumentPrefix('Task @note(con)', 14)).to.deep.equal({
+      text: '@note(con',
+      name: '@note',
+      start: 5,
+      end: 15,
+    });
+    expect(getTagArgumentPrefix('Task @note()', 11)).to.deep.equal({
+      text: '@note(',
+      name: '@note',
+      start: 5,
+      end: 12,
+    });
+    expect(getTagArgumentPrefix('Task @note(con', 14)).to.deep.equal({
+      text: '@note(con',
+      name: '@note',
+      start: 5,
+      end: 14,
+    });
   });
 
   it('ignores tag argument prefixes inside inline code', () => {
