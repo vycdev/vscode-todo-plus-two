@@ -3,6 +3,10 @@
 #### Review fixes
 
 - Rejected invalid ISO calendar dates in time estimates instead of silently rolling them into another month.
+- Ignored empty relative file links wrapped in punctuation or spelled with dot path segments, instead of linking to the Todo document's directory.
+- Kept tag cleanup and hidden-tag labels working after an unmatched backtick, while preserving tags inside complete inline code spans.
+- Skipped false embedded-todo scan candidates when custom expressions match without a non-empty marker.
+- Accepted an explicit leading `+` in time estimates and other duration expressions, alongside existing negative durations.
 - Preserved balanced closing parentheses, brackets, and braces in relative file-link filenames while excluding surrounding punctuation.
 - Preserved unsaved archive buffers, serialized simultaneous transfers, and replaced closed archive files only after a complete write. Failed writes, stale source documents, and rejected editor edits keep source tasks intact.
 - Preserved archive task order, sibling project structure, attached comment indentation, and standalone notes when removing empty projects.
@@ -22,6 +26,7 @@
 
 #### Other unreleased changes
 
+- Preserved tab-indented tasks when creating an archive under a space-configured editor, and retained nested task indentation when source and archive use different indentation styles. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/39
 - Added a `todo.timekeeping.autoToggle` setting to automatically pause other active timers when starting a new task. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/91
 - Added a `todo.colors.enabled` setting for using the active syntax theme's colors instead of Todo+ editor colors. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/96
 - Added an independent `todo.file.view.showComments` setting for optionally showing note lines in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/15

@@ -247,13 +247,13 @@ const Time = {
         normalizedDaysPerWeek = Math.max(1, Number(manDaysPerWeek) || 5);
 
       if (
-        /^\s*-\s*\d/.test(to) &&
+        /^\s*[+-]\s*\d/.test(to) &&
         /\d+(?:\.\d+)?\s*(?:m[dw]|ms|[smhdwy]|seconds?|minutes?|hours?|days?|weeks?|years?)(?=\d|\W|$)/i.test(
           to
         )
       ) {
-        durationSign = -1;
-        to = to.replace(/^\s*-\s*/, '');
+        durationSign = /^\s*-/.test(to) ? -1 : 1;
+        to = to.replace(/^\s*[+-]\s*/, '');
       }
 
       to = to.replace(/(\d+(?:\.\d+)?)\s*mw(?=\d|\W|$)/gi, (match, weeks) => {
