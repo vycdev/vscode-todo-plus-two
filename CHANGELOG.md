@@ -2,6 +2,7 @@
 
 #### Review fixes
 
+- Ignored empty relative file links wrapped in punctuation or spelled with dot path segments, instead of linking to the Todo document's directory.
 - Kept tag cleanup and hidden-tag labels working after an unmatched backtick, while preserving tags inside complete inline code spans.
 - Skipped false embedded-todo scan candidates when custom expressions match without a non-empty marker.
 - Accepted an explicit leading `+` in time estimates and other duration expressions, alongside existing negative durations.
