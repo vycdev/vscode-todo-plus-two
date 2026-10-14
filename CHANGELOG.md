@@ -2,6 +2,7 @@
 
 #### Review fixes
 
+- Offered known tag-argument completions inside auto-closed parentheses without inserting a duplicate closing parenthesis.
 - Preserved punctuation immediately before a completion or elapsed-time tag when reopening a task.
 - Rejected invalid ISO calendar dates in time estimates instead of silently rolling them into another month.
 - Ignored empty relative file links wrapped in punctuation or spelled with dot path segments, instead of linking to the Todo document's directory.
