@@ -2,6 +2,7 @@
 
 #### Review fixes
 
+- Skipped false embedded-todo scan candidates when custom expressions match without a non-empty marker.
 - Accepted an explicit leading `+` in time estimates and other duration expressions, alongside existing negative durations.
 - Preserved balanced closing parentheses, brackets, and braces in relative file-link filenames while excluding surrounding punctuation.
 - Preserved unsaved archive buffers, serialized simultaneous transfers, and replaced closed archive files only after a complete write. Failed writes, stale source documents, and rejected editor edits keep source tasks intact.

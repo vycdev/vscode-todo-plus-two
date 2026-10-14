@@ -80,6 +80,18 @@ describe('Embedded todo scan pre-check', () => {
 
     expect(hasEmbeddedMatch('const ready = true;\r  // TASK ship it', regex)).to.equal(true);
   });
+
+  it('skips matches without a configured marker capture', () => {
+    const regex = /(TODO)?(hello)/g;
+    expect(hasEmbeddedMatch('hello', regex)).to.equal(false);
+    expect(hasEmbeddedMatch('TODOhello', regex)).to.equal(true);
+  });
+
+  it('finds a later valid match after an empty alternative', () => {
+    const regex = /(TODO)|(?:)/g;
+    expect(hasEmbeddedMatch('nothing', regex)).to.equal(false);
+    expect(hasEmbeddedMatch(' TODO', regex)).to.equal(true);
+  });
 });
 
 describe('Embedded todo line parsing', () => {
