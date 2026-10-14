@@ -272,6 +272,24 @@ const Time = {
 
       if (/^\s*\d+\s*$/.test(to)) return 0;
 
+      // Sugar normalizes impossible ISO dates (e.g. February 30) into another
+      // month; reject those explicitly rather than silently changing a deadline.
+      if (
+        /^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/.test(to) &&
+        !moment(
+          to,
+          [
+            'YYYY-MM-DD',
+            'YYYY-MM-DD HH:mm',
+            'YYYY-MM-DD HH:mm:ss',
+            'YYYY-MM-DDTHH:mm',
+            'YYYY-MM-DDTHH:mm:ss',
+          ],
+          true
+        ).isValid()
+      )
+        return 0;
+
       // Parse duration strings before calendar expressions so they stay relative to `from`.
       try {
         const milliseconds = toTime(to).milliseconds();

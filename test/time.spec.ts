@@ -74,6 +74,14 @@ describe('Time utilities', () => {
     expect(Time.durationSeconds('2020-01-02', from)).to.equal(24 * 3600);
   });
 
+  it('rejects invalid ISO calendar dates rather than rolling them into another month', () => {
+    const from = new Date(2020, 0, 1);
+
+    expect(Time.durationSeconds('2020-02-30', from)).to.equal(0);
+    expect(Time.diffSeconds('2021-02-29 09:00', from)).to.equal(0);
+    expect(Time.durationSeconds('2020-02-29', from)).to.equal(59 * 24 * 3600);
+  });
+
   it('supports flat man-hours formatting', () => {
     const from = new Date('2020-01-01T00:00:00Z');
     const to = new Date(from.getTime() + (25 * 3600 + 15 * 60) * 1000);
