@@ -22,6 +22,7 @@
 
 #### Other unreleased changes
 
+- Preserved tab-indented tasks when creating an archive under a space-configured editor, and retained nested task indentation when source and archive use different indentation styles. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/39
 - Added a `todo.timekeeping.autoToggle` setting to automatically pause other active timers when starting a new task. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/91
 - Added a `todo.colors.enabled` setting for using the active syntax theme's colors instead of Todo+ editor colors. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/96
 - Added an independent `todo.file.view.showComments` setting for optionally showing note lines in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/15
