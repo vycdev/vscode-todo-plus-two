@@ -62,6 +62,11 @@ describe('Relative file links', () => {
       findRelativeFileLinks('https://example.test/file://./nested.txt', documentPath)
     ).to.deep.equal([]);
     expect(findRelativeFileLinks('file://./', documentPath)).to.deep.equal([]);
+    expect(findRelativeFileLinks('(file://./)', documentPath)).to.deep.equal([]);
+    expect(findRelativeFileLinks('(file://../)', documentPath)).to.deep.equal([]);
+    expect(findRelativeFileLinks('file://./.', documentPath)).to.deep.equal([]);
+    expect(findRelativeFileLinks('file://../.', documentPath)).to.deep.equal([]);
+    expect(findRelativeFileLinks('file://./%2E', documentPath)).to.deep.equal([]);
     expect(findRelativeFileLinks('file://./bad%ZZname.txt', documentPath)).to.deep.equal([]);
   });
 
