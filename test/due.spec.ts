@@ -19,7 +19,21 @@ describe('Due utilities', () => {
     expect(Due.status('26-07-02 10:30', today, 7)).to.equal('today');
   });
 
-  it('rejects impossible formatted calendar dates', () => {
-    expect(Due.parse('2026-02-30')).to.equal(undefined);
+  it('rejects impossible formatted calendar dates, including loosely padded ISO dates', () => {
+    for (const value of [
+      '2026-02-30',
+      '2026-2-30',
+      '2026/2/30',
+      '2026-02-30 9:00',
+      '2026-02-30T09:00',
+    ]) {
+      expect(Due.status(value, today)).to.equal(undefined, value);
+    }
+  });
+
+  it('still accepts valid loosely padded dates', () => {
+    expect(Due.status('2026-7-2', today)).to.equal('today');
+    expect(Due.status('2026-07-02 9:00', today)).to.equal('today');
+    expect(Due.status('2026-07-02T09:00', today)).to.equal('today');
   });
 });
