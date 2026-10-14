@@ -102,8 +102,6 @@ export function mergeInsertItemsIntoArchiveContent(
   // trailing newline.
   while (lines.length && lines[0].trim() === '') lines.shift();
   while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
-  const indentUnit = (config && config.indentation) || defaultIndentUnit;
-
   function getIndentLevel(line: string, unit: string) {
     let count = 0;
     if (!unit || !unit.length) return 0;
@@ -126,6 +124,20 @@ export function mergeInsertItemsIntoArchiveContent(
     const minLen = Math.min(...wsLens.map((ws) => ws.length));
     return ' '.repeat(minLen);
   }
+
+  // Existing archive indentation wins. For a new archive, preserve a source
+  // document that consistently uses tabs even if the editor defaults to spaces.
+  const sourceLines = insertItems.reduce((result: string[], item) => {
+    const obj = item.obj || item;
+    return result.concat((obj.text || '').split(/\r?\n/));
+  }, []);
+  const sourceIndent = detectContentIndentUnit(sourceLines);
+  const sourceUsesTabs =
+    sourceIndent === '\t' &&
+    sourceLines.every((line) => !/^\s+\S/.test(line) || line.startsWith('\t'));
+  const indentUnit =
+    detectContentIndentUnit(lines) ||
+    (sourceUsesTabs ? '\t' : (config && config.indentation) || defaultIndentUnit);
 
   function trimEmptyEdges(block: string[]) {
     const trimmed = block.slice();
@@ -303,7 +315,10 @@ export function mergeInsertItemsIntoArchiveContent(
         // indentation of the incoming block so relative indentation is
         // preserved while aligning with the target header's level.
         const nonEmptyLines = textLines.filter((l) => (l || '').trim().length > 0);
-        const insertedIndentUnit = indentUnit;
+        const insertedIndentUnit =
+          detectContentIndentUnit(textLines) === '\t'
+            ? '\t'
+            : (config && config.indentation) || indentUnit;
         const blockMinIndent = nonEmptyLines.length
           ? Math.min(...nonEmptyLines.map((l) => getIndentLevel(l, insertedIndentUnit)))
           : 0;
@@ -329,15 +344,19 @@ export function mergeInsertItemsIntoArchiveContent(
       }
     } else {
       // No project, treat as root-level content and prepend it to the archive body
+      const sourceUnit =
+        detectContentIndentUnit(textLines) === '\t'
+          ? '\t'
+          : (config && config.indentation) || indentUnit;
       const nonEmptyLines = textLines.filter((line) => line.trim()),
         baseLevel = nonEmptyLines.length
-          ? Math.min(...nonEmptyLines.map((line) => getIndentLevel(line, indentUnit)))
+          ? Math.min(...nonEmptyLines.map((line) => getIndentLevel(line, sourceUnit)))
           : 0;
 
       insertIntoRoot(
         textLines.map((line) =>
           line.trim()
-            ? `${indentUnit.repeat(rootIndentLevel + getIndentLevel(line, indentUnit) - baseLevel)}${line.trim()}`
+            ? `${indentUnit.repeat(rootIndentLevel + getIndentLevel(line, sourceUnit) - baseLevel)}${line.trim()}`
             : ''
         )
       );
