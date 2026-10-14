@@ -74,6 +74,14 @@ describe('Time utilities', () => {
     expect(Time.durationSeconds('2020-01-02', from)).to.equal(24 * 3600);
   });
 
+  it('rejects invalid ISO calendar dates rather than rolling them into another month', () => {
+    const from = new Date(2020, 0, 1);
+
+    expect(Time.durationSeconds('2020-02-30', from)).to.equal(0);
+    expect(Time.diffSeconds('2021-02-29 09:00', from)).to.equal(0);
+    expect(Time.durationSeconds('2020-02-29', from)).to.equal(59 * 24 * 3600);
+  });
+
   it('supports flat man-hours formatting', () => {
     const from = new Date('2020-01-01T00:00:00Z');
     const to = new Date(from.getTime() + (25 * 3600 + 15 * 60) * 1000);
@@ -126,6 +134,14 @@ describe('Time utilities', () => {
 
     expect(Time.diffSeconds(formatted, from, 6, 3)).to.equal(42 * 3600);
     expect(Time.diff(formatted, from, 'man-weeks', 24, 6, 3)).to.equal(formatted);
+  });
+
+  it('accepts an explicit positive sign on duration expressions', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+
+    expect(Time.durationSeconds('+1h 30m', from)).to.equal(90 * 60);
+    expect(Time.diffSeconds(' + 2md 1h', from, 8, 5)).to.equal(17 * 3600);
+    expect(Time.diff('+1h 30m', from, 'short')).to.equal('1h 30m');
   });
 
   it('applies a leading sign to complete man-time durations', () => {

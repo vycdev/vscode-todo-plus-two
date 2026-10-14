@@ -1,23 +1,9 @@
+import { maskInlineCode } from './todo-status';
+
 /* TAGS */
 
 function escapeRegExp(str: string) {
   return str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
-}
-
-function isInsideInlineCode(text: string, offset: number): boolean {
-  const markerRuns = /`+/g,
-    prefix = text.slice(0, offset);
-  let delimiterLength = 0;
-  let marker: RegExpExecArray | null;
-
-  while ((marker = markerRuns.exec(prefix))) {
-    const runLength = marker[0].length;
-
-    if (!delimiterLength) delimiterLength = runLength;
-    else if (runLength === delimiterLength) delimiterLength = 0;
-  }
-
-  return delimiterLength > 0;
 }
 
 const Tags = {
@@ -41,16 +27,17 @@ const Tags = {
 
     if (!names.length) return text;
 
-    const regex = new RegExp(
-      `(^|[^a-zA-Z0-9])@(?:${names
-        .map((name) => escapeRegExp(name))
-        .join('|')})(?:(?:\\([^)]*\\))|(?=$|[\\s*~(]|[.,;:!?()\\[\\]{}<>"']+(?:$|[\\s*~(])))`,
-      'g'
-    );
+    const masked = maskInlineCode(text),
+      regex = new RegExp(
+        `(^|[^a-zA-Z0-9])@(?:${names
+          .map((name) => escapeRegExp(name))
+          .join('|')})(?:(?:\\([^)]*\\))|(?=$|[\\s*~(]|[.,;:!?()\\[\\]{}<>"']+(?:$|[\\s*~(])))`,
+        'g'
+      );
 
     return text
-      .replace(regex, (match, prefix, offset, source) => {
-        if (isInsideInlineCode(source, offset + prefix.length)) return match;
+      .replace(regex, (match, prefix, offset) => {
+        if (masked[offset + prefix.length] === ' ') return match;
 
         return prefix && /\S/.test(prefix) ? prefix : '';
       })
@@ -58,11 +45,12 @@ const Tags = {
   },
 
   removeAll(text: string) {
-    const regex = /(^|[^a-zA-Z0-9])(@[^\s*~(`]+)(\([^)]*\))?/gm;
+    const regex = /(^|[^a-zA-Z0-9])(@[^\s*~(`]+)(\([^)]*\))?/gm,
+      masked = maskInlineCode(text);
 
     return text
       .replace(regex, (match, prefix, tagName, _argument, offset, source) => {
-        if (isInsideInlineCode(source, offset + prefix.length)) return match;
+        if (masked[offset + prefix.length] === ' ') return match;
 
         const trailingMatch = tagName.match(/[.,;:!?()[\]{}<>"']+$/),
           trailing = trailingMatch ? trailingMatch[0] : '',

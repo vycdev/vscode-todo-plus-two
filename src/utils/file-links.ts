@@ -40,10 +40,13 @@ export const findRelativeFileLinks = (text: string, documentPath: string): Relat
     if (!relativePath || /[?#]/.test(value)) continue;
 
     try {
+      const decodedPath = decodeURIComponent(relativePath);
+      if (['.', '..'].includes(path.basename(decodedPath))) continue;
+
       links.push({
         start: match.index + prefixLength,
         end: match.index + prefixLength + value.length,
-        targetPath: path.resolve(path.dirname(documentPath), decodeURIComponent(relativePath)),
+        targetPath: path.resolve(path.dirname(documentPath), decodedPath),
       });
     } catch (error) {
       // Ignore malformed percent-encoded paths.

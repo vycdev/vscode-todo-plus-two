@@ -247,13 +247,13 @@ const Time = {
         normalizedDaysPerWeek = Math.max(1, Number(manDaysPerWeek) || 5);
 
       if (
-        /^\s*-\s*\d/.test(to) &&
+        /^\s*[+-]\s*\d/.test(to) &&
         /\d+(?:\.\d+)?\s*(?:m[dw]|ms|[smhdwy]|seconds?|minutes?|hours?|days?|weeks?|years?)(?=\d|\W|$)/i.test(
           to
         )
       ) {
-        durationSign = -1;
-        to = to.replace(/^\s*-\s*/, '');
+        durationSign = /^\s*-/.test(to) ? -1 : 1;
+        to = to.replace(/^\s*[+-]\s*/, '');
       }
 
       to = to.replace(/(\d+(?:\.\d+)?)\s*mw(?=\d|\W|$)/gi, (match, weeks) => {
@@ -271,6 +271,24 @@ const Time = {
       to = to.replace(/\s+/g, ' ').trim();
 
       if (/^\s*\d+\s*$/.test(to)) return 0;
+
+      // Sugar normalizes impossible ISO dates (e.g. February 30) into another
+      // month; reject those explicitly rather than silently changing a deadline.
+      if (
+        /^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/.test(to) &&
+        !moment(
+          to,
+          [
+            'YYYY-MM-DD',
+            'YYYY-MM-DD HH:mm',
+            'YYYY-MM-DD HH:mm:ss',
+            'YYYY-MM-DDTHH:mm',
+            'YYYY-MM-DDTHH:mm:ss',
+          ],
+          true
+        ).isValid()
+      )
+        return 0;
 
       // Parse duration strings before calendar expressions so they stay relative to `from`.
       try {
