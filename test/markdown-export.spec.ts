@@ -95,6 +95,15 @@ describe('Todo Markdown export', () => {
     expect(html).to.include('<code></code> <code> </code> <code> code </code>');
   });
 
+  it('preserves code spans containing three or more spaces', () => {
+    const markdown = renderTodoMarkdown('Tasks', [
+        { kind: 'comment', level: 0, text: '`   ` `    `' },
+      ]),
+      html = new MarkdownIt({ html: true }).render(markdown);
+
+    expect(html).to.include('<code>   </code> <code>    </code>');
+  });
+
   it('preserves HTML-like text and entities in rendered Markdown', () => {
     const markdown = renderTodoMarkdown('Plan <T> &copy;', [
         { kind: 'project', level: 0, text: 'Project <T> &copy;' },

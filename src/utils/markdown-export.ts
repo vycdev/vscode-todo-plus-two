@@ -15,7 +15,12 @@ const escapeMarkdownText = (text: string): string => text.replace(/[!-/:-@[-`{-~
 const renderCodeSpan = (content: string): string => {
   if (!content) return '<code></code>';
 
-  const needsPadding = (content.startsWith(' ') || content.endsWith(' ')) && !/^ +$/.test(content),
+  // Markdown trims a space from each end of runs longer than two spaces,
+  // even when the code span contains nothing but spaces.
+  const spacesOnly = /^ +$/.test(content),
+    needsPadding = spacesOnly
+      ? content.length > 2
+      : content.startsWith(' ') || content.endsWith(' '),
     padding = needsPadding ? ' ' : '';
 
   return `\`${padding}${content}${padding}\``;
