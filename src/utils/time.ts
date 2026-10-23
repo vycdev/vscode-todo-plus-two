@@ -272,21 +272,20 @@ const Time = {
 
       if (/^\s*\d+\s*$/.test(to)) return 0;
 
-      // Sugar normalizes impossible ISO dates (e.g. February 30) into another
+      // Sugar normalizes impossible calendar dates (e.g. February 30) into another
       // month; reject those explicitly rather than silently changing a deadline.
+      const calendar =
+        /^(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(to);
       if (
-        /^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/.test(to) &&
-        !moment(
-          to,
-          [
-            'YYYY-MM-DD',
-            'YYYY-MM-DD HH:mm',
-            'YYYY-MM-DD HH:mm:ss',
-            'YYYY-MM-DDTHH:mm',
-            'YYYY-MM-DDTHH:mm:ss',
-          ],
-          true
-        ).isValid()
+        calendar &&
+        !moment([
+          Number(calendar[1]),
+          Number(calendar[3]) - 1,
+          Number(calendar[4]),
+          Number(calendar[5] || 0),
+          Number(calendar[6] || 0),
+          Number(calendar[7] || 0),
+        ]).isValid()
       )
         return 0;
 

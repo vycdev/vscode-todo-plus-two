@@ -29,6 +29,7 @@
 
 #### Other unreleased changes
 
+- Rejected impossible slash-formatted calendar dates in time estimates instead of silently rolling them into another month.
 - Fixed Markdown export showing literal strikethrough markers for cancelled tasks with no text.
 - Rejected impossible `@due` dates written with single-digit month, day, or hour components instead of letting natural-date parsing roll them into a different day.
 - Preserved tab-indented tasks when creating an archive under a space-configured editor, and retained nested task indentation when source and archive use different indentation styles. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/39
