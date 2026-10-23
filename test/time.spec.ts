@@ -85,6 +85,22 @@ describe('Time utilities', () => {
     expect(Time.durationSeconds('2020/02/29', from)).to.equal(59 * 24 * 3600);
   });
 
+  it('validates unpadded calendar estimates without rejecting valid leap dates', () => {
+    const from = new Date(2020, 0, 1);
+
+    for (const separator of ['/', '-']) {
+      for (const month of ['2', '02']) {
+        const prefix = `2020${separator}${month}${separator}`;
+        expect(Time.durationSeconds(`${prefix}30`, from)).to.equal(0);
+        expect(Time.durationSeconds(`${prefix}30 9:00`, from)).to.equal(0);
+        expect(Time.durationSeconds(`${prefix}29`, from)).to.equal(59 * 24 * 3600);
+        expect(Time.durationSeconds(`${prefix}9`, from)).to.equal(39 * 24 * 3600);
+        expect(Time.durationSeconds(`${prefix}29 9:00`, from)).to.equal((59 * 24 + 9) * 3600);
+      }
+      expect(Time.durationSeconds(`2021${separator}2${separator}29 9:00`, from)).to.equal(0);
+    }
+  });
+
   it('supports flat man-hours formatting', () => {
     const from = new Date('2020-01-01T00:00:00Z');
     const to = new Date(from.getTime() + (25 * 3600 + 15 * 60) * 1000);
