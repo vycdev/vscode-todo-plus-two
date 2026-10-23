@@ -29,6 +29,7 @@
 
 #### Other unreleased changes
 
+- Recognized mixed-case `file://` URI schemes in relative Todo file links.
 - Recalculated calendar and natural-language time estimates as time passes instead of reusing stale cached durations, while keeping running timer estimates anchored to their start time across edits.
 - Rejected impossible slash-formatted calendar dates in time estimates instead of silently rolling them into another month.
 - Fixed Markdown export showing literal strikethrough markers for cancelled tasks with no text.
