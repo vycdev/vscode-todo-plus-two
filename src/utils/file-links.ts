@@ -4,7 +4,7 @@ import * as path from 'path';
 
 /* RELATIVE FILE LINKS */
 
-const relativeFileLinkRegex = /(^|[\s([<{"'`])file:\/\/(?:\.{1,2}\/)[^\s<>"'`]+/g;
+const relativeFileLinkRegex = /(^|[\s([<{"'`])file:\/\/(?:\.{1,2}\/)[^\s<>"'`]+/gi;
 const trailingPunctuationRegex = /[),.;:!?\]}]$/;
 const openingDelimiter = { ')': '(', ']': '[', '}': '{' };
 

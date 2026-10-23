@@ -20,6 +20,19 @@ describe('Relative file links', () => {
     expect(link.targetPath).to.equal(path.join(workspacePath, 'shared', 'my file.txt'));
   });
 
+  it('resolves relative links with mixed-case URI schemes', () => {
+    const text = 'Open FILE://./one.txt or File://../two.txt';
+    const links = findRelativeFileLinks(text, documentPath);
+    expect(links.map((link) => text.slice(link.start, link.end))).to.deep.equal([
+      'FILE://./one.txt',
+      'File://../two.txt',
+    ]);
+    expect(links.map((link) => link.targetPath)).to.deep.equal([
+      path.join(workspacePath, 'todos', 'one.txt'),
+      path.join(workspacePath, 'two.txt'),
+    ]);
+  });
+
   it('finds multiple links and excludes trailing punctuation from their ranges', () => {
     const text = 'Open file://./one.txt, then (file://../two.txt).';
     const links = findRelativeFileLinks(text, documentPath);
