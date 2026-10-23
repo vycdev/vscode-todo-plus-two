@@ -13,14 +13,11 @@ export interface MarkdownExportLine {
 const escapeMarkdownText = (text: string): string => text.replace(/[!-/:-@[-`{-~]/g, '\\$&');
 
 const renderCodeSpan = (content: string): string => {
-  if (!content) return '<code></code>';
+  // Renderers disagree on trimming all-space code spans. Inline HTML keeps
+  // their exact content, including empty spans that backticks cannot express.
+  if (!content || /^ +$/.test(content)) return `<code>${content}</code>`;
 
-  // Markdown trims a space from each end of runs longer than two spaces,
-  // even when the code span contains nothing but spaces.
-  const spacesOnly = /^ +$/.test(content),
-    needsPadding = spacesOnly
-      ? content.length > 2
-      : content.startsWith(' ') || content.endsWith(' '),
+  const needsPadding = content.startsWith(' ') || content.endsWith(' '),
     padding = needsPadding ? ' ' : '';
 
   return `\`${padding}${content}${padding}\``;
