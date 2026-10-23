@@ -123,7 +123,14 @@ class Timer {
       const estTag = todo['getTag'](Consts.regexes.tagEstimate); //TSC
 
       if (estTag) {
-        const estSeconds = Utils.statistics.timeTags.parseEstimate(estTag);
+        // Resolve calendar estimates from the preserved start time before subtracting elapsed time.
+        const state = getTimerState(
+            todo.text,
+            startedFormat,
+            new Date(),
+            this.data.timestampOffset
+          ),
+          estSeconds = Utils.statistics.timeTags.parseEstimate(estTag, state && state.startedDate);
 
         if (estSeconds) {
           this.data.estMilliseconds = estSeconds * 1000;

@@ -29,6 +29,7 @@
 
 #### Other unreleased changes
 
+- Recalculated calendar and natural-language time estimates as time passes instead of reusing stale cached durations, while keeping running timer estimates anchored to their start time across edits.
 - Rejected impossible slash-formatted calendar dates in time estimates instead of silently rolling them into another month.
 - Fixed Markdown export showing literal strikethrough markers for cancelled tasks with no text.
 - Rejected impossible `@due` dates written with single-digit month, day, or hour components instead of letting natural-date parsing roll them into a different day.

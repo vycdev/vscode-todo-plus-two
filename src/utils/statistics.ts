@@ -60,23 +60,26 @@ const Statistics = {
       return seconds;
     },
 
-    estimates: {}, // It assumes that all estimates are relative to `now`
+    estimates: {},
 
     parseEstimate(tag: string, from?: Date) {
       const manHoursPerDay = Config.getKey('manHoursPerDay'),
         manDaysPerWeek = Config.getKey('manDaysPerWeek'),
+        time = getEstimateDuration(tag),
         cacheKey = `${tag}:${manHoursPerDay}:${manDaysPerWeek}`;
-
-      if (Statistics.timeTags.estimates[cacheKey]) return Statistics.timeTags.estimates[cacheKey];
-
-      const time = getEstimateDuration(tag);
-
       if (!time) return 0;
 
+      // Calendar and natural-language estimates depend on the reference time.
+      // Cache only explicit durations, which cannot go stale as time passes.
+      const fixedDuration =
+        /^\s*(?:\d+(?:\.\d+)?\s*(?:m[dw]|ms|[smhdwy]|milliseconds?|seconds?|minutes?|hours?|days?|weeks?|years?)\s*)+$/i.test(
+          time
+        );
+      if (fixedDuration && Statistics.timeTags.estimates[cacheKey] !== undefined)
+        return Statistics.timeTags.estimates[cacheKey];
+
       const seconds = Time.durationSeconds(time, from, manHoursPerDay, manDaysPerWeek);
-
-      Statistics.timeTags.estimates[cacheKey] = seconds;
-
+      if (fixedDuration) Statistics.timeTags.estimates[cacheKey] = seconds;
       return seconds;
     },
   },
