@@ -95,6 +95,21 @@ describe('Todo Markdown export', () => {
     expect(html).to.include('<code></code> <code> </code> <code> code </code>');
   });
 
+  it('preserves whitespace-only code spans without renderer-specific padding', () => {
+    for (const length of [1, 2, 3, 4, 8]) {
+      const spaces = ' '.repeat(length),
+        markdown = renderTodoMarkdown('Tasks', [
+          { kind: 'comment', level: 0, text: `\`${spaces}\`` },
+        ]),
+        html = new MarkdownIt({ html: true }).render(markdown);
+
+      // CommonMark preserves all-space spans, whereas markdown-it 14.1 trims
+      // runs longer than two spaces. Inline HTML preserves both interpretations.
+      expect(markdown).to.include(`<code>${spaces}</code>`);
+      expect(html).to.include(`<code>${spaces}</code>`);
+    }
+  });
+
   it('preserves HTML-like text and entities in rendered Markdown', () => {
     const markdown = renderTodoMarkdown('Plan <T> &copy;', [
         { kind: 'project', level: 0, text: 'Project <T> &copy;' },
