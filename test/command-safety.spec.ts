@@ -11,7 +11,7 @@ const makeEditor = () => ({
   selection: { active: { line: 0, character: 0 } },
 });
 
-const loadCommands = (activeEditor = makeEditor()) => {
+const loadCommands = (activeEditor = makeEditor(), todoText = '☐ Task') => {
   const NodeModule = require('module');
   const originalLoad = NodeModule._load;
   const modulePath = require.resolve('../src/commands');
@@ -65,12 +65,13 @@ const loadCommands = (activeEditor = makeEditor()) => {
         mutatedLines.push(lineNumber);
       };
       return {
-        text: '☐ Task',
+        text: todoText,
         isDone: () => false,
         isCancelled: () => false,
         isFinished: () => false,
         toggleBox: mutate,
         toggleDone: mutate,
+        toggleCancelled: mutate,
         addTag: mutate,
         makeEdit: () => [{ text: '✔ Task' }],
       };
@@ -115,15 +116,42 @@ const loadCommands = (activeEditor = makeEditor()) => {
 describe('Command edit safety', () => {
   it('does not apply stale task edits after asynchronous dependency checks', async () => {
     const editor = makeEditor();
-    const state = loadCommands(editor);
+    const state = loadCommands(editor, '☐ Task @depends(setup)');
     state.dependencyIndex.get = async () => {
       editor.document.version++;
-      return { targets: {}, dependencies: {} };
+      return {
+        targets: { setup: [{ filePath: '/workspace/TODO', lineNumber: 4, text: '✔ Setup' }] },
+        dependencies: {},
+      };
     };
     await state.commands.toggleDone();
     expect(state.mutatedEditors).to.deep.equal([]);
     expect(state.edits).to.deep.equal([]);
     expect(state.messages[0]).to.include('file changed');
+  });
+
+  it('toggles tasks without dependencies without scanning the workspace', async () => {
+    const state = loadCommands();
+    state.dependencyIndex.get = async () => {
+      throw new Error('The dependency index should not be built');
+    };
+    await state.commands.toggleDone();
+    await state.commands.toggleCancelled();
+    expect(state.mutatedLines).to.deep.equal([0, 0]);
+    expect(state.edits.length).to.equal(2);
+    expect(state.messages).to.deep.equal([]);
+  });
+
+  it('blocks finishing a task whose dependency is unfinished', async () => {
+    const state = loadCommands(makeEditor(), '☐ Task @depends(setup)');
+    state.dependencyIndex.get = async () => ({
+      targets: { setup: [{ filePath: '/workspace/TODO', lineNumber: 4, text: '☐ Setup' }] },
+      dependencies: {},
+    });
+    state.dependencyIndex.isFinished = () => false;
+    await state.commands.toggleDone();
+    expect(state.edits).to.deep.equal([]);
+    expect(state.messages[0]).to.include('unresolved dependencies (setup)');
   });
 
   it('does not edit a task changed while its dependency picker was open', async () => {
