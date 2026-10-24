@@ -20,3 +20,4 @@ AGENTS.md
 CODE_REVIEW.md
 CONTRIBUTING.md
 node_modules/**
+.claude/**
