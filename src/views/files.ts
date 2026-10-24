@@ -4,7 +4,14 @@ import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Utils from '../utils';
 import Consts from '../consts';
-import Config from '../config';
+import { hasUnfinishedTodo, matchesFilesViewFilter } from '../utils/files-view-filter';
+import { matchesTodoStatus } from '../utils/todo-status';
+import {
+  countPendingTodos,
+  supportsActivityBarBadge,
+  updateActivityBarBadge,
+} from '../utils/activity-bar-badge';
+import Tags from '../utils/tags';
 import File from './items/file';
 import Item from './items/item';
 import Group from './items/group';
@@ -17,92 +24,198 @@ import View from './view';
 //TODO: Collapse/Expand without rebuilding the tree https://github.com/Microsoft/vscode/issues/54192
 
 class Files extends View {
-    id = 'todo.views.1files';
-    clear = false;
-    expanded = false;
-    filePathRe = /^(?!~).*(?:\\|\/)/;
+  id = 'todo.views.1files';
+  clear = false;
+  expanded = false;
+  filter: string | false = false;
+  showFinishedOverride: boolean;
+  filePathRe = /^(?!~).*(?:\\|\/)/;
 
-    getTreeItem(item: Item): vscode.TreeItem {
-        if (item.collapsibleState !== vscode.TreeItemCollapsibleState.None) {
-            item.collapsibleState = this.expanded
-                ? vscode.TreeItemCollapsibleState.Expanded
-                : vscode.TreeItemCollapsibleState.Collapsed;
-        }
+  get showFinished() {
+    return _.isBoolean(this.showFinishedOverride)
+      ? this.showFinishedOverride
+      : _.get(this.config, 'file.view.showFinished') !== false;
+  }
 
-        return item;
+  set showFinished(value: boolean) {
+    this.showFinishedOverride = value;
+  }
+
+  getTreeItem(item: Item): vscode.TreeItem {
+    if (item.collapsibleState !== vscode.TreeItemCollapsibleState.None) {
+      item.collapsibleState = this.expanded
+        ? vscode.TreeItemCollapsibleState.Expanded
+        : vscode.TreeItemCollapsibleState.Collapsed;
     }
 
-    async getChildren(item?: Item): Promise<Item[]> {
-        if (this.clear) {
-            setTimeout(this.refresh.bind(this), 0);
+    return item;
+  }
 
-            return [];
-        }
+  async getChildren(item?: Item): Promise<Item[]> {
+    if (this.clear) {
+      this.deferRefresh();
 
-        let obj = item ? item.obj : await Utils.files.get();
+      return [];
+    }
 
-        while (obj && '' in obj) obj = obj['']; // Collapsing unnecessary groups
+    let obj;
 
-        if (_.isEmpty(obj)) return [new Placeholder('No todo files found')];
+    if (item) {
+      obj = item.obj;
+    } else {
+      obj = await Utils.files.get(undefined, this.filter);
+      this.updateActivityBarBadge();
+    }
 
-        if (obj.textEditor) {
-            const items = [],
-                lineNr = obj.hasOwnProperty('lineNr') ? obj.lineNr : -1;
+    while (obj && '' in obj) obj = obj['']; // Collapsing unnecessary groups
 
-            Utils.ast.walkChildren(obj.textEditor, lineNr, (data) => {
-                data.textEditor = obj.textEditor;
-                data.filePath = obj.filePath;
-                data.lineNr = data.line.lineNumber;
+    if (_.isEmpty(obj)) {
+      return [
+        new Placeholder(this.filter ? 'No matching todo files found' : 'No todo files found'),
+      ];
+    }
 
-                let isGroup = false;
+    if (obj.textEditor) {
+      const items = [],
+        lineNr = obj.hasOwnProperty('lineNr') ? obj.lineNr : -1;
 
-                Utils.ast.walkChildren(obj.textEditor, data.line.lineNumber, () => {
-                    isGroup = true;
-                    return false;
-                });
+      Utils.ast.walkChildren(obj.textEditor, lineNr, (data) => {
+        data.textEditor = obj.textEditor;
+        data.filePath = obj.filePath;
+        data.lineNr = data.line.lineNumber;
 
-                // Respect comment visibility setting for Todo files
-                const showComments = !!Config.getKey('embedded.showComments');
-                const isCommentLine = !!(
-                    Consts &&
-                    Consts.regexes &&
-                    data.line &&
-                    data.line.text &&
-                    data.line.text.match(Consts.regexes.comment)
-                );
-                if (!showComments && isCommentLine) return;
+        let isGroup = false;
 
-                const label = _.trimStart(data.line.text),
-                    item = isGroup ? new Group(data, label) : new Todo(data, label);
+        Utils.ast.walkChildren(obj.textEditor, data.line.lineNumber, () => {
+          isGroup = true;
+          return false;
+        });
 
-                items.push(item);
-            });
+        const showComments = this.config.file.view.showComments === true;
+        const isCommentLine = !!(
+          Consts &&
+          Consts.regexes &&
+          data.line &&
+          data.line.text &&
+          data.line.text.match(Consts.regexes.comment)
+        );
+        if (!showComments && isCommentLine) return;
+        if (
+          !this.showFinished &&
+          this.isFinishedTodo(data.line.text) &&
+          (!isGroup || !this.hasUnfinishedDescendant(obj.textEditor, data.line.lineNumber))
+        )
+          return;
+        if (!this.matchesFilter(obj.textEditor, data.line.lineNumber, obj.filePath)) return;
 
-            if (!items.length) return [new Placeholder('The file is empty')];
+        const lineText = _.trimStart(data.line.text),
+          label = this.config.file.view.showTags === false ? Tags.removeAll(lineText) : lineText,
+          item = isGroup ? new Group(data, label) : new Todo(data, label);
 
-            return items;
+        item.contextValue = data.line.text.match(Consts.regexes.todo)
+          ? 'todo'
+          : isGroup
+            ? 'group'
+            : 'item';
+
+        items.push(item);
+      });
+
+      if (!items.length) {
+        return [
+          new Placeholder(
+            this.filter
+              ? 'No matching tasks found'
+              : this.showFinished
+                ? 'The file is empty'
+                : 'No unfinished tasks found'
+          ),
+        ];
+      }
+
+      return items;
+    } else {
+      const keys = Object.keys(obj).sort();
+
+      return keys.map((key) => {
+        const val = obj[key];
+
+        if (this.filePathRe.test(key)) {
+          const uri = Utils.view.getURI(val);
+
+          return new File(val, uri);
         } else {
-            const keys = Object.keys(obj).sort();
-
-            return keys.map((key) => {
-                const val = obj[key];
-
-                if (this.filePathRe.test(key)) {
-                    const uri = Utils.view.getURI(val);
-
-                    return new File(val, uri);
-                } else {
-                    return new Group(val, key, this.config.embedded.view.icons);
-                }
-            });
+          return new Group(val, key, this.config.file.view.icons);
         }
+      });
     }
+  }
 
-    refresh(clear?) {
-        this.clear = !!clear;
+  refresh(clear?) {
+    this.clear = !!clear;
 
-        super.refresh();
+    super.refresh();
+
+    this.refreshActivityBarBadge();
+
+    vscode.commands.executeCommand('setContext', 'todo-files-show-finished', this.showFinished);
+  }
+
+  setTreeView(treeView) {
+    super.setTreeView(treeView);
+    this.refreshActivityBarBadge();
+  }
+
+  async refreshActivityBarBadge() {
+    if (!supportsActivityBarBadge(this.treeView)) return;
+
+    try {
+      await Utils.files.get();
+      this.updateActivityBarBadge();
+    } catch (error) {
+      console.warn('Todo+: Could not update the activity bar badge', error);
     }
+  }
+
+  updateActivityBarBadge() {
+    if (!supportsActivityBarBadge(this.treeView)) return;
+
+    const pending = countPendingTodos(Utils.files.filesData, Consts.regexes.todoBox);
+
+    updateActivityBarBadge(this.treeView, pending);
+  }
+
+  isFinishedTodo(text: string) {
+    return matchesTodoStatus(text, Consts.regexes.todoFinished);
+  }
+
+  hasUnfinishedDescendant(textDocument: vscode.TextDocument, lineNr: number) {
+    const descendantLines = [],
+      startLevel = Utils.ast.getLevel(textDocument, textDocument.lineAt(lineNr).text);
+
+    Utils.ast.walkDown(textDocument, lineNr, true, false, ({ line, level }) => {
+      if (level <= startLevel) return false;
+
+      descendantLines.push(line.text);
+    });
+
+    return hasUnfinishedTodo(descendantLines, Consts.regexes.todo, Consts.regexes.todoFinished);
+  }
+
+  matchesFilter(textEditor: vscode.TextDocument, lineNr: number, filePath: string) {
+    if (!this.filter) return true;
+
+    const branchLines = [textEditor.lineAt(lineNr).text],
+      startLevel = Utils.ast.getLevel(textEditor, branchLines[0]);
+
+    Utils.ast.walkDown(textEditor, lineNr, true, false, ({ line, level }) => {
+      if (level <= startLevel) return false;
+
+      branchLines.push(line.text);
+    });
+
+    return matchesFilesViewFilter(this.filter, filePath, branchLines);
+  }
 }
 
 /* EXPORT */

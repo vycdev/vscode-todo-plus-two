@@ -5,23 +5,24 @@ import Item from './item';
 /* TODO */
 
 class Todo extends Item {
-    contextValue = 'todo';
+  contextValue = 'todo';
 
-    constructor(obj, label, icon = false) {
-        super(obj, label);
+  constructor(obj, label, icon = false) {
+    super(obj, label);
 
-        this.tooltip = obj.code || obj.line;
+    this.tooltip =
+      obj.code || (typeof obj.line === 'string' ? obj.line : obj.line && obj.line.text);
 
-        this.command = {
-            title: 'Reveal',
-            command: 'todo.viewRevealTodo',
-            arguments: [this],
-        };
+    this.command = {
+      title: 'Reveal',
+      command: 'todo.viewRevealTodo',
+      arguments: [this],
+    };
 
-        if (icon) {
-            this.setTypeIcon(obj.type);
-        }
+    if (icon) {
+      this.setTypeIcon(obj.type);
     }
+  }
 }
 
 /* EXPORT */

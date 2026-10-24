@@ -2,169 +2,197 @@
 
 import * as _ from 'lodash';
 import * as execa from 'execa';
-import stringMatches from 'string-matches';
 import Config from '../../../config';
 import Consts from '../../../consts';
 import Ackmate from '../../ackmate';
+import File from '../../file';
 import Folder from '../../folder';
+import { getWorkspaceExcludeRules } from '../../workspace-excludes';
+import { discoverFiles } from '../../file-discovery';
+import { getBatchSize } from '../../batch-size';
+import { getSearchFileBatches } from '../search-batches';
+import { splitLines } from '../../line-splitting';
+import { isLiquidFilePath } from '../liquid-comments';
+import { parseEmbeddedMatches } from '../regex';
 import Abstract from './abstract';
 
 /* AG */ // The Silver Searcher //URL: https://github.com/ggreer/the_silver_searcher
 
 class AG extends Abstract {
-    static bin = 'ag';
+  static bin = 'ag';
 
-    async getFilePaths(rootPaths) {
-        const globby = require('globby'); // Lazy import for performance
+  async getFilePaths(rootPaths) {
+    return discoverFiles(
+      rootPaths,
+      this.include || [],
+      this.exclude || [],
+      !!Config.getKey('followSymlinks'),
+      getWorkspaceExcludeRules
+    );
+  }
 
-        const follow = !!Config.getKey('followSymlinks');
+  execa(filePaths) {
+    const config = Config.get();
 
-        const raw = _.flatten(
-            await Promise.all(
-                rootPaths.map((cwd) =>
-                    globby(this.include, {
-                        cwd,
-                        ignore: this.exclude,
-                        dot: true,
-                        absolute: true,
-                        followSymbolicLinks: follow,
-                    })
-                )
-            )
-        );
+    return execa(AG.bin, [
+      ...config.embedded.providers.ag.args,
+      '--ackmate',
+      '--nobreak',
+      '--nocolor',
+      '--heading',
+      '--print-long-lines',
+      '--silent',
+      '--',
+      config.embedded.providers.ag.regex,
+      ...filePaths,
+    ]);
+  }
 
-        // Deduplicate by realpath (defensive)
-        const fs = require('fs');
-        const pify = require('pify');
-        const seen = new Set();
-        const result = [];
-        for (const fp of raw) {
-            let rp;
-            try {
-                rp = await pify(fs.realpath)(fp);
-            } catch (e) {
-                rp = fp;
-            }
-            if (!seen.has(rp)) {
-                seen.add(rp);
-                result.push(fp);
-            }
-        }
+  async getAckmate(filePaths) {
+    filePaths = _.castArray(filePaths);
 
-        return result;
+    if (!filePaths.length) return [];
+
+    const matches = [];
+    const batchSize = getBatchSize(Config.get().embedded.batchSize);
+
+    for (const batch of getSearchFileBatches(filePaths, batchSize)) {
+      if (this.disposed) break;
+
+      try {
+        const { stdout } = await this.execa(batch);
+        matches.push(...Ackmate.parse(stdout));
+      } catch (error) {
+        // Search tools exit with 1 when there are no matches. An unreadable
+        // file can also produce a nonzero exit alongside valid results.
+        if (error.stdout) matches.push(...Ackmate.parse(error.stdout));
+        if (error.code !== 1) console.warn('Todo+: Embedded search failed', error);
+      }
     }
 
-    execa(filePaths) {
-        const config = Config.get();
+    return matches;
+  }
 
-        return execa(AG.bin, [
-            '--ackmate',
-            '--nobreak',
-            '--nocolor',
-            '--heading',
-            '--print-long-lines',
-            '--silent',
-            ...config.embedded.providers.ag.args,
-            config.embedded.providers.ag.regex,
-            ...filePaths,
-        ]);
+  filterAckmate(ackmate) {
+    const filePaths = _.uniq(ackmate.map((obj) => obj.filePath)),
+      includedFilePaths = this.getIncluded(filePaths);
+
+    return ackmate.filter((obj) => includedFilePaths.includes(obj.filePath));
+  }
+
+  async ackmate2data(ackmate) {
+    const contextLines = {};
+
+    if (Config.getKey('embedded.view.showContext')) {
+      await Promise.all(
+        Array.from(new Set(ackmate.map((obj) => obj.filePath))).map(async (filePath: string) => {
+          const content = await File.read(filePath);
+
+          if (content !== undefined) {
+            contextLines[filePath] = splitLines(content);
+          }
+        })
+      );
     }
 
-    async getAckmate(filePaths) {
-        filePaths = _.castArray(filePaths);
+    ackmate.forEach(({ filePath, line: rawLine, lineNr }) => {
+      const line = _.trimStart(rawLine),
+        matches = parseEmbeddedMatches(line, Consts.regexes.todoEmbedded);
 
-        if (!filePaths.length) return [];
+      if (!matches.length) return;
 
-        try {
-            const { stdout } = await this.execa(filePaths);
+      const parsedPath = Folder.parsePath(filePath);
 
-            return Ackmate.parse(stdout);
-        } catch (e) {
-            console.log(e);
+      matches.forEach((match) => {
+        const data = {
+          ...match,
+          column: rawLine.length - line.length + match.column,
+          rawLine,
+          line,
+          lineNr,
+          context: contextLines[filePath]
+            ? this.getFollowingContext(contextLines[filePath], lineNr)
+            : undefined,
+          filePath,
+          root: parsedPath.root,
+          rootPath: parsedPath.rootPath,
+          relativePath: parsedPath.relativePath,
+        };
 
-            return [];
-        }
+        if (!this.filesData[filePath]) this.filesData[filePath] = [];
+
+        this.filesData[filePath].push(data);
+      });
+    });
+  }
+
+  async loadLiquidFilesData(filePaths: string[]) {
+    const liquidPaths = filePaths.filter(isLiquidFilePath),
+      batchSize = getBatchSize(Config.get().embedded.batchSize);
+
+    for (let offset = 0; offset < liquidPaths.length; offset += batchSize) {
+      if (this.disposed) return;
+      await Promise.all(
+        liquidPaths.slice(offset, offset + batchSize).map(async (filePath) => {
+          const revision = this.fileDataRevisions[filePath] || 0,
+            document = this.getOpenDocument(filePath),
+            content = document ? document.getText() : await File.read(filePath);
+
+          if (this.disposed || revision !== (this.fileDataRevisions[filePath] || 0)) return;
+          const data = content === undefined ? [] : this.parseContent(filePath, content);
+          if (data.length) this.filesData[filePath] = data;
+          else delete this.filesData[filePath];
+        })
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
+  }
 
-    filterAckmate(ackmate) {
-        const filePaths = _.uniq(ackmate.map((obj) => obj.filePath)),
-            includedFilePaths = this.getIncluded(filePaths);
+  async initFilesData(rootPaths) {
+    // Limit the initial external search to the include globs to avoid scanning the whole workspace.
+    // This mirrors the JS provider behavior and massively reduces unnecessary IO when includes are narrow (e.g. only **/*.md).
+    const filePaths = await this.getFilePaths(rootPaths);
+    const ackmate = this.filterAckmate(await this.getAckmate(filePaths));
 
-        return ackmate.filter((obj) => includedFilePaths.includes(obj.filePath));
+    this.filesData = {};
+
+    await this.ackmate2data(ackmate);
+    await this.loadLiquidFilesData(filePaths);
+
+    // Update non-empty set to only include files that actually have todos
+    this.nonEmptyFiles = new Set(Object.keys(this.filesData));
+    this.applyOpenDocumentData(filePaths);
+  }
+
+  async updateFilesData() {
+    const pending = Object.keys(this.filesData).filter((filePath) => !this.filesData[filePath]);
+    if (!pending.length) return;
+
+    const ackmate = await this.getAckmate(pending);
+
+    await this.ackmate2data(ackmate);
+    await this.loadLiquidFilesData(pending);
+
+    // Prune files that still have no results
+    this.filesData = _.transform(
+      this.filesData,
+      (acc, val, key) => {
+        if (!val) return;
+        acc[key] = val;
+      },
+      {}
+    );
+
+    // Update non-empty set based on the pending files processed
+    for (const fp of pending) {
+      if (this.filesData[fp] && this.filesData[fp].length) {
+        this.nonEmptyFiles.add(fp);
+      } else {
+        this.nonEmptyFiles.delete(fp);
+      }
     }
-
-    ackmate2data(ackmate) {
-        ackmate.forEach(({ filePath, line: rawLine, lineNr }) => {
-            const line = _.trimStart(rawLine),
-                matches = stringMatches(line, Consts.regexes.todoEmbedded);
-
-            if (!matches.length) return;
-
-            const parsedPath = Folder.parsePath(filePath);
-
-            matches.forEach((match) => {
-                const data = {
-                    todo: match[0],
-                    type: match[1].toUpperCase(),
-                    message: match[2],
-                    code: line.slice(0, line.indexOf(match[0])),
-                    rawLine,
-                    line,
-                    lineNr,
-                    filePath,
-                    root: parsedPath.root,
-                    rootPath: parsedPath.rootPath,
-                    relativePath: parsedPath.relativePath,
-                };
-
-                if (!this.filesData[filePath]) this.filesData[filePath] = [];
-
-                this.filesData[filePath].push(data);
-            });
-        });
-    }
-
-    async initFilesData(rootPaths) {
-        // Limit the initial external search to the include globs to avoid scanning the whole workspace.
-        // This mirrors the JS provider behavior and massively reduces unnecessary IO when includes are narrow (e.g. only **/*.md).
-        const filePaths = await this.getFilePaths(rootPaths);
-        const ackmate = this.filterAckmate(await this.getAckmate(filePaths));
-
-        this.filesData = {};
-
-        this.ackmate2data(ackmate);
-
-        // Update non-empty set to only include files that actually have todos
-        this.nonEmptyFiles = new Set(Object.keys(this.filesData));
-    }
-
-    async updateFilesData() {
-        const pending = Object.keys(this.filesData).filter((filePath) => !this.filesData[filePath]);
-        if (!pending.length) return;
-
-        const ackmate = await this.getAckmate(pending);
-
-        this.ackmate2data(ackmate);
-
-        // Prune files that still have no results
-        this.filesData = _.transform(
-            this.filesData,
-            (acc, val, key) => {
-                if (!val) return;
-                acc[key] = val;
-            },
-            {}
-        );
-
-        // Update non-empty set based on the pending files processed
-        for (const fp of pending) {
-            if (this.filesData[fp] && this.filesData[fp].length) {
-                this.nonEmptyFiles.add(fp);
-            } else {
-                this.nonEmptyFiles.delete(fp);
-            }
-        }
-    }
+    this.applyOpenDocumentData(pending);
+  }
 }
 
 /* EXPORT */

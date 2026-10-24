@@ -5,11 +5,11 @@ import Item from './item';
 /* PLACEHOLDER */
 
 class Placeholder extends Item {
-    contextValue = 'placeholder';
+  contextValue = 'placeholder';
 
-    constructor(label) {
-        super(undefined, label);
-    }
+  constructor(label) {
+    super(undefined, label);
+  }
 }
 
 /* EXPORT */

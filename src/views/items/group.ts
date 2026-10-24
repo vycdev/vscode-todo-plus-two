@@ -6,21 +6,21 @@ import Item from './item';
 /* GROUP */
 
 class Group extends Item {
-    contextValue = 'group';
+  contextValue = 'group';
 
-    constructor(obj, label, icon = false) {
-        super(obj, label, vscode.TreeItemCollapsibleState.Expanded);
+  constructor(obj, label, icon = false) {
+    super(obj, label, vscode.TreeItemCollapsibleState.Expanded);
 
-        if (icon) {
-            const type = label.toUpperCase();
+    if (icon) {
+      const type = label.toUpperCase();
 
-            this.setTypeIcon(type);
+      this.setTypeIcon(type);
 
-            if (this.iconPath) {
-                this.label = type;
-            }
-        }
+      if (this.iconPath) {
+        this.label = type;
+      }
     }
+  }
 }
 
 /* EXPORT */

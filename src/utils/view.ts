@@ -11,46 +11,63 @@ import Consts from '../consts';
 /* VIEW */
 
 const View = {
-    uris: {},
+  uris: {},
 
-    getURI({ filePath, relativePath }) {
-        if (View.uris[filePath]) return View.uris[filePath];
+  getURI({ filePath, relativePath }) {
+    const uri = View.uris[filePath] || vscode.Uri.file(filePath);
 
-        const uri = vscode.Uri.file(filePath);
+    uri['label'] = _.trimStart(relativePath, '\\/');
 
-        uri['label'] = _.trimStart(relativePath, '\\/');
+    View.uris[filePath] = uri;
 
-        View.uris[filePath] = uri;
+    return uri;
+  },
 
-        return uri;
-    },
+  icons: {},
 
-    icons: {},
+  getTypeIcon(type) {
+    const color = Consts.colors.types[type];
 
-    getTypeIcon(type) {
-        //TODO: Add support for light/dark colors
+    if (!color) return;
 
-        if (View.icons[type]) return View.icons[type];
+    const { context } = require('.').default, // Avoiding a cyclic dependency
+      storagePath = context.storagePath || context.globalStoragePath;
 
-        if (!Consts.colors.types[type]) return;
+    if (!storagePath) return;
 
-        const { context } = require('.').default, // Avoiding a cyclic dependency
-            color = Consts.colors.types[type],
-            colorHash = sha1(color),
-            iconPath = path.join(context.storagePath, `type-color-${colorHash}.svg`);
+    const getIconPath = (iconColor: string) => {
+      const colorHash = sha1(iconColor),
+        iconPath = path.join(storagePath, `type-color-${colorHash}.svg`),
+        iconKey = `${type}:${colorHash}`;
 
-        mkdirp.sync(context.storagePath);
+      if (View.icons[iconKey]) return View.icons[iconKey];
 
-        if (!fs.existsSync(iconPath)) {
-            const image = `<?xml version="1.0" encoding="utf-8"?><svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve"><circle fill="${color}" cx="8" cy="8" r="5.4"/></svg>`;
+      mkdirp.sync(storagePath);
 
-            fs.writeFileSync(iconPath, image);
-        }
+      if (!fs.existsSync(iconPath)) {
+        const image = `<?xml version="1.0" encoding="utf-8"?><svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve"><circle fill="${iconColor}" cx="8" cy="8" r="5.4"/></svg>`;
 
-        View.icons[type] = iconPath;
+        fs.writeFileSync(iconPath, image);
+      }
 
-        return iconPath;
-    },
+      View.icons[iconKey] = iconPath;
+
+      return iconPath;
+    };
+
+    const darkColor =
+        (Consts.colors.dark && Consts.colors.dark.types && Consts.colors.dark.types[type]) || color,
+      lightColor =
+        (Consts.colors.light && Consts.colors.light.types && Consts.colors.light.types[type]) ||
+        color;
+
+    if (darkColor === color && lightColor === color) return getIconPath(color);
+
+    return {
+      dark: getIconPath(darkColor),
+      light: getIconPath(lightColor),
+    };
+  },
 };
 
 /* EXPORT */

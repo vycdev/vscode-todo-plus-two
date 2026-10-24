@@ -5,24 +5,33 @@ import * as vscode from 'vscode';
 /* COMMAND */
 
 const Command = {
-    proxiesHashes: [], // Array of hashes (`${command}${arguments}`) of proxy commands
+  bindings: new Map<string, { args: any[]; disposable: vscode.Disposable }>(),
 
-    get(command, args) {
-        if (!args) return command;
+  get(command, args) {
+    if (!args) return command;
 
-        const hash = `${command}${JSON.stringify(args)}`,
-            exists = !!Command.proxiesHashes.find((h) => h === hash);
+    // The status bar has one current target per command. Updating that target must
+    // not register a new command for every file/line the timer has ever displayed.
+    const id = `todo.proxy.${command}`;
+    const binding = Command.bindings.get(command);
+    if (binding) {
+      binding.args = args;
+    } else {
+      const current = {
+        args,
+        disposable: vscode.commands.registerCommand(id, () =>
+          vscode.commands.executeCommand(command, ...current.args)
+        ),
+      };
+      Command.bindings.set(command, current);
+    }
+    return id;
+  },
 
-        if (exists) return hash;
-
-        vscode.commands.registerCommand(hash, () => {
-            vscode.commands.executeCommand(command, ...args);
-        });
-
-        Command.proxiesHashes.push(hash);
-
-        return hash;
-    },
+  dispose() {
+    Command.bindings.forEach(({ disposable }) => disposable.dispose());
+    Command.bindings.clear();
+  },
 };
 
 /* EXPORT */

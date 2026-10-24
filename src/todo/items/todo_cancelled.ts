@@ -1,15 +1,15 @@
 /* IMPORT */
 
 import Consts from '../../consts';
-import Item from './item';
+import { matchesTodoStatus } from '../../utils/todo-status';
 import TodoFinished from './todo';
 
 /* TODO CANCELLED */
 
 class TodoCancelled extends TodoFinished {
-    static is(str: string) {
-        return Item.is(str, Consts.regexes.todoCancelled);
-    }
+  static is(str: string) {
+    return matchesTodoStatus(str, Consts.regexes.todoCancelled);
+  }
 }
 
 /* EXPORT */

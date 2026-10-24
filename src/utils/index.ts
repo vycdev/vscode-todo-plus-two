@@ -15,29 +15,31 @@ import regex from './regex';
 import time from './time';
 import todo from './todo';
 import statistics from './statistics';
+import tags from './tags';
 import view from './view';
 import log from './log';
 
 /* UTILS */
 
 const Utils = {
-    context: <vscode.ExtensionContext>undefined,
-    ackmate,
-    archive,
-    ast,
-    log,
-    command,
-    editor,
-    embedded,
-    file,
-    files,
-    folder,
-    init,
-    regex,
-    time,
-    todo,
-    statistics,
-    view,
+  context: <vscode.ExtensionContext>undefined,
+  ackmate,
+  archive,
+  ast,
+  log,
+  command,
+  editor,
+  embedded,
+  file,
+  files,
+  folder,
+  init,
+  regex,
+  time,
+  todo,
+  statistics,
+  tags,
+  view,
 };
 
 /* EXPORT */

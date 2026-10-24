@@ -6,294 +6,321 @@ import * as vscode from 'vscode';
 import Config from '../../config';
 import Consts from '../../consts';
 import Utils from '../../utils';
+import { formatElapsedDuration, getTimerState, getToggleTag } from '../../utils/timekeeping';
+import { matchesTodoStatus, removeTodoStatusTag } from '../../utils/todo-status';
 import Item from './item';
 
 /* TODO */
 
 class Todo extends Item {
-    /* GETTERS & SETTERS */
+  /* GETTERS & SETTERS */
 
-    _lineNextText;
-    get lineNextText() {
-        if (!_.isUndefined(this._lineNextText)) return this._lineNextText;
-        return (this._lineNextText = this.line ? this.line.text : this.text);
+  _lineNextText;
+  get lineNextText() {
+    if (!_.isUndefined(this._lineNextText)) return this._lineNextText;
+    return (this._lineNextText = this.line ? this.line.text : this.text);
+  }
+
+  set lineNextText(val) {
+    this._lineNextText = val;
+  }
+
+  /* EDIT */
+
+  makeEdit() {
+    return Utils.editor.edits.makeDiff(this.line.text, this.lineNextText, this.line.lineNumber);
+  }
+
+  /* STATUS */
+
+  makeStatus(state: string) {
+    const status = {
+      box: false,
+      done: false,
+      cancelled: false,
+      other: false,
+    };
+
+    status[state] = true;
+
+    return status;
+  }
+
+  getStatus() {
+    const box = this.isBox(),
+      done = !box && this.isDone(),
+      cancelled = !box && !done && this.isCancelled(),
+      other = !box && !done && !cancelled;
+
+    return { box, done, cancelled, other };
+  }
+
+  setStatus(is, was = this.getStatus()) {
+    if (_.isEqual(is, was)) return;
+
+    if (was.other && !is.other) {
+      this.create();
     }
 
-    set lineNextText(val) {
-        this._lineNextText = val;
+    if (!was.other && is.other) {
+      this.unfinish();
+      this.unstart();
+      this.uncreate();
     }
 
-    /* EDIT */
-
-    makeEdit() {
-        return Utils.editor.edits.makeDiff(this.line.text, this.lineNextText, this.line.lineNumber);
+    if ((was.done || was.cancelled) && is.box) {
+      this.unfinish();
     }
 
-    /* STATUS */
-
-    makeStatus(state: string) {
-        const status = {
-            box: false,
-            done: false,
-            cancelled: false,
-            other: false,
-        };
-
-        status[state] = true;
-
-        return status;
+    if (
+      ((was.box || was.other) && (is.done || is.cancelled)) ||
+      (was.cancelled && is.done) ||
+      (was.done && is.cancelled)
+    ) {
+      this.finish(is.done);
     }
+  }
 
-    getStatus() {
-        const box = this.isBox(),
-            done = !box && this.isDone(),
-            cancelled = !box && !done && this.isCancelled(),
-            other = !box && !done && !cancelled;
+  /* TAGS */
 
-        return { box, done, cancelled, other };
-    }
+  getTag(re: RegExp) {
+    const match = this.lineNextText.match(re);
 
-    setStatus(is, was = this.getStatus()) {
-        if (_.isEqual(is, was)) return;
+    return match && match[0];
+  }
 
-        if (was.other && !is.other) {
-            this.create();
-        }
+  addTag(tag: string) {
+    this.lineNextText = `${_.trimEnd(this.lineNextText)} ${tag}`;
+  }
 
-        if (!was.other && is.other) {
-            this.unfinish();
-            this.unstart();
-            this.uncreate();
-        }
+  removeTag(tagRegex: RegExp) {
+    if (!this.hasTag(tagRegex)) return;
 
-        if ((was.done || was.cancelled) && is.box) {
-            this.unfinish();
-        }
+    this.lineNextText = _.trimEnd(this.lineNextText.replace(tagRegex, ''));
+  }
 
-        if (
-            ((was.box || was.other) && (is.done || is.cancelled)) ||
-            (was.cancelled && is.done) ||
-            (was.done && is.cancelled)
-        ) {
-            this.finish(is.done);
-        }
-    }
+  removeTags(tags: string[]) {
+    this.lineNextText = Utils.tags.remove(this.lineNextText, tags);
+  }
 
-    /* TAGS */
+  replaceTag(tagRegex: RegExp, tag: string) {
+    this.removeTag(tagRegex);
+    this.addTag(tag);
+  }
 
-    getTag(re: RegExp) {
-        const match = this.lineNextText.match(re);
+  hasTag(tagRegex: RegExp) {
+    return Item.is(this.lineNextText, tagRegex);
+  }
 
-        return match && match[0];
-    }
+  /* TIMEKEEPING */
 
-    addTag(tag: string) {
-        this.lineNextText = `${_.trimEnd(this.lineNextText)} ${tag}`;
-    }
+  create() {
+    if (Config.getKey('timekeeping.created.enabled')) {
+      if (Config.getKey('timekeeping.created.time')) {
+        const date = moment(),
+          format = Config.getKey('timekeeping.created.format'),
+          time = date.format(format),
+          tag = `@created(${time})`;
 
-    removeTag(tagRegex: RegExp) {
-        if (!this.hasTag(tagRegex)) return;
-
-        this.lineNextText = _.trimEnd(this.lineNextText.replace(tagRegex, ''));
-    }
-
-    replaceTag(tagRegex: RegExp, tag: string) {
-        this.removeTag(tagRegex);
         this.addTag(tag);
+      } else {
+        const tag = '@created';
+
+        this.addTag(tag);
+      }
     }
+  }
 
-    hasTag(tagRegex: RegExp) {
-        return Item.is(this.lineNextText, tagRegex);
+  uncreate() {
+    this.removeTag(Consts.regexes.tagCreated);
+  }
+
+  toggleStart() {
+    if (this.hasTag(Consts.regexes.tagStarted)) {
+      this.unstart();
+    } else {
+      this.start();
     }
+  }
 
-    /* TIMEKEEPING */
+  start() {
+    if (Config.getKey('timekeeping.started.time')) {
+      const date = moment(),
+        format = Config.getKey('timekeeping.started.format'),
+        time = date.format(format),
+        tag = `@started(${time})`;
 
-    create() {
-        if (Config.getKey('timekeeping.created.enabled')) {
-            if (Config.getKey('timekeeping.created.time')) {
-                const date = moment(),
-                    format = Config.getKey('timekeeping.created.format'),
-                    time = date.format(format),
-                    tag = `@created(${time})`;
+      this.replaceTag(Consts.regexes.tagStarted, tag);
+    } else {
+      const tag = '@started';
 
-                this.addTag(tag);
-            } else {
-                const tag = '@created';
-
-                this.addTag(tag);
-            }
-        }
+      this.replaceTag(Consts.regexes.tagStarted, tag);
     }
+  }
 
-    uncreate() {
-        this.removeTag(Consts.regexes.tagCreated);
+  unstart() {
+    this.removeTag(Consts.regexes.tagStarted);
+  }
+
+  toggleTimer() {
+    const format = Config.getKey('timekeeping.started.format');
+
+    this.addTag(getToggleTag(format));
+  }
+
+  finish(isPositive?: boolean) {
+    isPositive = _.isBoolean(isPositive) ? isPositive : this.isDone();
+
+    const started = this.getTag(Consts.regexes.tagStarted),
+      finishedDate = new Date(),
+      startedFormat = Config.getKey('timekeeping.started.format'),
+      timerState = started
+        ? getTimerState(this.lineNextText, startedFormat, finishedDate)
+        : undefined;
+
+    this.removeTags(Config.getKey('timekeeping.finished.remove.tags'));
+
+    if (
+      started ||
+      Config.getKey('timekeeping.finished.enabled') ||
+      Consts.symbols.box === (isPositive ? Consts.symbols.done : Consts.symbols.cancelled)
+    ) {
+      this.unfinish();
+
+      /* FINISH */
+
+      if (Config.getKey('timekeeping.finished.time')) {
+        const finishedFormat = Config.getKey('timekeeping.finished.format'),
+          finishedTime = moment(finishedDate).format(finishedFormat),
+          finishedTag = `@${isPositive ? 'done' : 'cancelled'}(${finishedTime})`;
+
+        this.addTag(finishedTag);
+      } else {
+        const finishedTag = `@${isPositive ? 'done' : 'cancelled'}`;
+
+        this.addTag(finishedTag);
+      }
+
+      /* ELAPSED */
+
+      if (Config.getKey('timekeeping.elapsed.enabled') && timerState) {
+        const elapsedFormat = Config.getKey('timekeeping.elapsed.format'),
+          elapsedDate = new Date(timerState.startedDate.getTime() + timerState.elapsedMilliseconds),
+          time = formatElapsedDuration(
+            elapsedDate,
+            timerState.startedDate,
+            elapsedFormat,
+            Config.getKey('hoursPerDay'),
+            Config.getKey('manHoursPerDay'),
+            Config.getKey('manDaysPerWeek')
+          ),
+          elapsedTag = `@${isPositive ? 'lasted' : 'wasted'}(${time})`;
+
+        this.addTag(elapsedTag);
+      }
     }
+  }
 
-    toggleStart() {
-        if (this.hasTag(Consts.regexes.tagStarted)) {
-            this.unstart();
-        } else {
-            this.start();
-        }
-    }
+  unfinish() {
+    this.lineNextText = _.trimEnd(
+      removeTodoStatusTag(this.lineNextText, Consts.regexes.tagFinished)
+    );
+    this.lineNextText = _.trimEnd(
+      removeTodoStatusTag(this.lineNextText, Consts.regexes.tagElapsed)
+    );
+  }
 
-    start() {
-        if (Config.getKey('timekeeping.started.time')) {
-            const date = moment(),
-                format = Config.getKey('timekeeping.started.format'),
-                time = date.format(format),
-                tag = `@started(${time})`;
+  /* SYMBOLS */
 
-            this.replaceTag(Consts.regexes.tagStarted, tag);
-        } else {
-            const tag = '@started';
+  setSymbol(symbol: string) {
+    const match = this.lineNextText.match(Consts.regexes.todoSymbol),
+      firstChar = this.lineNextText.match(/\S/),
+      startIndex = match
+        ? match[0].indexOf(match[1])
+        : firstChar
+          ? firstChar.index
+          : this.lineNextText.length,
+      endIndex = match ? match[0].length : startIndex;
 
-            this.replaceTag(Consts.regexes.tagStarted, tag);
-        }
-    }
+    this.lineNextText = `${this.lineNextText.substring(0, startIndex)}${symbol ? `${symbol} ` : ''}${this.lineNextText.substring(endIndex)}`;
+  }
 
-    unstart() {
-        this.removeTag(Consts.regexes.tagStarted);
-    }
+  setSymbolAndState(symbol: string, state: string) {
+    const prevStatus = this.getStatus();
 
-    finish(isPositive?: boolean) {
-        isPositive = _.isBoolean(isPositive) ? isPositive : this.isDone();
+    this.setSymbol(symbol);
 
-        const started = this.getTag(Consts.regexes.tagStarted);
+    const nextStatus = this.makeStatus(state);
 
-        if (
-            started ||
-            Config.getKey('timekeeping.finished.enabled') ||
-            Consts.symbols.box === (isPositive ? Consts.symbols.done : Consts.symbols.cancelled)
-        ) {
-            this.unfinish();
+    this.setStatus(nextStatus, prevStatus);
+  }
 
-            /* FINISH */
+  toggleBox(force: boolean = !this.isBox()) {
+    const symbol = force ? Consts.symbols.box : '',
+      state = force ? 'box' : 'other';
 
-            if (Config.getKey('timekeeping.finished.time')) {
-                const finishedDate = moment(),
-                    finishedFormat = Config.getKey('timekeeping.finished.format'),
-                    finishedTime = finishedDate.format(finishedFormat),
-                    finishedTag = `@${isPositive ? 'done' : 'cancelled'}(${finishedTime})`;
+    this.setSymbolAndState(symbol, state);
+  }
 
-                this.addTag(finishedTag);
-            } else {
-                const finishedTag = `@${isPositive ? 'done' : 'cancelled'}`;
+  box() {
+    this.toggleBox(true);
+  }
 
-                this.addTag(finishedTag);
-            }
+  unbox() {
+    this.toggleBox(false);
+  }
 
-            /* ELAPSED */
+  toggleDone(force: boolean = !this.isDone()) {
+    const symbol = force ? Consts.symbols.done : Consts.symbols.box,
+      state = force ? 'done' : 'box';
 
-            if (Config.getKey('timekeeping.elapsed.enabled') && started) {
-                const startedFormat = Config.getKey('timekeeping.started.format'),
-                    startedMoment = moment(started, startedFormat),
-                    startedDate = new Date(startedMoment.valueOf()),
-                    elapsedFormat = Config.getKey('timekeeping.elapsed.format'),
-                    time = Utils.time.diff(new Date(), startedDate, elapsedFormat),
-                    elapsedTag = `@${isPositive ? 'lasted' : 'wasted'}(${time})`;
+    this.setSymbolAndState(symbol, state);
+  }
 
-                this.addTag(elapsedTag);
-            }
-        }
-    }
+  done() {
+    this.toggleDone(true);
+  }
 
-    unfinish() {
-        this.removeTag(Consts.regexes.tagFinished);
-        this.removeTag(Consts.regexes.tagElapsed);
-    }
+  undone() {
+    this.toggleDone(false);
+  }
 
-    /* SYMBOLS */
+  toggleCancelled(force: boolean = !this.isCancelled()) {
+    const symbol = force ? Consts.symbols.cancelled : Consts.symbols.box,
+      state = force ? 'cancelled' : 'box';
 
-    setSymbol(symbol: string) {
-        const match = this.lineNextText.match(Consts.regexes.todoSymbol),
-            firstChar = this.lineNextText.match(/\S/),
-            startIndex = match
-                ? match[0].indexOf(match[1])
-                : firstChar
-                  ? firstChar.index
-                  : this.lineNextText.length,
-            endIndex = match ? match[0].length : startIndex;
+    this.setSymbolAndState(symbol, state);
+  }
 
-        this.lineNextText = `${this.lineNextText.substring(0, startIndex)}${symbol ? `${symbol} ` : ''}${this.lineNextText.substring(endIndex)}`;
-    }
+  cancelled() {
+    this.toggleCancelled(true);
+  }
 
-    setSymbolAndState(symbol: string, state: string) {
-        const prevStatus = this.getStatus();
+  uncancelled() {
+    this.toggleCancelled(false);
+  }
 
-        this.setSymbol(symbol);
+  /* IS */
 
-        const nextStatus = this.makeStatus(state);
+  isBox() {
+    return matchesTodoStatus(this.text, Consts.regexes.todoBox);
+  }
 
-        this.setStatus(nextStatus, prevStatus);
-    }
+  isDone() {
+    return matchesTodoStatus(this.text, Consts.regexes.todoDone);
+  }
 
-    toggleBox(force: boolean = !this.isBox()) {
-        const symbol = force ? Consts.symbols.box : '',
-            state = force ? 'box' : 'other';
+  isCancelled() {
+    return matchesTodoStatus(this.text, Consts.regexes.todoCancelled);
+  }
 
-        this.setSymbolAndState(symbol, state);
-    }
+  isFinished() {
+    return this.isDone() || this.isCancelled();
+  }
 
-    box() {
-        this.toggleBox(true);
-    }
-
-    unbox() {
-        this.toggleBox(false);
-    }
-
-    toggleDone(force: boolean = !this.isDone()) {
-        const symbol = force ? Consts.symbols.done : Consts.symbols.box,
-            state = force ? 'done' : 'box';
-
-        this.setSymbolAndState(symbol, state);
-    }
-
-    done() {
-        this.toggleDone(true);
-    }
-
-    undone() {
-        this.toggleDone(false);
-    }
-
-    toggleCancelled(force: boolean = !this.isCancelled()) {
-        const symbol = force ? Consts.symbols.cancelled : Consts.symbols.box,
-            state = force ? 'cancelled' : 'box';
-
-        this.setSymbolAndState(symbol, state);
-    }
-
-    cancelled() {
-        this.toggleCancelled(true);
-    }
-
-    uncancelled() {
-        this.toggleCancelled(false);
-    }
-
-    /* IS */
-
-    isBox() {
-        return Item.is(this.text, Consts.regexes.todoBox);
-    }
-
-    isDone() {
-        return Item.is(this.text, Consts.regexes.todoDone);
-    }
-
-    isCancelled() {
-        return Item.is(this.text, Consts.regexes.todoCancelled);
-    }
-
-    isFinished() {
-        return this.isDone() || this.isCancelled();
-    }
-
-    static is(str: string) {
-        return super.is(str, Consts.regexes.todo);
-    }
+  static is(str: string) {
+    return super.is(str, Consts.regexes.todo);
+  }
 }
 
 /* EXPORT */

@@ -3,15 +3,17 @@
 A lightweight, plain-text todo manager for Visual Studio Code. Powerful, customizable and easy to use. [View the demo](#demo).
 This extension is a continuation of the original Todo+ extension by [Fabio Spampinato](https://github.com/fabiospampinato/vscode-todo-plus) and will break compatibility with some of the features. Old issues have been imported from the original repository and will be addressed.
 
+[![Version](https://vsmarketplacebadges.dev/version-short/vycdev.vscode-todo-plus-two.svg)](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two) [![Installs](https://vsmarketplacebadges.dev/installs-short/vycdev.vscode-todo-plus-two.svg)](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two) [![Rating](https://vsmarketplacebadges.dev/rating-short/vycdev.vscode-todo-plus-two.svg)](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two&ssr=false#review-details) [![Build](https://img.shields.io/github/actions/workflow/status/vycdev/vscode-todo-plus-two/check.yml?branch=develop&cacheSeconds=3600)](https://github.com/vycdev/vscode-todo-plus-two/actions/workflows/check.yml) [![License](https://img.shields.io/github/license/vycdev/vscode-todo-plus-two?cacheSeconds=3600)](LICENSE) [![Patreon](https://img.shields.io/badge/Patreon-Support-orange?logo=patreon&logoColor=white)](https://www.patreon.com/cw/vycdev)
+
 ## Features
 
 - **Easy to use**: you're just a few shortcuts away from becoming a master
 - **Portable**: being a plain text format you can read and edit it using any editor
 - **Custom symbols**: you can replace the default symbols with any symbol you want
-- **Custom symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes by default.
-    - **Box**: `☐` or Markdown `- [ ]`
-    - **Done**: `✔` or Markdown `- [x]`
-    - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
+- **Supported symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes by default.
+  - **Box**: `☐` or Markdown `- [ ]`
+  - **Done**: `✔` or Markdown `- [x]`
+  - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
 - **Custom colors**: all colors can be customized
 - **Custom special tags**: special tags' names and their colors can be customized
 - **Archive**: you can move finished todos to a special "Archive" section with a shortcut
@@ -22,10 +24,12 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Time estimates**: you can estimate the time it will take to complete a todo by adding a tag to it that looks like this: `@est(3 hours)`, `@est(2h30m)` or `@2h30m`. Then you can use the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens in statistics
 - **Task dependencies**: give a task a manual `@id(release-api)` and reference it from any Todo file with `@depends(release-api)`. The extension validates links, helps insert and rename references, and blocks premature completion.
 - **Statistics**: statistics about your entire file and/or project-level statistics about your individual projects
-- **Embedded todos**: it's common to have `//TODO` or `//FIXME` comments in our code, this extension can find those as well
+- **Embedded todos**: it's common to have `//TODO` or `//FIXME` comments in our code, this extension can find those as well, including inline and multiline Liquid comment blocks
 - **Activity bar views**: you can view your todo file and your embedded todos from a custom activity bar section
 
 ## Install
+
+Requires Visual Studio Code 1.36 or newer.
 
 Follow the instructions in the [Marketplace](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two), or run the following in the command palette:
 
@@ -35,7 +39,7 @@ ext install vycdev.vscode-todo-plus-two
 
 ## Usage
 
-It adds 14 commands to the command palette:
+It adds the following commonly used commands to the command palette:
 
 ```js
 'Todo: Open'; // Open or create your project's todo file
@@ -44,8 +48,15 @@ It adds 14 commands to the command palette:
 'Todo: Toggle Done'; // Toggle todo's done symbol
 'Todo: Toggle Cancelled'; // Toggle todo's cancelled symbol
 'Todo: Toggle Start'; // Toggle a todo as started
-'Todo: Toggle Timer'; // Toggle the timer
+'Todo: Toggle Timer'; // Pause or resume time tracking for the selected started task
+'Todo: Toggle Status Bar Timer'; // Toggle the timer in the status bar
 'Todo: Archive'; // Archive finished todos
+'Todo: Unarchive'; // Restore an archived task to its project list (when todo.archive.type is InSameFile)
+'Todo: Export to HTML'; // Export the active Todo file as a standalone HTML document
+'Todo: Export to Markdown'; // Export the active Todo file as a Markdown task list
+'Todo: Copy Project with Statistics'; // Copy the project at the cursor, including its rendered statistics
+'Todo: Open Dependency'; // Search task IDs and open a referenced task
+'Todo: Open Dependency at Cursor'; // Open the dependency under the cursor
 'Todo: Add Dependency'; // Search task IDs and add one to the selected todo
 'Todo: Find Dependents'; // Show todos that depend on an ID
 'Todo: Rename Task ID'; // Rename an ID and all matching references
@@ -54,7 +65,7 @@ It adds 14 commands to the command palette:
 'Todo: Embedded View - Toggle View All Files'; // Toggle between viewing all files or only the current one
 ```
 
-It adds 6 shortcuts when editing a `Todo` file:
+It adds 8 shortcuts when editing a `Todo` file:
 
 ```js
 'Cmd/Ctrl+Enter'; // Triggers `Todo: Toggle Box`
@@ -62,8 +73,23 @@ It adds 6 shortcuts when editing a `Todo` file:
 'Alt+D'; // Triggers `Todo: Toggle Done`
 'Alt+C'; // Triggers `Todo: Toggle Cancelled`
 'Alt+S'; // Triggers `Todo: Toggle Start`
+'Alt+T'; // Triggers `Todo: Toggle Timer`
 'Cmd/Ctrl+Shift+A'; // Triggers  `Todo: Archive`
+'Cmd/Ctrl+Shift+U'; // Triggers `Todo: Unarchive` when todo.archive.type is InSameFile
 ```
+
+### Task priorities
+
+Use special tags as visual priority labels without changing the plain-text task format. The default `todo.tags.names` setting includes `critical`, `high`, and `low`, so these tags are highlighted automatically:
+
+```todo
+Release:
+  ☐ Fix the production outage @critical
+  ☐ Review the migration plan @high
+  ☐ Update internal notes @low
+```
+
+Customize the special-tag names and their matching colors with `todo.tags.names`, `todo.colors.tags.background`, and `todo.colors.tags.foreground`. To highlight the entire task line, set corresponding entries in `todo.colors.tags.lineBackground`. Palette entries match tag names by array position. These labels do not sort tasks or otherwise change task behavior.
 
 ### Task dependencies
 
@@ -81,6 +107,8 @@ The text inside the parentheses may contain spaces, punctuation, and Unicode. Le
 
 When you type `@depends(`, completion suggests known task IDs. `Todo: Add Dependency` provides the same search in a command, `Todo: Find Dependents` lists every task that references the ID under the cursor, and `Todo: Rename Task ID` (or `F2`) updates every matching `@id(...)` and `@depends(...)` safely across the workspace.
 
+Typing `@created` or `@now` offers timestamp completions using `todo.timekeeping.created.format`; `@created` inserts a Todo+ tag, while `@now` inserts only the formatted date and time.
+
 Missing IDs receive a warning in the Problems panel. A task cannot be marked done or cancelled until every task with each referenced ID is finished; therefore, a duplicated ID deliberately requires _all_ of its matching tasks to be finished. Both colors are configurable with `todo.colors.id` and `todo.colors.dependency`.
 
 ## Settings
@@ -89,14 +117,24 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
 {
   "todo.file.name": "TODO", // Todo file name. Other supported names are: `*.todo`, `*.todos`, `*.task`, `*.tasks`, `*.taskpaper` and `todolist.txt`
   "todo.file.defaultContent": "\nTodo:\n  ☐ Item\n", // New todo files default content
-  "todo.file.include": ["**/TODO", ...], // Globs to use for including files
-  "todo.file.exclude": ["**/.!(todo|todos|task|tasks)/**", ...], // Globs to use for excluding files
+  "todo.file.include": ["**/TODO", "**/TODO.md", ...], // Globs to use for including files
+  "todo.file.exclude": ["**/.git/**", ...], // Globs to use for excluding files
+  "todo.followSymlinks": false, // Follow symbolic links when enumerating files (can cause cycles)
+  "todo.file.batchSize": 50, // Number of Todo files to process in each discovery batch
   "todo.file.view.expanded": true, // Start the tree in an expanded state
+  "todo.file.view.showFinished": true, // Show done and cancelled tasks in the Todo files view
+  "todo.file.view.showComments": false, // Show comment-only lines in the Todo files view
+  "todo.file.view.showTags": true, // Show tags in Todo files view labels
+  "todo.file.view.icons": true, // Show icons next to groups in the Todo files view
+  "todo.automaticSymbol": false, // Insert a new todo box after pressing Enter at the end of a non-empty todo
+  "todo.autoCompleteParents": false, // Mark parents done when Todo: Toggle Done completes all nested todos
   "todo.symbols.box": "☐", // Box symbol
   "todo.symbols.done": "✔", // Done symbol
   "todo.symbols.cancelled": "✘", // Cancelled symbol
+  "todo.colors.enabled": true, // Apply Todo+ editor colors; disable to use the active syntax theme
   "todo.colors.done": "#a6e22e", // Done todo color
   "todo.colors.cancelled": "#f92672", // Cancelled todo color
+  "todo.colors.started": "#4fc1ff", // Started todo color
   "todo.colors.code": "#fd971f", // Code color
   "todo.colors.comment": "#75715e", // Comment color
   "todo.colors.project": "#66d9ef", // Project color
@@ -104,16 +142,24 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.colors.tag": "#e6db74", // Tag color
   "todo.colors.id": "#4fc1ff", // Task ID color
   "todo.colors.dependency": "#c586c0", // Task dependency color
+  "todo.colors.due.overdue": "#ae81ff", // Overdue @due tag color
+  "todo.colors.due.today": "#f92672", // @due tag color for tasks due today
+  "todo.colors.due.soon": "#e5d145", // @due tag color for tasks due soon
+  "todo.colors.due.later": "#a6e22e", // @due tag color for future tasks
   "todo.colors.tags.background": ["#e54545", "#e59f45", "#e5d145", "#ae81ff"], // Special tags' background colors
   "todo.colors.tags.foreground": ["#000000", "#000000", "#000000", "#000000"], // Special tags' foreground colors
+  "todo.colors.tags.lineBackground": [], // Whole-line background colors for special tags, matched by todo.tags.names index; the first colored tag wins (include "started" in todo.tags.names to highlight @started)
   "todo.colors.types": { "TODO": "#ffcc00", "FIXME": "#cc0000" ... }, // Object mapping todo types to their color
+  "todo.decorations.done.strikethrough": true, // Render done todos with strikethrough
   "todo.colors.dark": { /* "done": "white", ... */ }, // Colors for dark themes
   "todo.colors.light": { /* "done": "black", ... */ }, // Colors for light themes
   "todo.tags.names": ["critical", "high", "low", "today"], // Special tags' names
   "todo.tags.namesInference": true, // Infer commonly used tags' names
+  "todo.due.soonDays": 7, // Number of days ahead that @due tags are considered due soon
   "todo.archive.name": "Archive", // Name of the special "Archive" section
   "todo.archive.remove.emptyProjects": true, // Remove projects without todos
-  "todo.archive.remove.emptyLines": 1, // Remove extra empty lines, keeping no more than `emptyLinesThreshold` consecutive empty lines
+  "todo.archive.remove.emptyLines": 1, // Remove extra empty lines, keeping no more than this many consecutive empty lines
+  "todo.archive.remove.tags": ["today"], // Tags to remove from todos when archiving
   "todo.archive.project.enabled": true, // Enable the @project tag
   "todo.archive.project.separator": ".", // String used for joining multiple projects
   "todo.archive.sortByDate": false, // Sort lines by finished date
@@ -124,19 +170,24 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.timekeeping.created.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @created
   "todo.timekeeping.started.time": true, // Insert the time inside the @started tag
   "todo.timekeeping.started.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @started
+  "todo.timekeeping.autoToggle": false, // Automatically pause other active timers when starting a new task
   "todo.timekeeping.finished.enabled": true, // Enable the @done/cancelled tag. It's always enabled if you explicitly start a todo or if you use only 1 symbol
   "todo.timekeeping.finished.time": true, // Insert the time inside the @done/cancelled tag
   "todo.timekeeping.finished.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @done/cancelled
+  "todo.timekeeping.finished.remove.tags": ["today"], // Tags to remove when a todo is marked done or cancelled
   "todo.timekeeping.elapsed.enabled": true, // Enable the @lasted/wasted tag
-  "todo.timekeeping.elapsed.format": "short-compact", // Format used for displaying time diff inside @lasted/waster
+  "todo.timekeeping.elapsed.format": "short-compact", // Format used for displaying time diff inside @lasted/wasted
   "todo.timekeeping.estimate.format": "short-compact", // Format used for the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens
+  "todo.hoursPerDay": 24, // Number of hours represented by one day when formatting short time durations
+  "todo.manHoursPerDay": 8, // Number of hours represented by one man-day when using man-time duration formats
+  "todo.manDaysPerWeek": 5, // Number of man-days represented by one man-week when using man-time duration formats
   "todo.timer.statusbar.enabled": true, // Show a timer for started todos in the statusbar
   "todo.timer.statusbar.alignment": "left", // Should the item be placed to the left or right?
   "todo.timer.statusbar.color": "", // The foreground color for this item
   "todo.timer.statusbar.priority": -10, // The priority of this item. Higher value means the item should be shown more to the left
-  "todo.statistics.project.enabled": "global.projects < 100", // Show statistics next to a project, boolean or JS expression
+  "todo.statistics.project.enabled": "global.projects < 100 && project.all > 0", // Show statistics next to a project, boolean or token condition
   "todo.statistics.project.text": "([pending]) [est]", // Template used for rendering the text
-  "todo.statistics.statusbar.enabled": "global.projects < 100 && project.all > 0", // Show statistics in the statusbar, boolean or JS expression
+  "todo.statistics.statusbar.enabled": "global.all > 0", // Show statistics in the statusbar, boolean or token condition
   "todo.statistics.statusbar.ignoreArchive": true, // Ignore the archive when rendering statistics in the statusbar
   "todo.statistics.statusbar.alignment": "left", // Should the item be placed to the left or right?
   "todo.statistics.statusbar.color": "", // The foreground color for this item
@@ -144,34 +195,44 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.statistics.statusbar.priority": -1, // The priority of this item. Higher value means the item should be shown more to the left
   "todo.statistics.statusbar.text": "$(check) [finished]/[all] ([percentage]%)", // Template used for rendering the text
   "todo.statistics.statusbar.tooltip": "[pending] Pending - [done] Done - [cancelled] Cancelled", // Template used for rendering the tooltip
-  "todo.embedded.regex": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|\\{!|\\{\\{!--|\\{\\{!))|((?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))", // Regex used for finding embedded todos, requires double escaping
+  "todo.embedded.regex": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *\\{%-? *endcomment *-?%\\}| *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|((?: +[^\\n@]*?)(?= *(?:\\{%-? *endcomment *-?%\\}|-->|\\*/|!}|--}}|}}|[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))", // Regex used for finding embedded todos, requires double escaping
   "todo.embedded.regexFlags": "gi", // Regex flags to use
+  "todo.embedded.problems": {"TODO": "warning", "FIXME": "error"}, // Map embedded markers to Problems view severities (disabled by default)
   "todo.embedded.include": ["**/*"], // Globs to use for including files
   "todo.embedded.exclude": ["**/.*", "**/.*/**", ...], // Globs to use for excluding files
+  "todo.embedded.batchSize": 50, // Number of files to process in each embedded-todo discovery batch
+  "todo.embedded.showComments": false, // Show comment-only lines in the Embedded (side) view
   "todo.embedded.provider": "", // The provider to use when searching for embedded todos
-  "todo.embedded.providers.ag.regex": "(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)", // Regex used by ag, requires double escaping
+  "todo.embedded.providers.ag.regex": "(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)", // Regex used by ag, requires double escaping
   "todo.embedded.providers.ag.args": ['--ignore-case'], // Extra arguments to pass to ag
-  "todo.embedded.providers.rg.regex": "(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)", // Regex used by rg, requires double escaping
+  "todo.embedded.providers.rg.regex": "(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)", // Regex used by rg, requires double escaping
   "todo.embedded.providers.rg.args": ['--ignore-case'], // Extra arguments to pass to rg
   "todo.embedded.file.wholeLine": true, // Show the whole line
   "todo.embedded.file.groupByRoot": true, // Group embedded todos by workspace root
   "todo.embedded.file.groupByType": true, // Group embedded todos by type
   "todo.embedded.file.groupByFile": true, // Group embedded todos by file
   "todo.embedded.view.wholeLine": false, // Show the whole line
-  "todo.embedded.view.sortBy": "line", // Sort todos either by label or by source line
+  "todo.embedded.view.showContext": false, // Show the following source line when it is non-blank and not another embedded todo
+  "todo.embedded.view.sort": "line", // Sort todos either by label or by source line
   "todo.embedded.view.groupByRoot": true, // Group embedded todos by workspace root
   "todo.embedded.view.groupByType": true, // Group embedded todos by type
   "todo.embedded.view.groupByFile": true, // Group embedded todos by file
   "todo.embedded.view.expanded": true, // Start the tree in an expanded state
-  "todo.embedded.view.icons": true // Show icons next to todos and types"
+  "todo.embedded.view.icons": true // Show icons next to todos and types
 }
 ```
 
-Changing some settings (symbols, colors, providers...) requires a restart.
+Symbols, colors, view settings, and embedded provider settings refresh when changed.
+
+Statistics visibility conditions read `global` and `project` tokens, such as `global.all > 0 && project.pending > 0`. They support numeric/string/boolean literals, comparisons, arithmetic, logical operators, parentheses, and ternary expressions. Use bracket notation for hyphenated names, such as `project['est-total']`. Function calls, assignments, and arbitrary JavaScript execution are not supported; unsupported conditions evaluate to false.
 
 An actual regex will be generated from the value of the `todo.embedded.regex` setting. It uses 2 capturing groups, the first one captures the type of the todo (`TODO`, `FIXME` etc.) and the second one captures an optional description (`TODO: description`).
 
 Dates are formatted using [moment](https://momentjs.com/docs/#/displaying/format).
+
+`Todo: Toggle Timer` pauses and resumes a started task by appending `@toggle(...)` timestamps. Paused time is excluded from the status bar timer and from the final `@lasted(...)` or `@wasted(...)` duration.
+
+To contribute embedded markers to VS Code's Problems view, map each marker to an `error`, `warning`, `info`, or `hint` severity with `todo.embedded.problems`. Only configured markers are reported. Diagnostics are populated when Todo+2 is active, for example after opening the Embedded Todos view.
 
 ## Embedded Todos Providers
 
@@ -206,6 +267,14 @@ The following tokens can be used in `todo.statistics.project.text`, `todo.statis
 | `[wasted]`                  | Time wasted on task                            |
 | `[elapsed]`                 | Sum of `[lasted]` and `[wasted]`               |
 
+Tag-scoped tokens use `[tag:selector:metric]`. The metric can be any task or time token
+from the table, and defaults to `all`, so `[tag:high]` counts todos tagged `@high` while
+`[tag:high:elapsed]` reports their elapsed time. Join tag names with `&` to require every
+tag or `|` to accept any tag: `[tag:frontend&high:pending]` and
+`[tag:frontend|backend:done]`. `&` is evaluated before `|`, the leading `@` is optional,
+and tag arguments do not affect matching (`@high(review)` matches `high`). These tokens
+work in project text, status bar text and status bar tooltips.
+
 ## Demo
 
 ### [Example todo file](https://github.com/vycdev/vscode-todo-plus-two/blob/master/resources/readme.todo)
@@ -236,6 +305,8 @@ The following tokens can be used in `todo.statistics.project.text`, `todo.statis
 
 - **Dark/Light Themes**: if you switch between dark and light themes, remember that you can provide specific colors for them via the `todo.colors.dark.*` and `todo.colors.light.*` settings, which will override the default `todo.colors.*` settings.
 
+- **Theme Syntax Colors**: set `todo.colors.enabled` to `false` to disable Todo+ editor colors and let the active syntax theme style projects, tasks, comments, formatting and tags. Done-task strikethrough and rendered project statistics remain available.
+
 - **Activity Bar**: you can switch the focus to the `Todo` activity bar view by assigning a shortcut to the `workbench.view.extension.todo` command.
 
 - **Icons**: icons can be used in `todo.statistics.statusbar.text`. [Here](https://octicons.github.com/) you can browse a list of supported icons. If for instance you click the first icon, you'll get a page with `.octicon-alert` written in it, to get the string to use simply remove the `.octicon-` part, so in this case the icon name would be `alert`.
@@ -243,14 +314,14 @@ The following tokens can be used in `todo.statistics.project.text`, `todo.statis
 - **CLI**: you can view your embedded todos from the command line with the `todo` command if you install [ag](https://github.com/ggreer/the_silver_searcher) and add the following to your shell configuration file:
 
 ```bash
-alias todo="ag --color-line-number '1;36' --color-path '1;36' --ignore-case --print-long-lines --silent '(?:<!-- *)?(?:#|//|/\*+|<!--|--) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\([^(]+\))?:?(?!\w)(?: *-->| *\*/|(?= *(?:[^:]//|/\*+|<!--|@|--))|((?: +[^\n@]*?)(?= *(?:[^:]//|/\*+|<!--|@|--))|(?: +[^@\n]+)?))'"
+alias todo="ag --color-line-number '1;36' --color-path '1;36' --ignore-case --print-long-lines --silent '(?:<!-- *)?(?:#|//|/\*+|<!--|--) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\([^(]+\))?:?(?!\w)(?: *-->| *\*/|(?= *(?:[^:]//|/\*+|<!--|@))|((?: +[^\n@]*?)(?= *(?:-->|\*/|[^:]//|/\*+|<!--|@))|(?: +[^@\n]+)?))'"
 ```
 
 ## Contributing
 
 If you found a problem, or have a feature request, please open an [issue](https://github.com/vycdev/vscode-todo-plus-two/issues) about it.
 
-You can find more about contributing here: [CONTRUBUTING.md](/CONTRIBUTING.md)
+You can find more about contributing here: [CONTRIBUTING.md](/CONTRIBUTING.md)
 
 ## License
 

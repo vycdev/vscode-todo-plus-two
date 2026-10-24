@@ -6,413 +6,385 @@ import Config from '../config';
 import Consts from '../consts';
 import { Comment, Project, Tag, TodoBox, TodoDone, TodoCancelled } from '../todo/items';
 import AST from './ast';
+import { getEstimateDuration } from './estimate';
+import { evaluateStatisticsCondition } from './statistics-condition';
+import { getStatisticsLines, getStatisticsScopeEnd } from './statistics-lines';
+import { renderStatisticsTemplate } from './statistics-template';
 import Tokens from './statistics_tokens';
 import Time from './time';
 
 /* STATISTICS */
 
 const Statistics = {
-    /* TIME TAGS */
+  /* TIME TAGS */
 
-    timeTags: {
-        add(tag: string, tokens: Tokens, disabledTokens, disabledEst = false) {
-            const prefix = tag[1];
+  timeTags: {
+    add(tag: string, tokens: Tokens, disabledTokens, disabledEst = false) {
+      const prefix = tag[1];
 
-            if (!disabledTokens.lasted && prefix === 'l') {
-                // Maybe @lasted(2h)
+      if (!disabledTokens.lasted && prefix === 'l') {
+        // Maybe @lasted(2h)
 
-                tokens.lastedSeconds += Statistics.timeTags.parseElapsed(tag);
-            } else if (!disabledTokens.wasted && prefix === 'w') {
-                // maybe @wasted(30m)
+        tokens.lastedSeconds += Statistics.timeTags.parseElapsed(tag);
+      } else if (!disabledTokens.wasted && prefix === 'w') {
+        // maybe @wasted(30m)
 
-                tokens.wastedSeconds += Statistics.timeTags.parseElapsed(tag);
-            } else if (
-                !disabledTokens.est &&
-                (prefix === 'e' || (prefix >= '0' && prefix <= '9'))
-            ) {
-                // Maybe @est(1h20m) or @1h20m
+        tokens.wastedSeconds += Statistics.timeTags.parseElapsed(tag);
+      } else if (!disabledTokens.est && (prefix === 'e' || (prefix >= '0' && prefix <= '9'))) {
+        // Maybe @est(1h20m) or @1h20m
 
-                tokens.estTotalSeconds += Statistics.timeTags.parseEstimate(tag);
+        tokens.estTotalSeconds += Statistics.timeTags.parseEstimate(tag);
 
-                if (!disabledEst) tokens.estSeconds += Statistics.timeTags.parseEstimate(tag);
-            }
-        },
-
-        elapseds: {},
-
-        parseElapsed(tag: string) {
-            if (Statistics.timeTags.elapseds[tag]) return Statistics.timeTags.elapseds[tag];
-
-            const match = tag.match(Consts.regexes.tagElapsed);
-
-            if (!match) return 0;
-
-            const time = match[1],
-                seconds = Time.diffSeconds(time);
-
-            Statistics.timeTags.elapseds[tag] = seconds;
-
-            return seconds;
-        },
-
-        estimates: {}, // It assumes that all estimates are relative to `now`
-
-        parseEstimate(tag: string, from?: Date) {
-            if (Statistics.timeTags.estimates[tag]) return Statistics.timeTags.estimates[tag];
-
-            const est = tag.match(Consts.regexes.tagEstimate);
-
-            if (!est) return 0;
-
-            const time = est[2] || est[1],
-                seconds = Time.diffSeconds(time, from);
-
-            Statistics.timeTags.estimates[tag] = seconds;
-
-            return seconds;
-        },
+        if (!disabledEst) tokens.estSeconds += Statistics.timeTags.parseEstimate(tag);
+      }
     },
 
-    /* CONDITION */
+    elapseds: {},
 
-    condition: {
-        functions: {}, // Cache of functions created from conditions
+    parseElapsed(tag: string) {
+      const manHoursPerDay = Config.getKey('manHoursPerDay'),
+        manDaysPerWeek = Config.getKey('manDaysPerWeek'),
+        cacheKey = `${tag}:${manHoursPerDay}:${manDaysPerWeek}`;
 
-        toFunction(condition) {
-            // Avoiding repeatedly calling `eval`
+      if (Statistics.timeTags.elapseds[cacheKey]) return Statistics.timeTags.elapseds[cacheKey];
 
-            if (Statistics.condition.functions[condition])
-                return Statistics.condition.functions[condition];
+      const match = tag.match(Consts.regexes.tagElapsed);
 
-            const fn = new Function('global', 'project', `return ${condition}`);
+      if (!match) return 0;
 
-            Statistics.condition.functions[condition] = fn;
+      const time = match[1],
+        seconds = Time.durationSeconds(time, undefined, manHoursPerDay, manDaysPerWeek);
 
-            return fn;
-        },
+      Statistics.timeTags.elapseds[cacheKey] = seconds;
 
-        is(condition, globalTokens, projectTokens) {
-            if (_.isBoolean(condition)) return condition;
-
-            if (!globalTokens && !projectTokens) return false;
-
-            const fn = Statistics.condition.toFunction(condition);
-
-            try {
-                return !!fn(globalTokens, projectTokens);
-            } catch (e) {
-                return false;
-            }
-        },
+      return seconds;
     },
 
-    /* TOKENS */
+    estimates: {},
 
-    tokens: {
-        disabled: {
-            // Disabled tokens, no need to compute them
-            global: {},
-            projects: {},
-        },
+    parseEstimate(tag: string, from?: Date) {
+      const manHoursPerDay = Config.getKey('manHoursPerDay'),
+        manDaysPerWeek = Config.getKey('manDaysPerWeek'),
+        time = getEstimateDuration(tag),
+        cacheKey = `${tag}:${manHoursPerDay}:${manDaysPerWeek}`;
+      if (!time) return 0;
 
-        updateDisabledAll() {
-            const tokens = [
-                'est',
-                'est-total',
-                'lasted',
-                'wasted',
-                'elapsed',
-                'est-finished',
-                'est-finished-percentage',
-            ]; // These are the expensive tokens
+      // Calendar and natural-language estimates depend on the reference time.
+      // Cache only explicit durations, which cannot go stale as time passes.
+      const fixedDuration =
+        /^\s*(?:\d+(?:\.\d+)?\s*(?:m[dw]|ms|[smhdwy]|milliseconds?|seconds?|minutes?|hours?|days?|weeks?|years?)\s*)+$/i.test(
+          time
+        );
+      if (fixedDuration && Statistics.timeTags.estimates[cacheKey] !== undefined)
+        return Statistics.timeTags.estimates[cacheKey];
 
-            const globalSettings = [
-                'statistics.statusbar.enabled',
-                'statistics.statusbar.text',
-                'statistics.statusbar.tooltip',
-            ]; // Global settings where tokens could be in use
+      const seconds = Time.durationSeconds(time, from, manHoursPerDay, manDaysPerWeek);
+      if (fixedDuration) Statistics.timeTags.estimates[cacheKey] = seconds;
+      return seconds;
+    },
+  },
 
-            Statistics.tokens.updateDisabled(
-                Statistics.tokens.disabled.global,
-                tokens,
-                globalSettings
+  /* CONDITION */
+
+  condition: {
+    is: evaluateStatisticsCondition,
+  },
+
+  /* TOKENS */
+
+  tokens: {
+    disabled: {
+      // Disabled tokens, no need to compute them
+      global: {},
+      projects: {},
+    },
+
+    updateDisabledAll() {
+      const tokens = [
+        'est',
+        'est-total',
+        'lasted',
+        'wasted',
+        'elapsed',
+        'est-finished',
+        'est-finished-percentage',
+      ]; // These are the expensive tokens
+
+      const globalSettings = [
+        'statistics.statusbar.enabled',
+        'statistics.statusbar.text',
+        'statistics.statusbar.tooltip',
+      ]; // Global settings where tokens could be in use
+
+      Statistics.tokens.updateDisabled(Statistics.tokens.disabled.global, tokens, globalSettings);
+      Statistics.tokens.disabled.global.tagged = !globalSettings.some((setting) =>
+        _.includes(Config.getKey(setting), '[tag:')
+      );
+
+      const projectsSettings = ['statistics.project.enabled', 'statistics.project.text']; // Local settings where tokens could be in use
+
+      Statistics.tokens.updateDisabled(
+        Statistics.tokens.disabled.projects,
+        tokens,
+        projectsSettings
+      );
+      Statistics.tokens.disabled.projects.tagged = !projectsSettings.some((setting) =>
+        _.includes(Config.getKey(setting), '[tag:')
+      );
+    },
+
+    updateDisabled(obj, tokens: string[], settings: string[]) {
+      tokens.forEach((token) => {
+        const dependentTokens =
+          token === 'lasted' || token === 'wasted' ? [token, 'elapsed'] : [token];
+
+        obj[token] = !settings.some((setting) =>
+          dependentTokens.some((dependent) => _.includes(Config.getKey(setting), dependent))
+        );
+      });
+    },
+
+    global: {},
+
+    createTaggedTodo(item) {
+      const todo = new Tokens();
+
+      if (item instanceof TodoBox) {
+        todo.pending = 1;
+      } else if (item instanceof TodoDone) {
+        todo.done = 1;
+      } else if (item instanceof TodoCancelled) {
+        todo.cancelled = 1;
+      } else {
+        return;
+      }
+
+      return todo;
+    },
+
+    addTaggedTodoTag(tag: Tag, todo: Tokens, disabledTokens) {
+      todo.tags++;
+      todo.tagNames.push(tag.text.replace(/^@/, '').replace(/\([^)]*\)$/, ''));
+      Statistics.timeTags.add(tag.text, todo, disabledTokens, todo.pending === 0);
+    },
+
+    updateGlobal(items) {
+      if (items.archive && Config.getKey('statistics.statusbar.ignoreArchive')) {
+        // Keeping only items before the archive
+
+        items = _.reduce(
+          items,
+          (acc, value, key) => {
+            const newValue = _.isArray(value)
+              ? value.filter((item) => item.lineNumber < items.archive.lineNumber)
+              : value;
+
+            acc[key] = newValue;
+
+            return acc;
+          },
+          {}
+        );
+      }
+
+      const tokens = _.extend(new Tokens(), {
+        comments: items.comments.length,
+        projects: items.projects.length,
+        tags: items.tags.length,
+        pending: items.todosBox.length,
+        done: items.todosDone.length,
+        cancelled: items.todosCancelled.length,
+      });
+
+      // We need to add time-based tags (est/lasted/etc.) only for tags that belong
+      // to pending todos — the same behavior used by project-level computation.
+      // To determine whether a tag belongs to a pending todo we merge all relevant
+      // item lists in line-number order and walk them sequentially, tracking
+      // whether the current context is a pending todo (wasPending).
+
+      const lines = getStatisticsLines(items);
+
+      let wasPending = false,
+        taggedTodo: Tokens | undefined;
+
+      for (let i = 0, l = lines.length; i < l; i++) {
+        const nextItem: any = lines[i];
+
+        if (nextItem instanceof Tag) {
+          // tag count already accounted for in tokens.tags
+          Statistics.timeTags.add(
+            nextItem.text,
+            tokens,
+            Statistics.tokens.disabled.global,
+            !wasPending
+          );
+
+          if (taggedTodo) {
+            Statistics.tokens.addTaggedTodoTag(
+              nextItem,
+              taggedTodo,
+              Statistics.tokens.disabled.global
+            );
+          }
+        } else {
+          if (taggedTodo) tokens.taggedTodos.push(taggedTodo);
+
+          taggedTodo =
+            Statistics.tokens.disabled.global.tagged === true
+              ? undefined
+              : Statistics.tokens.createTaggedTodo(nextItem);
+
+          // Only tags attached to a pending todo contribute remaining estimates.
+          // Comments, projects and finished todos all end the pending context.
+          wasPending = nextItem instanceof TodoBox;
+        }
+      }
+
+      if (taggedTodo) tokens.taggedTodos.push(taggedTodo);
+
+      Statistics.tokens.global = tokens;
+    },
+
+    projects: {},
+
+    updateProjects(textDocument: vscode.TextDocument, items) {
+      Statistics.tokens.projects = {};
+
+      if (!items.projects) return;
+
+      const lines = getStatisticsLines(items),
+        archiveLineNumber = items.archive && items.archive.lineNumber;
+
+      items.projects.forEach((project) => {
+        Statistics.tokens.updateProject(
+          textDocument,
+          project,
+          lines,
+          lines.indexOf(project),
+          archiveLineNumber
+        );
+      });
+    },
+
+    updateProject(
+      textDocument: vscode.TextDocument,
+      project,
+      lines,
+      lineNr: number,
+      archiveLineNumber?: number
+    ) {
+      if (Statistics.tokens.projects[project.lineNumber])
+        return Statistics.tokens.projects[project.lineNumber];
+
+      project.level = project.level || AST.getLevel(textDocument, project.line.text);
+
+      const tokens = new Tokens(),
+        includeRemainingDocument = project.lineNumber === archiveLineNumber,
+        scopeEnd = getStatisticsScopeEnd(
+          lines,
+          lineNr,
+          project.level,
+          (item: any) => {
+            item.level = item.level || AST.getLevel(textDocument, item.line.text);
+
+            return item.level;
+          },
+          (item) => item instanceof Tag,
+          includeRemainingDocument
+        );
+
+      let wasPending = false,
+        taggedTodo: Tokens | undefined;
+
+      for (let i = lineNr + 1; i < scopeEnd; i++) {
+        const nextItem = lines[i];
+
+        if (nextItem instanceof Tag) {
+          tokens.tags++;
+
+          Statistics.timeTags.add(
+            nextItem.text,
+            tokens,
+            Statistics.tokens.disabled.projects,
+            !wasPending
+          );
+
+          if (taggedTodo) {
+            Statistics.tokens.addTaggedTodoTag(
+              nextItem,
+              taggedTodo,
+              Statistics.tokens.disabled.projects
+            );
+          }
+        } else {
+          if (taggedTodo) tokens.taggedTodos.push(taggedTodo);
+
+          taggedTodo =
+            Statistics.tokens.disabled.projects.tagged === true
+              ? undefined
+              : Statistics.tokens.createTaggedTodo(nextItem);
+          nextItem.level = nextItem.level || AST.getLevel(textDocument, nextItem.line.text);
+
+          wasPending = nextItem instanceof TodoBox;
+
+          if (nextItem instanceof Project) {
+            const nextTokens = Statistics.tokens.updateProject(
+              textDocument,
+              nextItem,
+              lines,
+              i,
+              archiveLineNumber
             );
 
-            const projectsSettings = ['statistics.project.enabled', 'statistics.project.text']; // Local settings where tokens could be in use
+            tokens.comments += nextTokens.comments;
+            tokens.projects += 1 + nextTokens.projects;
+            tokens.tags += nextTokens.tags;
+            tokens.pending += nextTokens.pending;
+            tokens.done += nextTokens.done;
+            tokens.cancelled += nextTokens.cancelled;
+            tokens.estSeconds += nextTokens.estSeconds;
+            tokens.estTotalSeconds += nextTokens.estTotalSeconds;
+            tokens.lastedSeconds += nextTokens.lastedSeconds;
+            tokens.wastedSeconds += nextTokens.wastedSeconds;
+            tokens.taggedTodos.push(...nextTokens.taggedTodos);
 
-            Statistics.tokens.updateDisabled(
-                Statistics.tokens.disabled.projects,
-                tokens,
-                projectsSettings
-            );
-        },
+            i +=
+              nextTokens.comments +
+              nextTokens.projects +
+              nextTokens.tags +
+              nextTokens.pending +
+              nextTokens.done +
+              nextTokens.cancelled; // Jumping
+          }
+          if (nextItem instanceof Comment) {
+            tokens.comments++;
+          } else if (nextItem instanceof TodoBox) {
+            tokens.pending++;
+          } else if (nextItem instanceof TodoDone) {
+            tokens.done++;
+          } else if (nextItem instanceof TodoCancelled) {
+            tokens.cancelled++;
+          }
+        }
+      }
 
-        updateDisabled(obj, tokens: string[], settings: string[]) {
-            // Ugly name,
+      if (taggedTodo) tokens.taggedTodos.push(taggedTodo);
 
-            tokens.forEach((token) => {
-                obj[token] = !settings.find((setting) => _.includes(Config.getKey(setting), token));
-            });
-        },
+      Statistics.tokens.projects[project.lineNumber] = tokens;
 
-        global: {},
-
-        updateGlobal(items) {
-            if (items.archive && Config.getKey('statistics.statusbar.ignoreArchive')) {
-                // Keeping only items before the archive
-
-                items = _.reduce(
-                    items,
-                    (acc, value, key) => {
-                        const newValue = _.isArray(value)
-                            ? value.filter((item) => item.lineNumber < items.archive.lineNumber)
-                            : value;
-
-                        acc[key] = newValue;
-
-                        return acc;
-                    },
-                    {}
-                );
-            }
-
-            const tokens = _.extend(new Tokens(), {
-                comments: items.comments.length,
-                projects: items.projects.length,
-                tags: items.tags.length,
-                pending: items.todosBox.length,
-                done: items.todosDone.length,
-                cancelled: items.todosCancelled.length,
-            });
-
-            // We need to add time-based tags (est/lasted/etc.) only for tags that belong
-            // to pending todos — the same behavior used by project-level computation.
-            // To determine whether a tag belongs to a pending todo we merge all relevant
-            // item lists in line-number order and walk them sequentially, tracking
-            // whether the current context is a pending todo (wasPending).
-
-            function mergeSorted(arr1, arr2) {
-                // Merge two arrays sorted by lineNumber into a single sorted array
-                const merged = new Array(arr1.length + arr2.length);
-
-                let i = arr1.length - 1,
-                    j = arr2.length - 1,
-                    k = merged.length;
-
-                while (k) {
-                    merged[--k] =
-                        j < 0 || (i >= 0 && arr1[i].lineNumber > arr2[j].lineNumber)
-                            ? arr1[i--]
-                            : arr2[j--];
-                }
-
-                return merged;
-            }
-
-            const groups = [
-                    items.projects || [],
-                    items.todosBox || [],
-                    items.todosDone || [],
-                    items.todosCancelled || [],
-                    items.tags || [],
-                ],
-                lines = groups.reduce((a, b) => mergeSorted(a, b), []);
-
-            let wasPending = false;
-
-            for (let i = 0, l = lines.length; i < l; i++) {
-                const nextItem: any = lines[i];
-
-                if (nextItem instanceof Tag) {
-                    // tag count already accounted for in tokens.tags
-                    Statistics.timeTags.add(
-                        nextItem.text,
-                        tokens,
-                        Statistics.tokens.disabled.global,
-                        !wasPending
-                    );
-                } else {
-                    // Update wasPending state: only TodoBox should set it to true
-                    // finished/cancelled todos (and other items) set it to false
-                    if (nextItem instanceof TodoBox) {
-                        wasPending = true;
-                    } else if (nextItem instanceof TodoDone || nextItem instanceof TodoCancelled) {
-                        wasPending = false;
-                    }
-                }
-            }
-
-            Statistics.tokens.global = tokens;
-        },
-
-        projects: {},
-
-        updateProjects(textDocument: vscode.TextDocument, items) {
-            Statistics.tokens.projects = {};
-
-            if (!items.projects) return;
-
-            function mergeSorted(arr1, arr2) {
-                //URL: https://stackoverflow.com/questions/5958169/how-to-merge-two-sorted-arrays-into-a-sorted-array#answer-31310853
-
-                const merged = new Array(arr1.length + arr2.length);
-
-                let i = arr1.length - 1,
-                    j = arr2.length - 1,
-                    k = merged.length;
-
-                while (k) {
-                    merged[--k] =
-                        j < 0 || (i >= 0 && arr1[i].lineNumber > arr2[j].lineNumber)
-                            ? arr1[i--]
-                            : arr2[j--];
-                }
-
-                return merged;
-            }
-
-            const groups = [
-                    items.projects,
-                    items.todosBox,
-                    items.todosDone,
-                    items.todosCancelled,
-                    items.tags,
-                    items.comments,
-                ],
-                lines = groups.reduce((arr1, arr2) => mergeSorted(arr1, arr2));
-
-            items.projects.forEach((project) => {
-                Statistics.tokens.updateProject(
-                    textDocument,
-                    project,
-                    lines,
-                    lines.indexOf(project)
-                );
-            });
-        },
-
-        updateProject(textDocument: vscode.TextDocument, project, lines, lineNr: number) {
-            if (Statistics.tokens.projects[project.lineNumber])
-                return Statistics.tokens.projects[project.lineNumber];
-
-            project.level = project.level || AST.getLevel(textDocument, project.line.text);
-
-            const tokens = new Tokens();
-
-            let wasPending = false;
-
-            for (let i = lineNr + 1, l = lines.length; i < l; i++) {
-                const nextItem = lines[i];
-
-                if (nextItem instanceof Tag) {
-                    tokens.tags++;
-
-                    Statistics.timeTags.add(
-                        nextItem.text,
-                        tokens,
-                        Statistics.tokens.disabled.projects,
-                        !wasPending
-                    );
-                } else {
-                    nextItem.level =
-                        nextItem.level || AST.getLevel(textDocument, nextItem.line.text);
-
-                    if (nextItem.level <= project.level) break;
-
-                    wasPending = nextItem instanceof TodoBox;
-
-                    if (nextItem instanceof Project) {
-                        const nextTokens = Statistics.tokens.updateProject(
-                            textDocument,
-                            nextItem,
-                            lines,
-                            i
-                        );
-
-                        tokens.comments += nextTokens.comments;
-                        tokens.projects += 1 + nextTokens.projects;
-                        tokens.tags += nextTokens.tags;
-                        tokens.pending += nextTokens.pending;
-                        tokens.done += nextTokens.done;
-                        tokens.cancelled += nextTokens.cancelled;
-                        tokens.estSeconds += nextTokens.estSeconds;
-                        tokens.estTotalSeconds += nextTokens.estTotalSeconds;
-                        tokens.lastedSeconds += nextTokens.lastedSeconds;
-                        tokens.wastedSeconds += nextTokens.wastedSeconds;
-
-                        i +=
-                            nextTokens.comments +
-                            nextTokens.projects +
-                            nextTokens.tags +
-                            nextTokens.pending +
-                            nextTokens.done +
-                            nextTokens.cancelled; // Jumping
-                    }
-                    if (nextItem instanceof Comment) {
-                        tokens.comments++;
-                    } else if (nextItem instanceof TodoBox) {
-                        tokens.pending++;
-                    } else if (nextItem instanceof TodoDone) {
-                        tokens.done++;
-                    } else if (nextItem instanceof TodoCancelled) {
-                        tokens.cancelled++;
-                    }
-                }
-            }
-
-            Statistics.tokens.projects[project.lineNumber] = tokens;
-
-            return tokens;
-        },
+      return tokens;
     },
+  },
 
-    /* TEMPLATE */
+  /* TEMPLATE */
 
-    template: {
-        tokensRe: {}, // Map of `token => tokenRe`
+  template: {
+    render(template: string, tokens = Statistics.tokens.global) {
+      if (!tokens) return;
 
-        getTokenRe(token) {
-            if (Statistics.template.tokensRe[token]) return Statistics.template.tokensRe[token];
-
-            const re = new RegExp(`\\[${_.escapeRegExp(token)}\\]`, 'g');
-
-            Statistics.template.tokensRe[token] = re;
-
-            return re;
-        },
-
-        render(template: string, tokens = Statistics.getTokens()) {
-            if (!tokens) return;
-
-            // Tokens that represent formatted time. Their getters return an
-            // empty string when no seconds are present. Substitute a sensible
-            // default so templates don't end up with invisible gaps.
-            const timeTokens = new Set([
-                'est',
-                'est-total',
-                'est-finished',
-                'lasted',
-                'wasted',
-                'elapsed',
-            ]);
-
-            for (let token of Tokens.supported) {
-                const re = Statistics.template.getTokenRe(token);
-
-                if (!re.test(template)) continue;
-
-                let value: any = tokens[token];
-
-                // If the token is one of the time tokens and its value is an
-                // empty string, replace it with a visible default ("0").
-                if (timeTokens.has(token) && value === '') value = '0s';
-
-                template = template.replace(re, value);
-            }
-
-            return template;
-        },
+      return renderStatisticsTemplate(template, tokens, Tokens.supported);
     },
+  },
 };
 
 /* EXPORT */

@@ -2,233 +2,319 @@
 
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as pify from 'pify';
 import Config from '../config';
 import FilesView from '../views/files';
+import { Due } from '../views/due';
+import { hasConditionalExcludeGlobs, isFileIncluded } from './file-globs';
 import Folder from './folder';
+import { matchesFilesViewFilter } from './files-view-filter';
+import { mapFulfilled } from './promises';
+import { getWorkspaceExcludeRules } from './workspace-excludes';
+import { getBatchSize } from './batch-size';
+import { getUniqueRootKeys } from './file-groups';
+import { discoverFiles, isAllowedFilePath } from './file-discovery';
 
 /* FILES */
 
 class Files {
-    //FIXME: There's some code duplication between this and `embedded`
+  //FIXME: There's some code duplication between this and `embedded`
 
-    include = undefined;
-    exclude = undefined;
-    rootPaths = undefined;
-    filesData = undefined; // { [filePath]: todo | undefined }
-    watcher: vscode.FileSystemWatcher = undefined;
+  include = undefined;
+  exclude = undefined;
+  rootPaths = undefined;
+  configSignature = undefined;
+  filesData = undefined; // { [filePath]: todo | undefined }
+  watchers: vscode.FileSystemWatcher[] = [];
+  private watcherCleanup: (() => void)[] = [];
+  private watcherGeneration = 0;
+  private disposed = false;
+  private dataRefreshQueue: Promise<any> = Promise.resolve();
+  private fileDataRevisions: { [filePath: string]: number } = {};
 
-    async get(rootPaths = Folder.getAllRootPaths()) {
-        rootPaths = _.castArray(rootPaths);
+  get(rootPaths = Folder.getAllRootPaths(), filter: string | false = false) {
+    const next = this.dataRefreshQueue.then(() => this.getNow(rootPaths, filter));
+    this.dataRefreshQueue = next.catch(() => undefined);
+    return next;
+  }
 
-        const config = Config.get();
+  private async getNow(rootPaths = Folder.getAllRootPaths(), filter: string | false = false) {
+    if (this.disposed) return;
 
-        this.include = config.file.include;
-        this.exclude = config.file.exclude;
+    rootPaths = _.castArray(rootPaths);
 
-        if (!this.filesData || !_.isEqual(this.rootPaths, rootPaths)) {
-            this.rootPaths = rootPaths;
-            this.unwatchPaths();
-            await this.initFilesData(rootPaths);
-            this.watchPaths();
-        } else {
-            await this.updateFilesData();
+    const config = Config.get();
+
+    this.include = config.file.include;
+    this.exclude = config.file.exclude;
+
+    const configSignature = JSON.stringify({
+      include: this.include,
+      exclude: this.exclude,
+      followSymlinks: !!config.followSymlinks,
+      workspaceExclude: rootPaths.map((rootPath) => getWorkspaceExcludeRules(rootPath)),
+    });
+
+    if (
+      !this.filesData ||
+      !_.isEqual(this.rootPaths, rootPaths) ||
+      this.configSignature !== configSignature
+    ) {
+      this.rootPaths = rootPaths;
+      this.unwatchPaths();
+      const generation = this.watcherGeneration;
+      await this.initFilesData(rootPaths);
+      if (this.disposed || generation !== this.watcherGeneration) return;
+      this.configSignature = configSignature;
+      this.watchPaths();
+    } else {
+      await this.updateFilesData();
+    }
+
+    if (this.disposed) return;
+
+    this.updateContext();
+
+    return this.getTodos(filter);
+  }
+
+  async watchPaths() {
+    /* HELPERS */
+
+    const pathNormalizer = (filePath) => filePath.replace(/\\/g, '/');
+
+    /* HANDLERS */
+
+    const refresh = _.debounce(() => {
+      FilesView.refresh();
+      Due.refresh();
+    }, 250);
+    const rescan = _.debounce(() => {
+      this.configSignature = undefined;
+      FilesView.refresh();
+      Due.refresh();
+    }, 250);
+
+    this.watcherCleanup.push(
+      () => refresh.cancel(),
+      () => rescan.cancel()
+    );
+    const invalidate = (filePath: string) => {
+      this.fileDataRevisions[filePath] = (this.fileDataRevisions[filePath] || 0) + 1;
+    };
+
+    const add = (event) => {
+      if (!this.filesData) return;
+      const filePath = pathNormalizer(event.fsPath);
+      if (this.filesData.hasOwnProperty(filePath)) return;
+      if (!this.isIncluded(filePath)) return;
+      invalidate(filePath);
+      this.filesData[filePath] = undefined;
+      refresh();
+    };
+
+    const change = (event) => {
+      if (!this.filesData) return;
+      const filePath = pathNormalizer(event.fsPath);
+      if (!this.isIncluded(filePath)) {
+        invalidate(filePath);
+        delete this.filesData[filePath];
+        refresh();
+        return;
+      }
+      invalidate(filePath);
+      this.filesData[filePath] = undefined;
+      refresh();
+    };
+
+    const unlink = (event) => {
+      if (!this.filesData) return;
+      const filePath = pathNormalizer(event.fsPath);
+      invalidate(filePath);
+      delete this.filesData[filePath];
+      refresh();
+    };
+
+    /* WATCHING */
+
+    this.include.forEach((glob) => {
+      const watcher = vscode.workspace.createFileSystemWatcher(glob);
+
+      watcher.onDidCreate(add);
+      watcher.onDidChange(change);
+      watcher.onDidDelete(unlink);
+      this.watchers.push(watcher);
+    });
+
+    if (
+      this.rootPaths.some((rootPath) =>
+        hasConditionalExcludeGlobs(getWorkspaceExcludeRules(rootPath))
+      )
+    ) {
+      const watcher = vscode.workspace.createFileSystemWatcher('**/*');
+
+      watcher.onDidCreate(rescan);
+      watcher.onDidDelete(rescan);
+      this.watchers.push(watcher);
+    }
+  }
+
+  unwatchPaths() {
+    this.watcherGeneration += 1;
+    this.configSignature = undefined;
+    this.watcherCleanup.forEach((cleanup) => cleanup());
+    this.watcherCleanup = [];
+    this.watchers.forEach((watcher) => watcher.dispose());
+    this.watchers = [];
+  }
+
+  dispose() {
+    this.disposed = true;
+    this.unwatchPaths();
+  }
+
+  getIncluded(filePaths) {
+    return filePaths.filter(
+      (filePath) =>
+        isAllowedFilePath(
+          filePath,
+          this.rootPaths || Folder.getAllRootPaths(),
+          !!Config.getKey('followSymlinks')
+        ) &&
+        isFileIncluded(
+          filePath,
+          Folder.getRootPath(filePath),
+          this.include,
+          this.exclude || [],
+          getWorkspaceExcludeRules(filePath)
+        )
+    );
+  }
+
+  isIncluded(filePath) {
+    return !!this.getIncluded([filePath]).length;
+  }
+
+  async getFilePaths(rootPaths): Promise<string[]> {
+    const config = Config.get();
+
+    return discoverFiles(
+      rootPaths,
+      config.file.include || [],
+      config.file.exclude || [],
+      !!config.followSymlinks,
+      getWorkspaceExcludeRules
+    );
+  }
+
+  async initFilesData(rootPaths) {
+    const filePaths = await this.getFilePaths(rootPaths);
+
+    this.filesData = {};
+
+    const BATCH_SIZE = getBatchSize(Config.get().file.batchSize);
+    for (let i = 0; i < filePaths.length; i += BATCH_SIZE) {
+      const batch = filePaths.slice(i, i + BATCH_SIZE);
+      await mapFulfilled(
+        batch,
+        async (filePath: string) => {
+          const revision = this.fileDataRevisions[filePath] || 0;
+          const data = await this.getFileData(filePath);
+          if (revision === (this.fileDataRevisions[filePath] || 0)) {
+            this.filesData[filePath] = data;
+          }
+        },
+        (filePath, error) => {
+          delete this.filesData[filePath];
+          console.warn(`Todo+: Could not open ${filePath}`, error);
         }
-
-        this.updateContext();
-
-        return this.getTodos();
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
+  }
 
-    async watchPaths() {
-        /* HELPERS */
+  async updateFilesData() {
+    if (_.isEmpty(this.filesData)) return;
 
-        const pathNormalizer = (filePath) => filePath.replace(/\\/g, '/');
+    const pending = Object.keys(this.filesData).filter((filePath) => !this.filesData[filePath]);
+    if (!pending.length) return;
 
-        /* HANDLERS */
-
-        const refresh = _.debounce(() => FilesView.refresh(), 250);
-
-        const add = (event) => {
-            console.log('add', event.fsPath);
-            if (!this.filesData) return;
-            const filePath = pathNormalizer(event.fsPath);
-            if (this.filesData.hasOwnProperty(filePath)) return;
-            if (!this.isIncluded(filePath)) return;
-            this.filesData[filePath] = undefined;
-            refresh();
-        };
-
-        const change = (event) => {
-            console.log('change', event.fsPath);
-            if (!this.filesData) return;
-            const filePath = pathNormalizer(event.fsPath);
-            if (!this.isIncluded(filePath)) return;
-            this.filesData[filePath] = undefined;
-            refresh();
-        };
-
-        const unlink = (event) => {
-            console.log('unlink', event.fsPath);
-            if (!this.filesData) return;
-            const filePath = pathNormalizer(event.fsPath);
-            delete this.filesData[filePath];
-            refresh();
-        };
-
-        /* WATCHING */
-
-        this.include.forEach((glob) => {
-            this.watcher = vscode.workspace.createFileSystemWatcher(glob);
-
-            this.watcher.onDidCreate(add);
-            this.watcher.onDidChange(change);
-            this.watcher.onDidDelete(unlink);
-        });
-    }
-
-    unwatchPaths() {
-        if (!this.watcher) return;
-
-        this.watcher.dispose();
-    }
-
-    getIncluded(filePaths) {
-        const micromatch = require('micromatch'); // Lazy import for performance
-
-        return micromatch(filePaths, this.include, { ignore: this.exclude, dot: true });
-    }
-
-    isIncluded(filePath) {
-        return !!this.getIncluded([filePath]).length;
-    }
-
-    async getFilePaths(rootPaths): Promise<string[]> {
-        const globby = require('globby'); // Lazy import for performance
-
-        const config = Config.get(),
-            include = config.file.include || [],
-            exclude = config.file.exclude || [],
-            follow = !!Config.getKey('followSymlinks');
-
-        const raw = _.flatten(
-            await Promise.all(
-                rootPaths.map((cwd) =>
-                    globby(include, {
-                        cwd,
-                        ignore: exclude,
-                        dot: true,
-                        absolute: true,
-                        followSymbolicLinks: follow,
-                    })
-                )
-            )
-        ) as string[]; //TSC
-
-        // Deduplicate by realpath to avoid cycles and duplicate targets (defensive)
-        const seen = new Set<string>();
-        const result: string[] = [];
-        for (const fp of raw) {
-            let rp: string;
-            try {
-                rp = await (pify(fs.realpath) as any)(fp);
-            } catch (e) {
-                rp = fp;
-            }
-            if (!seen.has(rp)) {
-                seen.add(rp);
-                result.push(fp);
-            }
+    const BATCH_SIZE = getBatchSize(Config.get().file.batchSize);
+    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      const batch = pending.slice(i, i + BATCH_SIZE);
+      await mapFulfilled(
+        batch,
+        async (filePath: string) => {
+          const revision = this.fileDataRevisions[filePath] || 0;
+          const data = await this.getFileData(filePath);
+          if (revision === (this.fileDataRevisions[filePath] || 0)) {
+            this.filesData[filePath] = data;
+          }
+        },
+        (filePath, error) => {
+          delete this.filesData[filePath];
+          console.warn(`Todo+: Could not open ${filePath}`, error);
         }
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
 
-        return result;
+  async getFileData(filePath) {
+    const parsedPath = Folder.parsePath(filePath),
+      textEditor = await vscode.workspace.openTextDocument(filePath);
+
+    return {
+      textEditor,
+      filePath,
+      root: parsedPath.root,
+      rootPath: parsedPath.rootPath,
+      relativePath: parsedPath.relativePath,
+    };
+  }
+
+  getTodos(filter: string | false = false) {
+    if (_.isEmpty(this.filesData)) return;
+
+    const todos = Object.create(null), // { [ROOT] { { [FILEPATH] => [DATA] } }
+      filePaths = Object.keys(this.filesData);
+    const visibleFiles = filePaths
+      .map((filePath) => ({ filePath, data: this.filesData[filePath] }))
+      .filter(({ filePath, data }) => {
+        if (!data) return false;
+        return !filter || matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()]);
+      });
+    const rootKeys = getUniqueRootKeys(
+      visibleFiles.map(({ data }) => ({ root: data.root, rootPath: data.rootPath }))
+    );
+
+    visibleFiles.forEach(({ filePath, data }, index) => {
+      const root = rootKeys[index];
+
+      if (!todos[root]) todos[root] = Object.create(null);
+
+      todos[root][filePath] = data;
+    });
+
+    return this.simplifyTodos(todos);
+  }
+
+  simplifyTodos(obj) {
+    if (_.isObject(obj)) {
+      const keys = Object.keys(obj);
+
+      if (keys.length === 1) {
+        obj[''] = this.simplifyTodos(obj[keys[0]]);
+      }
     }
 
-    async initFilesData(rootPaths) {
-        const filePaths = await this.getFilePaths(rootPaths);
+    return obj;
+  }
 
-        this.filesData = {};
+  updateContext() {
+    const filesNr = Object.keys(this.filesData).length;
 
-        const BATCH_SIZE = Math.max(1, Number(Config.get().file.batchSize) || 50);
-        for (let i = 0; i < filePaths.length; i += BATCH_SIZE) {
-            const batch = filePaths.slice(i, i + BATCH_SIZE);
-            await Promise.all(
-                batch.map(async (filePath: string) => {
-                    this.filesData[filePath] = await this.getFileData(filePath);
-                })
-            );
-            await new Promise((resolve) => setTimeout(resolve, 0));
-        }
-    }
-
-    async updateFilesData() {
-        if (_.isEmpty(this.filesData)) return;
-
-        const pending = Object.keys(this.filesData).filter((filePath) => !this.filesData[filePath]);
-        if (!pending.length) return;
-
-        const BATCH_SIZE = Math.max(1, Number(Config.get().file.batchSize) || 50);
-        for (let i = 0; i < pending.length; i += BATCH_SIZE) {
-            const batch = pending.slice(i, i + BATCH_SIZE);
-            await Promise.all(
-                batch.map(async (filePath: string) => {
-                    this.filesData[filePath] = await this.getFileData(filePath);
-                })
-            );
-            await new Promise((resolve) => setTimeout(resolve, 0));
-        }
-    }
-
-    async getFileData(filePath) {
-        const parsedPath = Folder.parsePath(filePath),
-            textEditor = await vscode.workspace.openTextDocument(filePath);
-
-        return {
-            textEditor,
-            filePath,
-            root: parsedPath.root,
-            rootPath: parsedPath.rootPath,
-            relativePath: parsedPath.relativePath,
-        };
-    }
-
-    getTodos() {
-        if (_.isEmpty(this.filesData)) return;
-
-        const todos = {}, // { [ROOT] { { [FILEPATH] => [DATA] } }
-            filePaths = Object.keys(this.filesData);
-
-        filePaths.forEach((filePath) => {
-            const data = this.filesData[filePath];
-
-            if (!data) return;
-
-            if (!todos[data.root]) todos[data.root] = {};
-
-            todos[data.root][filePath] = data;
-        });
-
-        return this.simplifyTodos(todos);
-    }
-
-    simplifyTodos(obj) {
-        if (_.isObject(obj)) {
-            const keys = Object.keys(obj);
-
-            if (keys.length === 1) {
-                obj[''] = this.simplifyTodos(obj[keys[0]]);
-            }
-        }
-
-        return obj;
-    }
-
-    updateContext() {
-        const filesNr = Object.keys(this.filesData).length;
-
-        vscode.commands.executeCommand('setContext', 'todo-files-open-button', filesNr <= 1);
-    }
+    vscode.commands.executeCommand('setContext', 'todo-files-open-button', filesNr <= 1);
+  }
 }
 
 /* EXPORT */

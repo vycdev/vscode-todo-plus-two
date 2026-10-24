@@ -16,16 +16,16 @@ import TodoCancelled from './todo_cancelled';
 /* EXPORT */
 
 export {
-    Archive,
-    Comment,
-    Formatted,
-    Item,
-    Line,
-    Project,
-    Tag,
-    Todo,
-    TodoBox,
-    TodoFinished,
-    TodoDone,
-    TodoCancelled,
+  Archive,
+  Comment,
+  Formatted,
+  Item,
+  Line,
+  Project,
+  Tag,
+  Todo,
+  TodoBox,
+  TodoFinished,
+  TodoDone,
+  TodoCancelled,
 };

@@ -6,7 +6,8 @@ This document explains how to set up the project locally, install prerequisites,
 
 ## Prerequisites
 
-- Node.js (LTS recommended) and npm
+- Node.js 22 or 24 and npm for development and tests
+- Visual Studio Code 1.36 or newer to run the extension
 - (Optional) `vsce` if you want to package/publish the extension locally:
 
 ```powershell
@@ -21,7 +22,13 @@ From the repository root run:
 npm install
 ```
 
-This will install runtime and dev dependencies listed in `package.json`.
+This installs the runtime and development dependencies, including pinned TypeScript and VS Code API definitions. Use `npm ci` for a reproducible installation from the lockfile.
+
+## Validation
+
+Run `npm run check` before submitting changes. It runs type checking, the test suite, the development build, and formatting checks. Run `npm run format` to apply the repository's Prettier configuration. Git stores text files with LF line endings so formatting checks behave consistently on Windows and Unix.
+
+Tests run directly through the CommonJS TypeScript loader. They do not need an experimental Node.js ESM loader or a downloaded VS Code installation. VS Code declarations are checked against the declared minimum API version. Type checking skips third-party declaration internals because some pinned legacy dependencies use older Node definitions; application and test code are still checked.
 
 ## Build the extension
 
@@ -44,7 +51,7 @@ Note: the `compile:watch` command is handy while debugging; it keeps `out/` upda
 
 1. Open the project folder in VS Code.
 2. Make sure the project is compiled at least once (`npm run compile`) or run `npm run compile:watch` in a terminal.
-3. Open `extension.js`.
+3. Open a TypeScript source file in `src/`.
 4. Press F5 (or Run > Start Debugging). VS Code will open a new Extension Development Host window with the extension loaded.
 
 Tips:
@@ -76,9 +83,9 @@ Replace `<version>` with the actual package filename produced by `vsce package`.
 git checkout -b feat/awesome-improvement
 ```
 
-3. Make your changes, run `npm run compile` or `npm run compile:watch`.
+3. Make your changes and run `npm run check`.
 4. Commit changes with clear messages and push your branch to your fork.
-5. Open a Pull Request against `vycdev/vscode-todo-plus-two` and describe the change.
+5. Open a Pull Request against the `develop` branch of `vycdev/vscode-todo-plus-two` and describe the change. Pull requests are squash merged.
 
 Guidelines:
 

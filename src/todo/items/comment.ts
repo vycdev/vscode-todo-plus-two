@@ -6,9 +6,9 @@ import Item from './item';
 /* COMMENT */
 
 class Comment extends Item {
-    static is(str: string) {
-        return super.is(str, Consts.regexes.comment);
-    }
+  static is(str: string) {
+    return super.is(str, Consts.regexes.comment);
+  }
 }
 
 /* EXPORT */

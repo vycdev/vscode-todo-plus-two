@@ -1,37 +1,36 @@
-/* IMPORT */
-
-import * as _ from 'lodash';
+import { splitLines } from './line-splitting';
 
 /* ACKMATE */
 
 const Ackmate = {
-    newLineRe: /\r?\n/g,
-    filePathRe: /^(?=\D):?([^]*)$/,
-    matchLineRe: /^(\d+)(?:;\d+ \d+)?:([^]*)$/,
+  filePathRe: /^:?([^]+)$/,
+  matchLineRe: /^(\d+)(?:;\d+ \d+(?:,\d+ \d+)*)?:([^]*)$/,
 
-    normalizePath(filePath) {
-        return filePath.replace(/\\/g, '/');
-    },
+  normalizePath(filePath) {
+    return filePath.replace(/\\/g, '/');
+  },
 
-    parse(str) {
-        const lines = str.split(Ackmate.newLineRe);
+  parse(str) {
+    const lines = splitLines(str);
 
-        let filePath, match;
+    let filePath, match;
 
-        return _.compact(
-            lines.map((line) => {
-                if ((match = line.match(Ackmate.filePathRe))) {
-                    filePath = Ackmate.normalizePath(match[1]);
-                } else if ((match = line.match(Ackmate.matchLineRe))) {
-                    return {
-                        filePath,
-                        lineNr: parseInt(match[1]) - 1, // 0-index
-                        line: match[2],
-                    };
-                }
-            })
-        );
-    },
+    return lines
+      .map((line) => {
+        if ((match = line.match(Ackmate.matchLineRe))) {
+          if (!filePath) return;
+
+          return {
+            filePath,
+            lineNr: parseInt(match[1]) - 1, // 0-index
+            line: match[2],
+          };
+        } else if ((match = line.match(Ackmate.filePathRe))) {
+          filePath = Ackmate.normalizePath(match[1]);
+        }
+      })
+      .filter(Boolean);
+  },
 };
 
 /* EXPORT */
