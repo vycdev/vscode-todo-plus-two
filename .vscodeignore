@@ -9,3 +9,13 @@ src/**
 test/**
 tsconfig.json
 webpack.config.js
+.github/**
+.editorconfig
+.gitattributes
+.mocharc.json
+.prettierignore
+.prettierrc
+.todo
+AGENTS.md
+CODE_REVIEW.md
+CONTRIBUTING.md
