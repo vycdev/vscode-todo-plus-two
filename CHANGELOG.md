@@ -99,6 +99,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Task commands and dependencies
 
+- Made `Todo: Toggle Done` (`Alt+D`) and `Todo: Toggle Cancelled` (`Alt+C`) respond immediately for tasks without `@depends(...)`. They previously scanned every workspace Todo file first, which took several seconds in large workspaces and discarded the toggle if the file was edited meanwhile.
 - Prevented task commands from applying stale edits after dependency checks or pickers, kept tree actions bound to their target editor, and excluded unselected tasks at the start of a selection's ending line.
 - Fixed dependency checks being skipped when toggling directly between done and cancelled states. [#153](https://github.com/vycdev/vscode-todo-plus-two/issues/153)
 - Fixed dependency indexing for IDs such as `constructor` and `__proto__`, and stopped disposed diagnostic providers from republishing results.

@@ -197,7 +197,10 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
 
   if (!possibleLines.length) return;
 
-  const dependencyIndex = await DependencyIndex.get(textEditor.document),
+  const needsIndex = possibleLines.some(
+      (lineNumber) => getDependencies((doc.getTodoAt(lineNumber, true) as Todo).text).length
+    ),
+    dependencyIndex = needsIndex ? await DependencyIndex.get(textEditor.document) : undefined,
     parentLines: number[] = [],
     remainingLines = possibleLines.slice();
 
@@ -950,15 +953,22 @@ async function getBlockedTodos(
   virtuallyFinishedLines: number[] = [],
   existingIndex?: any
 ) {
+  const candidates = todos
+    .map((todo) => ({ todo, dependencies: getDependencies(todo.text) }))
+    .filter(({ dependencies }) => dependencies.length);
+
+  // Building the index scans the whole workspace, so skip it for tasks without dependencies.
+  if (!candidates.length) return [];
+
   const index = existingIndex || (await DependencyIndex.get(document)),
     virtuallyFinished = new Set(virtuallyFinishedLines),
     isFinished = (target: DependencyTarget) =>
       (target.filePath === document.uri.fsPath && virtuallyFinished.has(target.lineNumber)) ||
       DependencyIndex.isFinished(target);
 
-  return todos
-    .map((todo) => {
-      const ids = getUnresolvedIds(getDependencies(todo.text), index.targets, isFinished);
+  return candidates
+    .map(({ todo, dependencies }) => {
+      const ids = getUnresolvedIds(dependencies, index.targets, isFinished);
 
       return { todo, ids };
     })
