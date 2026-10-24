@@ -70,6 +70,10 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 - Added a command to export the active Todo file as a standalone HTML document, preserving task hierarchy, status, comments, and inline formatting. [#85](https://github.com/vycdev/vscode-todo-plus-two/issues/85)
 - Added a command to export the active Todo file as a Markdown task list, preserving hierarchy (including skipped indentation levels), status, literal text, comments, and inline formatting. [#29](https://github.com/vycdev/vscode-todo-plus-two/issues/29)
 
+##### Support
+
+- Added a Sponsor button to the extension page in VS Code, linking to the project's Patreon.
+
 ##### Workspace and performance
 
 - Applied enabled workspace `files.exclude` globs when discovering Todo files and embedded todos. [#67](https://github.com/vycdev/vscode-todo-plus-two/issues/67)
