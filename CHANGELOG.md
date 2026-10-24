@@ -2,6 +2,7 @@
 
 #### Review fixes
 
+- Resolved relative file links containing URL-encoded brackets without truncating filenames or including surrounding punctuation.
 - Preserved code spans containing three or more spaces when exporting Todo files to Markdown.
 - Offered known tag-argument completions inside auto-closed parentheses without inserting a duplicate closing parenthesis.
 - Preserved punctuation immediately before a completion or elapsed-time tag when reopening a task.

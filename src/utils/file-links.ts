@@ -13,8 +13,14 @@ const trimTrailingPunctuation = (link: string): string => {
     const closing = link[link.length - 1],
       opening = openingDelimiter[closing];
 
-    // A balanced closer belongs to the filename; an unmatched one wraps the link.
-    if (opening && link.split(opening).length >= link.split(closing).length) break;
+    // Count URL-encoded delimiters too: an encoded opening bracket can pair
+    // with a literal closing bracket in the filename (and vice versa).
+    const balancedPath = link.replace(/%(28|29|5b|5d|7b|7d)/gi, (_match, hex: string) =>
+      String.fromCharCode(parseInt(hex, 16))
+    );
+    const isBalanced =
+      opening && balancedPath.split(opening).length >= balancedPath.split(closing).length;
+    if (isBalanced) break;
     link = link.slice(0, -1);
   }
   return link;
