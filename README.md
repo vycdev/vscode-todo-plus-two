@@ -3,6 +3,8 @@
 A lightweight, plain-text todo manager for Visual Studio Code. Powerful, customizable and easy to use. [View the demo](#demo).
 This extension is a continuation of the original Todo+ extension by [Fabio Spampinato](https://github.com/fabiospampinato/vscode-todo-plus) and will break compatibility with some of the features. Old issues have been imported from the original repository and will be addressed.
 
+[![Version](https://vsmarketplacebadges.dev/version-short/vycdev.vscode-todo-plus-two.svg)](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two) [![Installs](https://vsmarketplacebadges.dev/installs-short/vycdev.vscode-todo-plus-two.svg)](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two) [![Rating](https://vsmarketplacebadges.dev/rating-short/vycdev.vscode-todo-plus-two.svg)](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two&ssr=false#review-details) [![Build](https://img.shields.io/github/actions/workflow/status/vycdev/vscode-todo-plus-two/check.yml?branch=develop&cacheSeconds=3600)](https://github.com/vycdev/vscode-todo-plus-two/actions/workflows/check.yml) [![License](https://img.shields.io/github/license/vycdev/vscode-todo-plus-two?cacheSeconds=3600)](LICENSE) [![Patreon](https://img.shields.io/badge/Patreon-Support-orange?logo=patreon&logoColor=white)](https://www.patreon.com/cw/vycdev)
+
 ## Features
 
 - **Easy to use**: you're just a few shortcuts away from becoming a master
