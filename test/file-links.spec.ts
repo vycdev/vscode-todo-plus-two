@@ -69,6 +69,26 @@ describe('Relative file links', () => {
     ]);
   });
 
+  it('counts encoded opening delimiters when trimming relative links', () => {
+    const text = 'See file://./report%282026) and (file://./draft%5B1])';
+    const links = findRelativeFileLinks(text, documentPath);
+    expect(links.map((link) => text.slice(link.start, link.end))).to.deep.equal([
+      'file://./report%282026)',
+      'file://./draft%5B1]',
+    ]);
+    expect(links.map((link) => path.basename(link.targetPath))).to.deep.equal([
+      'report(2026)',
+      'draft[1]',
+    ]);
+  });
+
+  it('trims an unmatched closer after an encoded closing delimiter', () => {
+    const text = '(file://./draft[1%5D])';
+    const [link] = findRelativeFileLinks(text, documentPath);
+    expect(text.slice(link.start, link.end)).to.equal('file://./draft[1%5D');
+    expect(path.basename(link.targetPath)).to.equal('draft[1]');
+  });
+
   it('ignores absolute, embedded, empty, and malformed file links', () => {
     expect(findRelativeFileLinks('file:///tmp/absolute.txt', documentPath)).to.deep.equal([]);
     expect(
