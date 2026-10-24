@@ -187,6 +187,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 #### Development
 
+- Reduced the extension download size by no longer packaging dependencies that are already bundled into the extension.
 - Added source/test type checking and Windows/Linux CI, pinned compatible compiler/API declarations, removed the obsolete VS Code downloader and unused donation dependency, and aligned formatting with the documented two-space indentation and LF line endings.
 
 ### Version 5.2.0
