@@ -49,35 +49,37 @@ export const discoverFiles = async (
   followSymlinks: boolean,
   getWorkspaceExcludes: (resourcePath: string) => ExcludeGlobs
 ): Promise<string[]> => {
-  const globby = require('globby');
+  const fastGlob = require('fast-glob');
   const scans = await flatMapFulfilled<string, string>(
     rootPaths,
-    (cwd) => {
-      const patterns = followSymlinks
-        ? include
-        : include.filter((pattern) => {
-            if (pattern.startsWith('!')) return true;
-            const parts = pattern.split('/');
-            const literal: string[] = [];
-            for (const part of parts) {
-              if (globby.hasMagic(part)) break;
-              literal.push(part);
-            }
-            // A literal prefix is the walker's starting directory and
-            // otherwise skips its normal symlink descent checks.
-            return isAllowedFilePath(path.resolve(cwd, literal.join('/')), [cwd], false);
-          });
-
-      return globby(patterns, {
+    async (cwd) => {
+      const options = {
         cwd,
         ignore: expandDirectoryExcludeGlobs(
           exclude.concat(getEnabledExcludeGlobs(getWorkspaceExcludes(cwd)))
         ),
         ...getGlobMatchOptions(),
-        absolute: true,
-        // globby 8 uses fast-glob 2's option name.
+        // Relative matching keeps excludes such as **/out/** from matching
+        // folders above the workspace root.
+        absolute: false,
         followSymlinkedDirectories: followSymlinks,
-      });
+      };
+      const patterns = followSymlinks
+        ? include
+        : include.filter((pattern) => {
+            if (pattern.startsWith('!')) return true;
+            // A literal prefix is the walker's starting directory and
+            // otherwise skips its normal symlink descent checks.
+            return fastGlob
+              .generateTasks([pattern], options)
+              .every((task: { base: string }) =>
+                isAllowedFilePath(path.resolve(cwd, task.base), [cwd], false)
+              );
+          });
+      // One walk for every pattern. globby 8 walked the tree once per pattern.
+      const files: string[] = await fastGlob(patterns, options);
+
+      return files.map((filePath) => path.resolve(cwd, filePath));
     },
     (cwd, error) => console.warn(`Todo+: Could not scan ${cwd}`, error)
   );

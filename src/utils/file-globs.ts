@@ -91,7 +91,10 @@ export const expandDirectoryExcludeGlobs = (exclude: string[] = []): string[] =>
 
     if (!normalizedGlob) return globs;
 
-    globs.push(normalizedGlob, `${normalizedGlob}/**`);
+    // Globs that already end in /** cover descendants. Doubling them as /**/**
+    // only adds another pattern to test against every scanned path.
+    if (normalizedGlob.endsWith('/**')) globs.push(normalizedGlob);
+    else globs.push(normalizedGlob, `${normalizedGlob}/**`);
 
     return globs;
   }, []);
