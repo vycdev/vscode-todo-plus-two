@@ -168,6 +168,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.timekeeping.created.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @created
   "todo.timekeeping.started.time": true, // Insert the time inside the @started tag
   "todo.timekeeping.started.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @started
+  "todo.timekeeping.autoToggle": false, // Automatically pause other active timers when starting a new task
   "todo.timekeeping.finished.enabled": true, // Enable the @done/cancelled tag. It's always enabled if you explicitly start a todo or if you use only 1 symbol
   "todo.timekeeping.finished.time": true, // Insert the time inside the @done/cancelled tag
   "todo.timekeeping.finished.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @done/cancelled

@@ -1,127 +1,193 @@
-### Version 5.3.0 (Unreleased)
+### Version 5.3.0
 
-#### Review fixes
+A large release: nearly 30 new features and well over a hundred fixes since 5.2.0. If you customize statistics conditions or bound a key to `Todo: Toggle Timer`, read the compatibility notes first.
 
-- Resolved relative file links containing URL-encoded brackets without truncating filenames or including surrounding punctuation.
-- Preserved code spans containing three or more spaces when exporting Todo files to Markdown.
-- Offered known tag-argument completions inside auto-closed parentheses without inserting a duplicate closing parenthesis.
-- Preserved punctuation immediately before a completion or elapsed-time tag when reopening a task.
-- Rejected invalid ISO calendar dates in time estimates instead of silently rolling them into another month.
-- Ignored empty relative file links wrapped in punctuation or spelled with dot path segments, instead of linking to the Todo document's directory.
-- Kept tag cleanup and hidden-tag labels working after an unmatched backtick, while preserving tags inside complete inline code spans.
-- Skipped false embedded-todo scan candidates when custom expressions match without a non-empty marker.
-- Accepted an explicit leading `+` in time estimates and other duration expressions, alongside existing negative durations.
-- Preserved balanced closing parentheses, brackets, and braces in relative file-link filenames while excluding surrounding punctuation.
+#### Compatibility notes
+
+- Statistics visibility conditions (`todo.statistics.project.enabled` and `todo.statistics.statusbar.enabled`) no longer execute JavaScript. They are evaluated by a restricted expression evaluator that supports token access, comparisons, arithmetic, logical operators, and ternary expressions. Conditions that call functions or assign values are rejected and hide the affected statistics. The default conditions are unaffected.
+- `Todo: Toggle Timer` (`todo.toggleTimer`, now bound to `Alt+T`) pauses and resumes the timer of the task under the cursor. The previous behaviour, showing or hiding the status bar timer, moved to `Todo: Toggle Status Bar Timer` (`todo.toggleStatusBarTimer`). Update custom keybindings that relied on the old command.
+- The minimum VS Code version is now 1.36, matching the APIs and regular expression syntax the extension already used.
+- The extension now activates when a Todo file, Todo view, or Todo command is used, instead of at VS Code startup. [#41](https://github.com/vycdev/vscode-todo-plus-two/issues/41)
+
+#### New features
+
+##### Editing
+
+- Added clickable `file://./` and `file://../` links resolved relative to the current Todo file. [#65](https://github.com/vycdev/vscode-todo-plus-two/issues/65)
+- Added `@created` and `@now` completions for inserting the current date/time anywhere in Todo files. [#38](https://github.com/vycdev/vscode-todo-plus-two/issues/38)
+- Improved tag completion to suggest unique tag names first and previously used argument values after typing an opening parenthesis. [#80](https://github.com/vycdev/vscode-todo-plus-two/issues/80)
+- Added a Todo language surrounding pair so typing `*` wraps selected text in bold markers. [#52](https://github.com/vycdev/vscode-todo-plus-two/issues/52)
+- Added an opt-in `todo.automaticSymbol` setting that inserts a new todo box when Enter is pressed at the end of a non-empty todo. [#83](https://github.com/vycdev/vscode-todo-plus-two/issues/83)
+- Added opt-in automatic parent completion with `todo.autoCompleteParents`, cascading upwards when `Todo: Toggle Done` completes all nested todos. [#63](https://github.com/vycdev/vscode-todo-plus-two/issues/63)
+- Preserved user-authored blank lines after project blocks when folding Todo documents. [#20](https://github.com/vycdev/vscode-todo-plus-two/issues/20)
+
+##### Colors and decorations
+
+- Added strikethrough styling for done todos, enabled by default and configurable with `todo.decorations.done.strikethrough`. [#54](https://github.com/vycdev/vscode-todo-plus-two/issues/54)
+- Added configurable coloring for started todos with `todo.colors.started`. [#59](https://github.com/vycdev/vscode-todo-plus-two/issues/59)
+- Added urgency coloring for `@due(...)` tags, configurable with `todo.colors.due.*` and `todo.due.soonDays`. [#95](https://github.com/vycdev/vscode-todo-plus-two/issues/95)
+- Added optional whole-line background colors for configured special tags with `todo.colors.tags.lineBackground`. [#93](https://github.com/vycdev/vscode-todo-plus-two/issues/93)
+- Added a `todo.colors.enabled` setting for using the active syntax theme's colors instead of Todo+ editor colors. [#96](https://github.com/vycdev/vscode-todo-plus-two/issues/96)
+- Added TextMate syntax scopes so Todo projects, standard statuses, tags, and formatting are visible in the editor minimap. [#70](https://github.com/vycdev/vscode-todo-plus-two/issues/70)
+
+##### Views and sidebar
+
+- Added a Due sidebar view that groups unfinished `@due(...)` tasks by date and expands today's group. [#68](https://github.com/vycdev/vscode-todo-plus-two/issues/68)
+- Added a pending-task badge to the Todo activity bar icon on supported VS Code versions. It stays current for unsaved edits and workspace changes. [#90](https://github.com/vycdev/vscode-todo-plus-two/issues/90)
+- Added case-insensitive filtering to the Todo files view, including task text and file paths. [#69](https://github.com/vycdev/vscode-todo-plus-two/issues/69)
+- Added a Todo files view toggle and `todo.file.view.showFinished` setting for hiding done and cancelled tasks. [#34](https://github.com/vycdev/vscode-todo-plus-two/issues/34)
+- Added an independent `todo.file.view.showComments` setting for optionally showing note lines in the Todo files view. [#15](https://github.com/vycdev/vscode-todo-plus-two/issues/15)
+- Added a `todo.file.view.showTags` setting for hiding tags from Todo files view labels. [#23](https://github.com/vycdev/vscode-todo-plus-two/issues/23)
+- Added `todo.file.view.icons` so Files view group icons can be configured independently from the Embedded view.
+- Added right-click actions to open or change the status of tasks in the Todo files view. [#64](https://github.com/vycdev/vscode-todo-plus-two/issues/64)
+- Added direct Open commands to Todo file tree items so selecting a file opens it in the editor. [#71](https://github.com/vycdev/vscode-todo-plus-two/issues/71)
+- Centered the editor viewport when navigating to a todo from the embedded or files tree views. [#74](https://github.com/vycdev/vscode-todo-plus-two/issues/74)
+
+##### Time tracking and statistics
+
+- Added task-level timer pausing and resuming with `Todo: Toggle Timer` (`Alt+T`), recorded as PlainTasks-compatible `@toggle(...)` timestamps. [#1](https://github.com/vycdev/vscode-todo-plus-two/issues/1), [#12](https://github.com/vycdev/vscode-todo-plus-two/issues/12)
+- Added a `todo.timekeeping.autoToggle` setting to automatically pause other active timers when starting a new task. [#91](https://github.com/vycdev/vscode-todo-plus-two/issues/91)
+- Added `todo.hoursPerDay` for a configurable day length in short duration formatting. [#16](https://github.com/vycdev/vscode-todo-plus-two/issues/16)
+- Added `man-hours`, `man-days`, and `man-weeks` duration formats with configurable `todo.manHoursPerDay` and `todo.manDaysPerWeek` settings. [#88](https://github.com/vycdev/vscode-todo-plus-two/issues/88)
+- Added tag-scoped statistics tokens for todo counts, completion, estimates, and elapsed time, including AND/OR tag selectors. [#81](https://github.com/vycdev/vscode-todo-plus-two/issues/81)
+- Added project statistics to the Archive header so estimates can be compared with elapsed time across archived tasks. [#87](https://github.com/vycdev/vscode-todo-plus-two/issues/87)
+- Added a command to copy the project at the cursor with its rendered statistics included as text. [#73](https://github.com/vycdev/vscode-todo-plus-two/issues/73)
+
+##### Archiving
+
+- Added an `InSameFile` unarchive command that restores archived tasks, including attached comments, to their original project. Available from the context menu, the command palette (`Todo: Unarchive`), and `Shift+Ctrl+U` / `Shift+Cmd+U`. [#72](https://github.com/vycdev/vscode-todo-plus-two/issues/72)
+- Added default `@today` cleanup when archiving or marking todos done/cancelled, configurable with `todo.archive.remove.tags` and `todo.timekeeping.finished.remove.tags`. [#30](https://github.com/vycdev/vscode-todo-plus-two/issues/30), [#13](https://github.com/vycdev/vscode-todo-plus-two/issues/13)
+
+##### Embedded todos
+
+- Added embedded todo detection for inline and multiline Liquid comments, including nested `comment` blocks inside `{% liquid %}` tags. Scans respect raw blocks, avoid duplicate matches, and batch file reads to keep the editor responsive. [#46](https://github.com/vycdev/vscode-todo-plus-two/issues/46)
+- Added opt-in Problems view diagnostics for embedded markers through `todo.embedded.problems`. [#60](https://github.com/vycdev/vscode-todo-plus-two/issues/60)
+- Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`. Embedded view filters also search visible context lines. [#79](https://github.com/vycdev/vscode-todo-plus-two/issues/79)
+- Updated the embedded view from open editor changes so source edits refresh without regenerating the embedded snapshot. [#84](https://github.com/vycdev/vscode-todo-plus-two/issues/84)
+
+##### Export
+
+- Added a command to export the active Todo file as a standalone HTML document, preserving task hierarchy, status, comments, and inline formatting. [#85](https://github.com/vycdev/vscode-todo-plus-two/issues/85)
+- Added a command to export the active Todo file as a Markdown task list, preserving hierarchy (including skipped indentation levels), status, literal text, comments, and inline formatting. [#29](https://github.com/vycdev/vscode-todo-plus-two/issues/29)
+
+##### Workspace and performance
+
+- Applied enabled workspace `files.exclude` globs when discovering Todo files and embedded todos. [#67](https://github.com/vycdev/vscode-todo-plus-two/issues/67)
+- Displayed `todo.file.defaultContent` as a multiline text area in VS Code's Settings editor. [#51](https://github.com/vycdev/vscode-todo-plus-two/issues/51)
+- Replaced Moment with the `moment-mini` package alias to reduce bundled date-library size. [#55](https://github.com/vycdev/vscode-todo-plus-two/issues/55)
+- Updated the VS Code-bundled ripgrep fallback to use the supported `vscode-ripgrep` module lookup. [#42](https://github.com/vycdev/vscode-todo-plus-two/issues/42)
+
+#### Fixes
+
+##### Archiving
+
 - Preserved unsaved archive buffers, serialized simultaneous transfers, and replaced closed archive files only after a complete write. Failed writes, stale source documents, and rejected editor edits keep source tasks intact.
 - Preserved archive task order, sibling project structure, attached comment indentation, and standalone notes when removing empty projects.
-- Fixed dependency indexing for IDs such as `constructor` and `__proto__`, and stopped disposed diagnostic providers from republishing results.
-- Prevented task commands from applying stale edits after dependency checks or pickers, kept tree actions bound to their target editor, and excluded unselected tasks at the start of a selection's ending line.
-- Enforced `todo.followSymlinks` consistently across file discovery, literal glob prefixes, watchers, and document updates. Shared discovery now handles overlapping roots and inaccessible files consistently.
-- Serialized file scans and provider initialization, preserved unsaved editor content, and cancelled watcher callbacks, refresh timers, and provider work during disposal.
-- Bounded external-search command lengths, retained partial search results, and parsed multiple `ag` matches on one line. Invalid or empty-match embedded regex settings no longer crash or freeze the extension.
-- Refreshed timers, statistics, due state, decorations, and view filters after text and configuration changes, including edits that keep the same length, updates to background editors, and due-date rollover at midnight.
-- Fixed symbol parenting, indentation setting changes, decoration range subtraction, dependency completion boundaries, signed duration parsing, and elapsed-only statistics templates.
-- Replaced JavaScript execution in statistics visibility settings with a restricted expression evaluator. Token access, comparisons, arithmetic, logical operators, and ternary expressions remain supported; function calls and assignments are no longer accepted.
-
-#### Development and compatibility
-
-- Corrected the minimum VS Code version to 1.36 to match the APIs and regular expression syntax already used by the extension.
-- Added source/test type checking and Windows/Linux CI, pinned compatible compiler/API declarations, removed the obsolete VS Code downloader and unused donation dependency, and aligned formatting with the documented two-space indentation and LF line endings.
-
-#### Other unreleased changes
-
-- Recognized mixed-case `file://` URI schemes in relative Todo file links.
-- Recalculated calendar and natural-language time estimates as time passes instead of reusing stale cached durations, while keeping running timer estimates anchored to their start time across edits.
-- Rejected impossible slash-formatted calendar dates in time estimates instead of silently rolling them into another month.
-- Fixed Markdown export showing literal strikethrough markers for cancelled tasks with no text.
-- Rejected impossible `@due` dates written with single-digit month, day, or hour components instead of letting natural-date parsing roll them into a different day.
-- Preserved tab-indented tasks when creating an archive under a space-configured editor, and retained nested task indentation when source and archive use different indentation styles. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/39
-- Added a `todo.timekeeping.autoToggle` setting to automatically pause other active timers when starting a new task. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/91
-- Added a `todo.colors.enabled` setting for using the active syntax theme's colors instead of Todo+ editor colors. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/96
-- Added an independent `todo.file.view.showComments` setting for optionally showing note lines in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/15
-- Fixed live timer status bar alignment and priority changes so they apply without reloading VS Code.
-- Preserved CRLF line endings when creating new archive files.
-- Added a command to export the active Todo file as a standalone HTML document, preserving task hierarchy, status, comments, and inline formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/85
-- Added a command to export the active Todo file as a Markdown task list, preserving hierarchy (including skipped indentation levels), status, literal text, comments, and inline formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/29
-- Fixed the statistics status bar to apply `todo.statistics.statusbar.alignment` and `todo.statistics.statusbar.priority` changes without requiring an extension reload.
-- Added opt-in Problems view diagnostics for embedded markers through `todo.embedded.problems`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/60
-- Fixed fulfilled promise batches so errors in optional rejection observers do not discard successful results.
-- Fixed dependency indexing so `@id` and `@depends` references in non-task comment lines are ignored.
-- Added a Due sidebar view that groups unfinished `@due(...)` tasks by date and expands today's group. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/68
-- Fixed dependency indexing so one unreadable or removed Todo file no longer hides dependencies from other workspace files.
-- Fixed embedded todo parsing for file paths that start with a number.
+- Preserved empty lines between the working section and the Archive header when archiving tasks. [#58](https://github.com/vycdev/vscode-todo-plus-two/issues/58)
+- Preserved tab-indented tasks when creating an archive under a space-configured editor, and retained nested task indentation when source and archive use different indentation styles. [#39](https://github.com/vycdev/vscode-todo-plus-two/issues/39)
+- Preserved CRLF line endings when creating new archive files and when merging tasks into existing ones.
 - Fixed date-sorted archiving so consecutive finished todos are ordered by their own completion dates.
-- Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
-- Added embedded todo detection for inline and multiline Liquid comments, including nested `comment` blocks inside `{% liquid %}` tags. Scans respect raw blocks, avoid duplicate matches, and batch file reads to keep the editor responsive. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/46
-- Added case-insensitive filtering to the Todo files view, including task text and file paths. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/69
-- Added a Todo language surrounding pair so typing `*` wraps selected text in bold markers. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/52
-- Added an opt-in `todo.automaticSymbol` setting that inserts a new todo box when Enter is pressed at the end of a non-empty todo. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/83
-- Added an `InSameFile` unarchive command to restore archived tasks, including attached comments, to their original project list. Accessible via the right-click context menu, command palette (`Todo: Unarchive`), or keyboard shortcut (`Shift+Ctrl+U` / `Shift+Cmd+U`). Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/72
-- Preserved empty lines between the working section and the Archive header when archiving tasks. Previously the archiving step stripped these visual separator lines. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/58
-- Center the editor viewport when navigating to a todo from the embedded or files tree views, making the target line appear in the middle of the screen rather than at an edge. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/74
-- Updated the VS Code-bundled ripgrep fallback to use the supported `vscode-ripgrep` module lookup. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/42
-- Replaced eager startup activation with Todo language, view, and command activation events. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/41
-- Added strikethrough styling for done todos, enabled by default and configurable with `todo.decorations.done.strikethrough`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/54
-- Fixed default Todo file discovery globs so valid todo files are not hidden by an overly broad dot-directory exclude. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/3, https://github.com/vycdev/vscode-todo-plus-two/issues/11
-- Replaced Moment with the `moment-mini` package alias to reduce bundled date-library size. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/55
-- Added default `@today` cleanup when archiving or marking todos done/cancelled, configurable with `todo.archive.remove.tags` and `todo.timekeeping.finished.remove.tags`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/30, https://github.com/vycdev/vscode-todo-plus-two/issues/13
-- Added `todo.hoursPerDay` for configurable day length in short duration formatting. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/16
-- Fixed short-duration weeks and years to use the configured `todo.hoursPerDay` day length consistently.
-- Fixed project and special-tag decorations so color/tag settings refresh without restart. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/24, https://github.com/vycdev/vscode-todo-plus-two/issues/2
-- Added `@created` and `@now` completions for inserting the current date/time anywhere in todo files. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/38
-- Fixed timestamp completions being offered inside inline code spans.
-- Added configurable coloring for started todos with `todo.colors.started`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/59
-- Added a Todo files view toggle and `todo.file.view.showFinished` setting for hiding done and cancelled tasks. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/34
-- Updated the embedded activity-bar view from open editor changes so source edits refresh without regenerating the embedded snapshot. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/84
-- Added urgency coloring for `@due(...)` tags, configurable with `todo.colors.due.*` and `todo.due.soonDays`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/95
-- Added `man-hours`, `man-days`, and `man-weeks` duration formats with configurable `todo.manHoursPerDay` and `todo.manDaysPerWeek` settings. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/88
-- Fixed embedded todo parsing so plain `--` in a todo message no longer truncates the embedded view entry. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/33
-- Displayed `todo.file.defaultContent` as a multiline text area in VS Code's Settings editor. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/51
-- Applied enabled workspace `files.exclude` globs when discovering Todo files and embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/67
-- Improved tag completion to suggest unique tag names first and previously used argument values after typing an opening parenthesis. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/80
-- Fixed smart tag completion so normal tags beginning with reserved or configured tag names remain suggested.
-- Fixed tag argument completions being offered inside inline code spans.
-- Fixed tag argument completions inside multi-backtick inline code spans.
-- Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`, while avoiding blank lines and consecutive embedded todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/79
-- Added opt-in automatic parent completion with `todo.autoCompleteParents`, cascading upwards when `Todo: Toggle Done` completes all nested todos. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/63
+- Fixed archiving so todo titles containing a colon are not mistaken for project headers and discarded.
+- Fixed archive project matching when a project name contains the configured project-path separator.
+- Fixed configured archive and completion tag cleanup so tags inside inline code are preserved, shorter tag names do not corrupt longer tags containing digits or punctuation, and tags followed by terminal punctuation are still removed.
+- Kept tag cleanup and hidden-tag labels working after an unmatched backtick, while preserving tags inside complete inline code spans.
+- Preserved punctuation immediately before a completion or elapsed-time tag when reopening a task.
+
+##### Task commands and dependencies
+
+- Prevented task commands from applying stale edits after dependency checks or pickers, kept tree actions bound to their target editor, and excluded unselected tasks at the start of a selection's ending line.
+- Fixed dependency checks being skipped when toggling directly between done and cancelled states. [#153](https://github.com/vycdev/vscode-todo-plus-two/issues/153)
+- Fixed dependency indexing for IDs such as `constructor` and `__proto__`, and stopped disposed diagnostic providers from republishing results.
+- Fixed dependency indexing so `@id` and `@depends` references in non-task comment lines are ignored, and one unreadable or removed Todo file no longer hides dependencies from other workspace files.
+- Fixed dependency parsing so `@id(...)` and `@depends(...)` directly attached to words or backticks, or inside inline code, are not treated as task links.
+- Fixed dependency diagnostics staying visible after an unsaved Todo document is closed.
 - Fixed automatic parent completion so indented project sections remain separate task hierarchies.
-- Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/18
-- Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
+
+##### Time, estimates, and statistics
+
+- Recalculated calendar and natural-language time estimates as time passes instead of reusing stale cached durations, while keeping running timer estimates anchored to their start time across edits.
+- Rejected impossible ISO and slash-formatted calendar dates in time estimates instead of silently rolling them into another month.
+- Rejected impossible `@due` dates written with single-digit month, day, or hour components instead of letting natural-date parsing roll them into a different day.
+- Accepted an explicit leading `+` in time estimates and other duration expressions, alongside existing negative durations.
+- Fixed duration strings such as `3 hours` and `1 week` so they are calculated from the supplied base date instead of the current time.
+- Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. [#18](https://github.com/vycdev/vscode-todo-plus-two/issues/18)
+- Fixed shorthand estimates directly attached to words, such as `release@2h`, being counted as task estimates.
+- Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
+- Fixed compact and explicit estimate tags followed by terminal punctuation being left out of statistics.
 - Fixed zero-length short durations so rapidly completed tasks record `@lasted(0s)` instead of an empty elapsed tag.
 - Fixed clock durations so they round-trip through elapsed-time statistics, including zero-length timers.
-- Fixed embedded provider changes so switching `todo.embedded.provider` takes effect without reloading VS Code.
-- Allowed the default automatic embedded provider selection in the configuration schema.
-- Added a `todo.file.view.showTags` setting for hiding tags from Todo files view labels. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/23
-- Fixed the `ag` and `rg` embedded provider argument settings to accept their documented string-array values.
-- Fixed Todo wrapper lookup so similarly prefixed sibling folders are not treated as part of the workspace root.
-- Fixed archiving so todo titles containing a colon are not mistaken for project headers and discarded.
+- Fixed man-time elapsed formats so generated `@lasted`/`@wasted` tags use the configured work schedule, represent zero-length durations as `0s`, and remain included in statistics. [#88](https://github.com/vycdev/vscode-todo-plus-two/issues/88)
+- Fixed short-duration weeks and years to use the configured `todo.hoursPerDay` day length consistently.
 - Fixed timestamp-free `@started` tags so they no longer produce an invalid status-bar timer or an empty elapsed-time tag.
-- Kept scanning accessible workspace roots and Todo files when another path cannot be read. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/9
-- Added right-click actions to open or change the status of tasks in the Todo files view. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/64
-- Fixed configured tag cleanup so shorter names do not corrupt longer tags containing digits or punctuation.
-- Fixed configured tag cleanup when a tag is followed by terminal punctuation.
-- Fixed the `todo.timer.statusbar.priority` configuration schema so numeric priorities can be configured.
-- Fixed dependency parsing so `@id(...)` and `@depends(...)` directly attached to words or backticks are not treated as task links.
-- Fixed dependency parsing so `@id(...)` and `@depends(...)` inside inline code are not treated as task links.
-- Fixed shorthand estimates directly attached to words, such as `release@2h`, being counted as task estimates.
-- Fixed the status bar timer configuration schema so its boolean enabled and disabled values are accepted.
-- Fixed the Todo files view so hiding finished tasks keeps finished parents that contain unfinished descendants.
-- Fixed indentation detection staying stale after a Todo document is reindented.
-- Fixed dependency checks being skipped when toggling directly between done and cancelled states. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/153
-- Fixed tag parsing when `todo.tags.names` is empty so normal tags no longer freeze document parsing.
-- Fixed time tags on comments or project headers being counted as estimates for the preceding pending todo.
-- Fixed Todo and embedded file grouping so similarly prefixed sibling folders are not treated as workspace roots.
-- Preserved CRLF line endings when merging tasks into existing archive files.
-- Fixed embedded todo type icons so changes to `todo.colors.types` apply without restarting VS Code.
-- Fixed embedded todo type icons so `todo.colors.dark.types` and `todo.colors.light.types` apply in their matching themes.
-- Added optional whole-line background colors for configured special tags with `todo.colors.tags.lineBackground`. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/93
-- Added TextMate syntax scopes so Todo projects, standard statuses, tags, and formatting are visible in the editor minimap. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/70
-- Added a command to copy the project at the cursor with its rendered statistics included as text. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/73
-- Added tag-scoped statistics tokens for todo counts, completion, estimates, and elapsed time, including AND/OR tag selectors. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/81
 - Fixed invalid statistics visibility expressions so they hide the affected statistics instead of interrupting extension updates.
+- Fixed the statistics status bar retaining stale text or tooltip content when a configured template renders empty.
 - Fixed the Due view so `todo.due.soonDays: 0` keeps future tasks out of the soon window.
-- Added a pending-task badge to the Todo activity bar icon on supported VS Code versions. Fixes: https://github.com/vycdev/vscode-todo-plus-two/issues/90
-- Keep the badge current for unsaved edits and workspace changes, ignore completion-tag examples in inline code, and serialize overlapping file loads to avoid duplicate scans and watchers.
+
+##### Parsing, tags, and completion
+
+- Fixed tag parsing when `todo.tags.names` is empty so normal tags no longer freeze document parsing.
+- Fixed unfinished tag arguments so they no longer consume subsequent Todo lines.
+- Fixed `@done` and `@cancelled` examples inside inline code being treated as task status tags.
+- Fixed repeated inline-formatting delimiters such as `**bold**` being partially decorated as malformed single-delimiter formatting.
+- Fixed indentation detection staying stale after a Todo document is reindented.
+- Fixed background Todo document parsing so items are not bound to an unrelated active editor, and text-only parsing no longer accesses unavailable VS Code document APIs.
+- Fixed smart tag completion so normal tags beginning with reserved or configured tag names remain suggested.
+- Fixed `todo.tags.namesInference` so disabling it suppresses inferred tag name completions.
+- Fixed tag argument and timestamp completions being offered inside inline code spans, including multi-backtick spans.
+- Offered known tag-argument completions inside auto-closed parentheses without inserting a duplicate closing parenthesis.
+
+##### Relative file links
+
+- Preserved balanced closing parentheses, brackets, and braces in relative file-link filenames, including URL-encoded brackets, while excluding surrounding punctuation.
+- Ignored empty relative file links wrapped in punctuation or spelled with dot path segments, instead of linking to the Todo document's directory.
+- Recognized mixed-case `file://` URI schemes in relative Todo file links.
+
+##### Views, decorations, and status bar
+
+- Refreshed timers, statistics, due state, decorations, and view filters after text and configuration changes, including edits that keep the same length, updates to background editors, and due-date rollover at midnight.
+- Fixed symbol parenting, indentation setting changes, decoration range subtraction, dependency completion boundaries, signed duration parsing, and elapsed-only statistics templates.
+- Fixed project and special-tag decorations so color and tag settings refresh without a restart. [#24](https://github.com/vycdev/vscode-todo-plus-two/issues/24), [#2](https://github.com/vycdev/vscode-todo-plus-two/issues/2)
+- Fixed decoration ranges so repeated captured text highlights the final captured segment instead of an earlier duplicate.
+- Fixed decoration-line caching so editors no longer depend on VS Code's undocumented private IDs for isolated snapshots.
+- Fixed the Todo files view so hiding finished tasks keeps finished parents that contain unfinished descendants.
+- Fixed the live timer and statistics status bar items so alignment and priority changes apply without reloading VS Code.
+- Fixed embedded todo type icons so changes to `todo.colors.types`, `todo.colors.dark.types`, and `todo.colors.light.types` apply without restarting VS Code and in their matching themes.
+- Fixed Markdown export showing literal strikethrough markers for cancelled tasks with no text, and preserved code spans containing three or more spaces.
+
+##### Embedded todos
+
+- Serialized file scans and provider initialization, preserved unsaved editor content, and cancelled watcher callbacks, refresh timers, and provider work during disposal.
+- Serialized embedded view file refreshes so overlapping filesystem and editor updates cannot duplicate search results.
+- Bounded external-search command lengths, retained partial search results, and parsed multiple `ag` matches on one line. Invalid or empty-match embedded regex settings no longer crash or freeze the extension.
+- Fixed embedded todo parsing so plain `--` in a todo message no longer truncates the embedded view entry. [#33](https://github.com/vycdev/vscode-todo-plus-two/issues/33)
+- Fixed embedded todo parsing for file paths that start with a number.
+- Fixed repeated identical embedded todo markers on one line so each entry keeps its own source-code prefix.
+- Fixed embedded todo scanning and external-search result parsing for files and tool output that use classic Mac carriage-return line endings.
+- Fixed embedded todo result parsing so orphaned line records emitted before their file heading are ignored instead of creating results without a file path.
+- Skipped false embedded-todo scan candidates when custom expressions match without a non-empty marker.
+- Fixed the ripgrep embedded-todo provider to emit the uncolored, line-numbered heading format expected by its result parser.
+- Fixed the JavaScript embedded provider's initial scan so custom `todo.embedded.regex` markers are discovered.
+- Fixed embedded provider changes so switching `todo.embedded.provider` takes effect without reloading VS Code.
+
+##### Files, workspace, and settings
+
+- Enforced `todo.followSymlinks` consistently across file discovery, literal glob prefixes, watchers, and document updates. Shared discovery now handles overlapping roots and inaccessible files consistently.
+- Fixed default Todo file discovery globs so valid Todo files are not hidden by an overly broad dot-directory exclude. [#3](https://github.com/vycdev/vscode-todo-plus-two/issues/3), [#11](https://github.com/vycdev/vscode-todo-plus-two/issues/11)
+- Kept scanning accessible workspace roots for Todo files and embedded todos when another path cannot be read. [#9](https://github.com/vycdev/vscode-todo-plus-two/issues/9)
+- Fixed Todo wrapper lookup and file grouping so similarly prefixed sibling folders are not treated as part of a workspace root.
+- Fixed workspace root matching when Windows or macOS path casing differs.
+- Fixed Todo file grouping so same-named roots in multi-root workspaces remain separate in the files view.
+- Guarded embedded and Todo-file batch settings against zero, negative, fractional, and non-finite values that could stall scanning or produce invalid batches.
+- Fixed fulfilled promise batches so errors in optional rejection observers do not discard successful results.
+- Fixed configuration schemas so the `ag` and `rg` argument settings accept string arrays, the automatic embedded provider can be selected, status bar timer settings accept their boolean and numeric priority values, and embedded include/exclude settings reject non-string globs.
+
+##### Documentation
+
+- Fixed the README contributing-guide link and corrected the command palette documentation.
+
+#### Development
+
+- Added source/test type checking and Windows/Linux CI, pinned compatible compiler/API declarations, removed the obsolete VS Code downloader and unused donation dependency, and aligned formatting with the documented two-space indentation and LF line endings.
 
 ### Version 5.2.0
 

@@ -1563,7 +1563,7 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test && npm run compile && npm run format:check",
     "vscode:prepublish": "npm run typecheck && rimraf out && webpack --mode production",
-    "publish": "vsce publish && npm publish",
+    "publish": "vsce publish",
     "compile": "webpack --mode development",
     "compile:watch": "webpack --mode development --watch",
     "test": "mocha -r ts-node/register \"test/**/*.spec.ts\" --exit",
