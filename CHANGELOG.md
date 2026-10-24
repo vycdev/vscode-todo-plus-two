@@ -176,6 +176,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 ##### Files, workspace, and settings
 
 - Enforced `todo.followSymlinks` consistently across file discovery, literal glob prefixes, watchers, and document updates. Shared discovery now handles overlapping roots and inaccessible files consistently.
+- Sped up Todo file discovery by scanning each workspace once for all `todo.file.include` globs and skipping the contents of excluded folders. Fixed discovery finding no Todo files when the workspace itself is inside a folder that matches `todo.file.exclude`, such as `out` or `build`.
 - Fixed default Todo file discovery globs so valid Todo files are not hidden by an overly broad dot-directory exclude. [#3](https://github.com/vycdev/vscode-todo-plus-two/issues/3), [#11](https://github.com/vycdev/vscode-todo-plus-two/issues/11)
 - Kept scanning accessible workspace roots for Todo files and embedded todos when another path cannot be read. [#9](https://github.com/vycdev/vscode-todo-plus-two/issues/9)
 - Fixed Todo wrapper lookup and file grouping so similarly prefixed sibling folders are not treated as part of a workspace root.
