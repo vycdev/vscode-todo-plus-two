@@ -67,6 +67,23 @@ describe('Embedded todo regex defaults', () => {
 });
 
 describe('Embedded todo scan pre-check', () => {
+  it('recognizes hyphenated custom marker names as the first capture', () => {
+    const regex = /(?:#|\/\/)\s*(TODO|QUE-ES):?(?!\w)([^\n]*)/gi;
+    const line = '// QUE-ES: investigate this';
+
+    expect(hasEmbeddedMatch(line, regex)).to.equal(true);
+    expect(parseEmbeddedMatches(line, regex)).to.deep.equal([
+      {
+        column: 0,
+        todo: line,
+        type: 'QUE-ES',
+        message: ' investigate this',
+        code: '',
+      },
+    ]);
+    expect(hasEmbeddedMatch('// QUE: not configured', regex)).to.equal(false);
+  });
+
   it('recognizes custom markers outside the built-in marker list', () => {
     const regex = /^\/\/\s*(TASK):?\s*(.*)$/gi,
       content = ['const ready = true;', '  // TASK ship it'].join('\n');
