@@ -41,6 +41,31 @@ describe('File discovery symlink policy', () => {
       fs.rmdirSync(fixture);
     }
   });
+
+  it('does not discover file symlinks unless following symlinks is enabled', async () => {
+    const fixture = fs.mkdtempSync(path.join(process.cwd(), '.file-discovery-'));
+    const workspace = path.join(fixture, 'workspace');
+    const external = path.join(fixture, 'external.todo');
+    const link = path.join(workspace, 'linked.todo');
+    fs.mkdirSync(workspace);
+    fs.writeFileSync(external, 'external');
+    fs.symlinkSync(external, link, 'file');
+
+    try {
+      const scan = (follow: boolean) =>
+        discoverFiles([workspace], ['**/*.todo'], [], follow, () => ({}));
+
+      expect(await scan(false)).to.deep.equal([]);
+      expect((await scan(true)).map(path.normalize)).to.deep.equal([link]);
+      expect(isAllowedFilePath(link, [workspace], false)).to.equal(false);
+      expect(isAllowedFilePath(link, [workspace], true)).to.equal(true);
+    } finally {
+      fs.unlinkSync(link);
+      fs.unlinkSync(external);
+      fs.rmdirSync(workspace);
+      fs.rmdirSync(fixture);
+    }
+  });
 });
 
 describe('File discovery exclude pruning', () => {
