@@ -43,6 +43,29 @@ describe('File discovery symlink policy', () => {
   });
 });
 
+describe('File discovery across workspace roots', () => {
+  it('returns each file once when workspace roots overlap', async () => {
+    const fixture = fs.mkdtempSync(path.join(process.cwd(), '.file-discovery-'));
+    const nested = path.join(fixture, 'nested');
+    const outerFile = path.join(fixture, 'outer.todo');
+    const innerFile = path.join(nested, 'inner.todo');
+    fs.mkdirSync(nested);
+    fs.writeFileSync(outerFile, '');
+    fs.writeFileSync(innerFile, '');
+
+    try {
+      const files = await discoverFiles([fixture, nested], ['**/*.todo'], [], false, () => ({}));
+      expect(files.map(path.normalize)).to.have.members([outerFile, innerFile]);
+      expect(files).to.have.length(2);
+    } finally {
+      fs.unlinkSync(outerFile);
+      fs.unlinkSync(innerFile);
+      fs.rmdirSync(nested);
+      fs.rmdirSync(fixture);
+    }
+  });
+});
+
 describe('File discovery exclude pruning', () => {
   const writeFile = (filePath: string) => {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
