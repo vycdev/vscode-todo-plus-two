@@ -19,8 +19,11 @@ const Due = {
     if (!value) return;
 
     const formats = [
+      'YYYY-MM-DD HH:mm:ss',
+      'YYYY-MM-DDTHH:mm:ss',
       'YYYY-MM-DD HH:mm',
       'YYYY-MM-DD',
+      'YYYY/MM/DD HH:mm:ss',
       'YYYY/MM/DD HH:mm',
       'YYYY/MM/DD',
       'YYYY-M-D H:mm',
@@ -39,7 +42,7 @@ const Due = {
     if (parsed.isValid()) return parsed.toDate();
 
     const formattedDateRe =
-      /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]\d{1,2}:\d{2})?|\d{2}-\d{2}-\d{2}(?: \d{2}:\d{2})?|\d{2}\/\d{2}\/(?:\d{2}|\d{4})(?: \d{2}:\d{2})?)$/;
+      /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?|\d{2}-\d{2}-\d{2}(?: \d{2}:\d{2})?|\d{2}\/\d{2}\/(?:\d{2}|\d{4})(?: \d{2}:\d{2})?)$/;
 
     if (formattedDateRe.test(value)) return;
 
