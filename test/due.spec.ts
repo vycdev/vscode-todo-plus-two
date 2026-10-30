@@ -37,6 +37,8 @@ describe('Due utilities', () => {
       '2026-02-30 09:00:00',
       '2026/02/30 09:00:00',
       '2026-02-29T09:00:00',
+      '2026-02-30T09:00:00Z',
+      '2026-02-30T09:00:00+02:00',
     ]) {
       expect(Due.status(value, today)).to.equal(undefined, value);
     }
@@ -49,5 +51,7 @@ describe('Due utilities', () => {
     expect(Due.status('2026-07-02T09:00:00', today)).to.equal('today');
     expect(Due.status('2026-07-02 09:00:00', today)).to.equal('today');
     expect(Due.status('2026/07/02 09:00:00', today)).to.equal('today');
+    expect(Due.status('2026-07-02T09:00:00Z', today)).to.equal('today');
+    expect(Due.status('2026-07-02T09:00:00+02:00', today)).to.equal('today');
   });
 });
