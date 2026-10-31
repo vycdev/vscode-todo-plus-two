@@ -105,6 +105,13 @@ describe('Workspace file excludes', () => {
     expect(isPathWithinRoot('C:/workspace-other/TODO', 'C:\\workspace')).to.equal(false);
   });
 
+  it('includes descendants of a filesystem-root workspace', () => {
+    expect(isPathWithinRoot('/src/TODO', '/', 'linux')).to.equal(true);
+    expect(findClosestRootPath('/src/TODO', ['/', '/other'], 'linux')).to.equal('/');
+    expect(isPathWithinRoot('C:/src/TODO', 'C:\\', 'win32')).to.equal(true);
+    expect(findClosestRootPath('C:/src/TODO', ['C:\\', 'D:\\'], 'win32')).to.equal('C:\\');
+  });
+
   it('resolves the closest workspace root across Windows path separators', () => {
     const rootPaths = ['C:\\workspace', 'C:\\workspace\\packages\\app'];
 

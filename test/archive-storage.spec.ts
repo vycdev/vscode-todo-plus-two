@@ -105,6 +105,22 @@ const getFailure = async (promise) => {
 };
 
 describe('Archive file storage', () => {
+  it('refuses to archive into the source file before writing or removing tasks', async () => {
+    const source = makeDocument('TODO', 'Finished task'),
+      storage = loadArchiveStorage([source]),
+      sourceEdits = [{ delete: 'Finished task' }];
+
+    const error = await getFailure(
+      storage.archiveToFile('TODO', source, sourceEdits, (content) => content + '\nTask')
+    );
+
+    expect(error.message).to.contain('different from the source file');
+    expect(storage.getReadCount()).to.equal(0);
+    expect(storage.writes).to.deep.equal([]);
+    expect(storage.renames).to.deep.equal([]);
+    expect(storage.appliedEdits).to.deep.equal([]);
+  });
+
   it('matches archive buffers using filesystem path casing rules', async () => {
     if (process.platform !== 'win32') return;
     const source = makeDocument('TODO', 'Task'),

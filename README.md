@@ -228,6 +228,18 @@ Statistics visibility conditions read `global` and `project` tokens, such as `gl
 
 An actual regex will be generated from the value of the `todo.embedded.regex` setting. It uses 2 capturing groups, the first one captures the type of the todo (`TODO`, `FIXME` etc.) and the second one captures an optional description (`TODO: description`).
 
+To recognize a custom marker containing a hyphen, such as `// QUE-ES: investigate this`, keep the comment prefix outside the first capture and capture the entire marker name:
+
+```json
+{
+  "todo.embedded.regex": "(?:#|//)\\s*(TODO|QUE-ES):?(?!\\w)([^\\n]*)",
+  "todo.embedded.regexFlags": "gi",
+  "todo.embedded.provider": "javascript"
+}
+```
+
+The first capture must be `QUE-ES`, not the comment prefix. The second capture contains the description. This example uses the JavaScript provider; if you use `ag` or `rg`, also add the custom marker to `todo.embedded.providers.ag.regex` or `todo.embedded.providers.rg.regex` so the external search includes those files.
+
 Dates are formatted using [moment](https://momentjs.com/docs/#/displaying/format).
 
 `Todo: Toggle Timer` pauses and resumes a started task by appending `@toggle(...)` timestamps. Paused time is excluded from the status bar timer and from the final `@lasted(...)` or `@wasted(...)` duration.
