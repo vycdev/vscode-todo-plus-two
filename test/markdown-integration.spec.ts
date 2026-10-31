@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import * as path from 'path';
 import * as _ from 'lodash';
 import * as fs from 'fs';
+import { getTimerState } from '../src/utils/timekeeping';
 
 // Exercise real document/domain/command/statistics code against an in-memory
 // editor. Only VS Code and IO/view boundaries are doubled.
@@ -245,6 +246,63 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('ignores HTML-comment metadata across status, dependencies, estimates, due dates and completions', async () => {
+    const hidden =
+      '<!-- @done @id(hidden) @depends(missing) @est(8h) @due(2026-11-01) @started(2026-11-01 10:00) -->';
+    const original = `[ ] Real ${hidden}`;
+    const state = loadMarkdown(original);
+    state.select(0);
+    expect(new state.Document(state.editor).getTodosBox()).to.have.length(1);
+    const index = await state.dependencyIndex.get();
+    expect(Object.keys(index.targets)).to.deep.equal([]);
+    expect(Object.keys(index.dependencies)).to.deep.equal([]);
+    const items = state.decorator.getItems(new state.Document(state.editor));
+    state.utils.statistics.tokens.disabled.global.est = false;
+    state.utils.statistics.tokens.updateGlobal(items);
+    expect(state.utils.statistics.tokens.global.estSeconds).to.equal(0);
+    state.utils.files.filesData = {
+      'notes.md': { textEditor: state.document, relativePath: 'notes.md' },
+    };
+    expect((await state.dueView.getChildren())[0].label).to.include('No unfinished');
+    expect(
+      await state.completion.provideCompletionItems(state.document, {
+        line: 0,
+        character: original.indexOf('@id') + 1,
+      })
+    ).to.equal(null);
+    await state.commands.toggleTimer();
+    expect(state.document.getText()).to.equal(original);
+    await state.commands.toggleDone();
+    expect(state.document.getText()).to.include('[x] Real @done(');
+    expect(state.document.getText()).to.include(hidden);
+  });
+
+  it('keeps hidden toggle examples out of timer elapsed time', () => {
+    const state = loadMarkdown(
+      '[ ] Work @started(2026-11-01 10:00:00) <!-- @toggle(2026-11-01 10:30:00) -->'
+    );
+    const todo = new state.Document(state.editor).getTodosBoxStarted()[0];
+    const timer = getTimerState(
+      todo.getTimekeepingText(),
+      'YYYY-MM-DD HH:mm:ss',
+      new Date(2026, 10, 1, 11)
+    );
+    expect(timer.active).to.equal(true);
+    expect(timer.elapsedMilliseconds).to.equal(3600000);
+  });
+
+  it('preserves hidden comment payloads and spacing through completion and archive cleanup', async () => {
+    const comment = '<!-- @today @done(example) -->';
+    const state = loadMarkdown(`[ ] Work @today ${comment}`, {
+      'timekeeping.finished.enabled': false,
+      'archive.type': 'InSameFile',
+    });
+    state.select(0);
+    await state.commands.toggleDone();
+    expect(state.document.getText()).to.equal(`[x] Work ${comment}`);
+    await state.commands.archive();
+    expect(state.document.getText()).to.include(`[x] Work ${comment}`);
+  });
   it('completes and reopens a native Markdown checkbox without changing its bullet or prose', async () => {
     const state = loadMarkdown(
       '# Notes\n\nKeep **this** prose.\n\n  * [ ] Ship @id(ship)\n    Details\n',

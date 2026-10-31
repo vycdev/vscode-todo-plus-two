@@ -19,6 +19,7 @@ import { applyCustomColors } from './theme-colors';
 /* DOCUMENTS LINES CACHE */
 
 const DocumentsLinesCache = new DocumentLinesCache();
+const EditorDecorationTypes = new WeakMap<vscode.TextEditor, vscode.TextEditorDecorationType[]>();
 
 /* DOCUMENT */
 
@@ -59,6 +60,10 @@ const Document = {
         decorations.forEach(({ type, ranges }) => {
           doc.textEditor.setDecorations(type, ranges);
         });
+        EditorDecorationTypes.set(
+          doc.textEditor,
+          decorations.map(({ type }) => type)
+        );
 
         if (isActive) {
           StatusbarTimer.update(doc);
@@ -67,6 +72,16 @@ const Document = {
           // but the status bar continues to describe the active document.
           Utils.statistics.tokens.global = previousGlobalTokens;
         }
+      } else if (doc.textEditor) {
+        const types = EditorDecorationTypes.get(doc.textEditor) || [];
+        EditorDecorationTypes.delete(doc.textEditor);
+        types.forEach((type) => {
+          try {
+            doc.textEditor.setDecorations(type, []);
+          } catch {
+            // A color refresh may already have disposed the shared type.
+          }
+        });
       }
     }
 

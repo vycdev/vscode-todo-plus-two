@@ -23,6 +23,7 @@ import { renderTodoMarkdown } from './utils/markdown-export';
 import DocumentDecorator from './todo/decorators/document';
 import { getTaskLevel, getMarkdownTaskNodes, isMarkdownTaskDocument } from './utils/task-source';
 import { archiveMarkdownTasks } from './utils/markdown-archive-command';
+import { maskMarkdownTaskText } from './utils/markdown-task-text';
 import { ProjectCopyLine, renderProjectCopy } from './utils/project-copy';
 import {
   DependencyReference,
@@ -43,6 +44,9 @@ const isCurrentDocument = (document: vscode.TextDocument, version: number): bool
   vscode.window.showInformationMessage('The Todo file changed. Please run the command again.');
   return false;
 };
+
+const dependencyTaskText = (todo: Todo): string =>
+  todo.markdownNode ? maskMarkdownTaskText(todo.text) : todo.text;
 
 export function registerCommands(
   context: vscode.ExtensionContext,
@@ -202,7 +206,8 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
   if (!possibleLines.length) return;
 
   const needsIndex = possibleLines.some(
-      (lineNumber) => getDependencies((doc.getTodoAt(lineNumber, true) as Todo).text).length
+      (lineNumber) =>
+        getDependencies(dependencyTaskText(doc.getTodoAt(lineNumber, true) as Todo)).length
     ),
     dependencyIndex = needsIndex ? await DependencyIndex.get(textEditor.document) : undefined,
     parentLines: number[] = [],
@@ -624,7 +629,10 @@ async function toggleStart(textEditor = vscode.window.activeTextEditor) {
           continue;
         }
 
-        const timerState = getTimerState(fileTodo.text, format);
+        const timerState = getTimerState(
+          fileTodo.getTimekeepingText ? fileTodo.getTimekeepingText() : fileTodo.text,
+          format
+        );
         if (!timerState || !timerState.active) continue;
 
         fileTodo.addTag(toggleTag);
@@ -664,7 +672,11 @@ function toggleTimer() {
 
   return callTodosMethod({
     checkValidity: true,
-    filter: (todo) => todo.isBox() && Boolean(getTimerState(todo.text, format)),
+    filter: (todo) =>
+      todo.isBox() &&
+      Boolean(
+        getTimerState(todo.getTimekeepingText ? todo.getTimekeepingText() : todo.text, format)
+      ),
     filteredError: (todos) =>
       todos.some((todo) => !todo.isBox())
         ? 'Completed todos cannot toggle their timer'
@@ -920,7 +932,11 @@ async function addDependency() {
 
   if (!isCurrentDocument(textEditor.document, version)) return;
 
-  if (getDependencies(todo.text).some((dependency) => dependency.id === selection.label)) {
+  if (
+    getDependencies(dependencyTaskText(todo)).some(
+      (dependency) => dependency.id === selection.label
+    )
+  ) {
     return vscode.window.showInformationMessage(`This task already depends on ${selection.label}`);
   }
 
@@ -998,7 +1014,7 @@ async function getBlockedTodos(
   existingIndex?: any
 ) {
   const candidates = todos
-    .map((todo) => ({ todo, dependencies: getDependencies(todo.text) }))
+    .map((todo) => ({ todo, dependencies: getDependencies(dependencyTaskText(todo)) }))
     .filter(({ dependencies }) => dependencies.length);
 
   // Building the index scans the whole workspace, so skip it for tasks without dependencies.
@@ -1023,7 +1039,14 @@ async function getIdAtCursorOrPrompt(prompt: string) {
   const textEditor = vscode.window.activeTextEditor;
 
   if (Utils.editor.isSupported(textEditor)) {
-    const line = textEditor.document.lineAt(textEditor.selection.active.line).text;
+    const raw = textEditor.document.lineAt(textEditor.selection.active.line).text;
+    const markdown = isMarkdownTaskDocument(textEditor.document);
+    const isTask =
+      !markdown ||
+      getMarkdownTaskNodes(textEditor.document).some(
+        (node) => node.kind === 'todo' && node.lineNumber === textEditor.selection.active.line
+      );
+    const line = !isTask ? '' : markdown ? maskMarkdownTaskText(raw) : raw;
     const references: DependencyReference[] = getIds(line).concat(getDependencies(line));
     const reference = references.find(
       ({ tagStart, tagEnd }) =>

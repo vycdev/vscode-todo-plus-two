@@ -8,6 +8,7 @@ import Utils from '../utils';
 import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
 import { replaceMarkdownTaskMarker } from '../utils/markdown-tasks';
 import { maskInlineCode, removeTodoStatusTag } from '../utils/todo-status';
+import { maskMarkdownTaskText, transformMarkdownTaskText } from '../utils/markdown-task-text';
 import {
   Line,
   Archive,
@@ -220,7 +221,7 @@ class Document {
       const line = this.textDocument.lineAt(node.lineNumber);
       if (Item === Tag) {
         if (node.kind !== 'todo') return;
-        stringMatches(maskInlineCode(line.text), regex).forEach((match) => {
+        stringMatches(maskMarkdownTaskText(line.text), regex).forEach((match) => {
           const tag = new Item(this.textEditor, line, match);
           const range = Utils.regex.match2range(match);
           tag._range = new vscode.Range(node.lineNumber, range.start, node.lineNumber, range.end);
@@ -236,14 +237,35 @@ class Document {
       item.markdownNode = node;
       item.level = node.level;
       if (todoType) {
+        item.getTimekeepingText = () => maskMarkdownTaskText(item.lineNextText);
         item.getTag = (pattern: RegExp) => {
           pattern.lastIndex = 0;
-          const match = pattern.exec(maskInlineCode(item.lineNextText));
+          const match = pattern.exec(maskMarkdownTaskText(item.lineNextText));
           return match && item.lineNextText.slice(match.index, match.index + match[0].length);
         };
         item.hasTag = (pattern: RegExp) => !!item.getTag(pattern);
         item.removeTag = (pattern: RegExp) => {
-          item.lineNextText = removeTodoStatusTag(item.lineNextText, pattern).trimEnd();
+          item.lineNextText = removeTodoStatusTag(
+            item.lineNextText,
+            pattern,
+            maskMarkdownTaskText
+          ).trimEnd();
+        };
+        item.unfinish = () => {
+          item.removeTag(Consts.regexes.tagFinished);
+          item.removeTag(Consts.regexes.tagElapsed);
+        };
+        item.removeTags = (tags: string[]) => {
+          item.lineNextText = transformMarkdownTaskText(item.lineNextText, (text) =>
+            Utils.tags.remove(text, tags)
+          );
+        };
+        item.addTag = (tag: string) => {
+          const comment = maskInlineCode(item.lineNextText).indexOf('<!--');
+          item.lineNextText =
+            comment < 0
+              ? `${item.lineNextText.trimEnd()} ${tag}`
+              : `${item.lineNextText.slice(0, comment).trimEnd()} ${tag} ${item.lineNextText.slice(comment)}`;
         };
         item.isBox = () => node.status === 'box';
         item.isDone = () => node.status === 'done';
@@ -261,7 +283,7 @@ class Document {
           if (
             state === 'cancelled' &&
             node.style === 'checkbox' &&
-            !/@cancelled(?:\(|\b)/.test(maskInlineCode(item.lineNextText))
+            !/@cancelled(?:\(|\b)/.test(maskMarkdownTaskText(item.lineNextText))
           ) {
             item.addTag('@cancelled');
           }

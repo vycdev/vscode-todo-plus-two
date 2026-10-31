@@ -6,6 +6,7 @@ import Config from '../config';
 import Folder from './folder';
 import Editor from './editor';
 import Tags from './tags';
+import { maskMarkdownTaskText, transformMarkdownTaskText } from './markdown-task-text';
 import { archiveToFile } from './archive-storage';
 import { getMarkdownTaskOptions, getMarkdownTaskNodes } from './task-source';
 import {
@@ -34,13 +35,15 @@ export const archiveMarkdownTasks = async (
     blocks.forEach((block) => {
       block.lines = block.lines.map((line, index) =>
         taskLines.has(block.start + index)
-          ? Tags.remove(line, Config.getKey('archive.remove.tags') || [])
+          ? transformMarkdownTaskText(line, (text) =>
+              Tags.remove(text, Config.getKey('archive.remove.tags') || [])
+            )
           : line
       );
     });
     if (Config.getKey('archive.sortByDate')) {
       const date = (block) => {
-        const match = block.lines[0].match(/@(?:done|cancelled)\(([^)]*)\)/);
+        const match = maskMarkdownTaskText(block.lines[0]).match(/@(?:done|cancelled)\(([^)]*)\)/);
         return match ? moment(match[1], Config.getKey('timekeeping.finished.format')).valueOf() : 0;
       };
       blocks.sort((left, right) => date(right) - date(left));

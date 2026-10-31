@@ -115,8 +115,14 @@ const loadExtension = () => {
     './todo/decorators/changes': { default: { onChanges() {} } },
     './utils': { default: utils },
     './utils/dependency_index': { default: { initialize: initialize('index') } },
+    './utils/task-source': {
+      isMarkdownTaskDocument: (document) => document && document.languageId === 'markdown',
+      getMarkdownTaskNodes: () => [],
+    },
     './views/embedded': { default: { refreshFile: () => events.push('embedded-view') } },
-    './views/files': { default: { refresh() {}, refreshActivityBarBadge() {} } },
+    './views/files': {
+      default: { refresh: () => events.push('files-view'), refreshActivityBarBadge() {} },
+    },
     './views/due': {
       Due: { refresh: () => events.push('due-view'), onDidChangeDate: dates.subscribe },
     },
@@ -155,6 +161,24 @@ const loadExtension = () => {
 };
 
 describe('Extension lifecycle wiring', () => {
+  it('refreshes the Files tree after unsaved task changes', async () => {
+    const state = loadExtension();
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    state.activate(context);
+    state.events.length = 0;
+    try {
+      state.documents.fire({
+        document: {
+          uri: { scheme: 'file', fsPath: '/workspace/notes.md' },
+          languageId: 'markdown',
+        },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(state.events).to.include.members(['due-view', 'files-view']);
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
+    }
+  });
   it('invalidates file generations with bound callbacks and refreshes tokens before decorations', () => {
     const state = loadExtension();
     const context = { subscriptions: [] as { dispose(): void }[] };

@@ -7,6 +7,73 @@ import {
 } from '../src/utils/markdown-archive';
 
 describe('Markdown task sources', () => {
+  it('does not let a backtick inside a comment hide its actual closing delimiter', () => {
+    const node = parseMarkdownTasks('[ ] Task <!-- ` --> literal` @done')[0];
+    expect(node.status).to.equal('done');
+  });
+  it('keeps custom bracketed symbols distinct from Markdown checkboxes', () => {
+    const symbols = { box: '[todo]', done: '[done]' };
+    const node = parseMarkdownTasks('[todo] Task', { symbols })[0];
+    expect(node.style).to.equal('symbol');
+    expect(replaceMarkdownTaskMarker('[todo] Task', node, 'done', symbols)).to.equal('[done] Task');
+  });
+
+  it('scopes Setext headings inside nested lists to their owning task', () => {
+    const content =
+      '- [ ] Parent\n  - [ ] Child\n    Part\n    ----\n    - [ ] Grandchild\n- [ ] Sibling';
+    const nodes = parseMarkdownTasks(content);
+    expect(nodes.map((node) => [node.lineNumber, node.parent])).to.deep.equal([
+      [0, undefined],
+      [1, 0],
+      [2, 1],
+      [4, 2],
+      [5, undefined],
+    ]);
+  });
+  it('keeps headings inside list items scoped to their owning item', () => {
+    const content =
+      '# Note\n- [ ] Parent\n  ## Part\n  - [ ] Child\n    ### Detail\n    - [ ] Grandchild\n- [ ] Sibling';
+    const nodes = parseMarkdownTasks(content);
+    expect(nodes.map((node) => [node.lineNumber, node.parent])).to.deep.equal([
+      [0, undefined],
+      [1, 0],
+      [2, 1],
+      [3, 2],
+      [4, 3],
+      [5, 4],
+      [6, 0],
+    ]);
+  });
+  it('does not let fence-looking indented code hide subsequent tasks', () => {
+    for (const content of [
+      '    ```\n\n[ ] Real',
+      '- Group\n      ```\n\n[ ] Real',
+      '    <!--\n\n[ ] Real',
+    ]) {
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title)
+      ).to.deep.equal(['Real']);
+    }
+  });
+
+  it('keeps an indented closing-fence example inside its enclosing fence', () => {
+    const content = '```\n    ```\n[ ] Still code\n```\n[ ] Real';
+    expect(
+      parseMarkdownTasks(content)
+        .filter((node) => node.kind === 'todo')
+        .map((node) => node.title)
+    ).to.deep.equal(['Real']);
+  });
+
+  it('recognizes multiline comments opened after prose while preserving literal code examples', () => {
+    const content =
+      'Some prose <!--\n[ ] Hidden\n--> <!--\n[ ] Also hidden\n-->\n`<!--`\n[ ] Real <!-- @done -->';
+    const tasks = parseMarkdownTasks(content).filter((node) => node.kind === 'todo');
+    expect(tasks.map((node) => node.title)).to.deep.equal(['Real <!-- @done -->']);
+    expect(tasks[0].status).to.equal('box');
+  });
   it('extracts the issue #256 example with heading and Todo+ project hierarchy', () => {
     const content = [
       '# Big task name',
@@ -163,6 +230,78 @@ describe('Markdown task sources', () => {
 });
 
 describe('Markdown archive round trips', () => {
+  it('restores a task below an existing heading inside a list item', () => {
+    const content = '# Tasks\n- [ ] Parent\n  ## Part\n  - [x] Child\n- [ ] Sibling';
+    const blocks = collectMarkdownArchiveBlocks(content, {});
+    const archived = insertMarkdownArchiveBlocks(
+      removeMarkdownArchiveBlocks(content, blocks),
+      blocks,
+      {}
+    );
+    const task = parseMarkdownTasks(archived).find(
+      (node) => node.kind === 'todo' && node.inArchive
+    );
+    const restoring = collectMarkdownArchiveBlocks(archived, {}, [task.lineNumber], true);
+    const restored = insertMarkdownArchiveBlocks(
+      removeMarkdownArchiveBlocks(archived, restoring),
+      restoring,
+      {},
+      false
+    );
+    const child = parseMarkdownTasks(restored).find(
+      (node) => node.kind === 'todo' && node.title === 'Child'
+    );
+    expect(child.parent).to.equal(2);
+    expect(restored).to.include('  ## Part\n  - [x] Child\n- [ ] Sibling');
+  });
+  it('moves an inline multiline comment as one attached block', () => {
+    const content = '[x] Done <!--\nHidden note\n-->\n\nKeep prose.';
+    const blocks = collectMarkdownArchiveBlocks(content, {});
+    expect(blocks[0].lines).to.deep.equal(['[x] Done <!--', 'Hidden note', '-->']);
+    expect(removeMarkdownArchiveBlocks(content, blocks)).to.equal('\nKeep prose.');
+  });
+
+  it('recreates missing section headings so unarchived tasks remain discoverable', () => {
+    const options = { scope: 'sections' as const };
+    const blocks = collectMarkdownArchiveBlocks('## Tasks\n[x] Done\n', options);
+    const archived = insertMarkdownArchiveBlocks('', blocks, options);
+    const task = parseMarkdownTasks(archived, options).find((node) => node.kind === 'todo');
+    const restoring = collectMarkdownArchiveBlocks(archived, options, [task.lineNumber], true);
+    const restored = insertMarkdownArchiveBlocks(
+      removeMarkdownArchiveBlocks(archived, restoring),
+      restoring,
+      options,
+      false
+    );
+    expect(
+      parseMarkdownTasks(restored, options)
+        .filter((node) => node.kind === 'todo' && !node.inArchive)
+        .map((node) => node.title)
+    ).to.deep.equal(['Done']);
+  });
+
+  it('round-trips dedented fenced content without stripping its significant whitespace', () => {
+    const content = '# Tasks\n- [ ] Parent\n  - [x] Task\n    ```text\n one space\n    ```\n';
+    const blocks = collectMarkdownArchiveBlocks(content, {});
+    const archived = insertMarkdownArchiveBlocks(
+      removeMarkdownArchiveBlocks(content, blocks),
+      blocks,
+      {}
+    );
+    const task = parseMarkdownTasks(archived).find(
+      (node) => node.kind === 'todo' && node.inArchive
+    );
+    const restoring = collectMarkdownArchiveBlocks(archived, {}, [task.lineNumber], true);
+    const restored = insertMarkdownArchiveBlocks(
+      removeMarkdownArchiveBlocks(archived, restoring),
+      restoring,
+      {},
+      false
+    );
+    // Restoring the child to its original parent must preserve the relative
+    // dedent rather than moving code text to the task's column.
+    expect(restored).to.include('```text\n one space\n');
+  });
   it('keeps an attached fenced block intact even when its content is dedented', () => {
     const content = '- [x] Task\n  ```text\n[ ] Example\n  ```\n\nKeep prose.';
     const blocks = collectMarkdownArchiveBlocks(content, {});

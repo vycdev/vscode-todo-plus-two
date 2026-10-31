@@ -10,6 +10,7 @@ import Placeholder from './items/placeholder';
 import Todo from './items/todo';
 import View from './view';
 import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
+import { maskMarkdownTaskText } from '../utils/markdown-task-text';
 
 class DueView extends View {
   id = 'todo.views.3due';
@@ -76,7 +77,7 @@ class DueView extends View {
                 candidate.status === 'box' &&
                 !candidate.inArchive
             );
-            return node ? `☐ ${node.title}` : '';
+            return node ? `☐ ${maskMarkdownTaskText(node.title)}` : '';
           })
         : lines;
       getDueTaskLines(

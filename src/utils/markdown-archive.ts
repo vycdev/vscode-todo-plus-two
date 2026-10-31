@@ -23,16 +23,22 @@ const pathOf = (node: MarkdownTaskNode, nodes: MarkdownTaskNode[]): string[] => 
 
 const reindent = (lines: string[], prefix: string): string[] => {
   const original = (lines[0].match(/^[ \t]*/) || [''])[0];
+  const width = (whitespace: string) => whitespace.replace(/\t/g, '    ').length;
   return lines.map((line) =>
     !line.trim()
       ? line
-      : prefix + (line.startsWith(original) ? line.slice(original.length) : line.trimLeft())
+      : line.startsWith(original)
+        ? prefix + line.slice(original.length)
+        : ' '.repeat(
+            Math.max(0, width(prefix) + width((line.match(/^[ \t]*/) || [''])[0]) - width(original))
+          ) + line.trimLeft()
   );
 };
 
 const childPrefix = (node: MarkdownTaskNode, lines: string[]): string => {
-  if (!node || node.heading) return '';
+  if (!node) return '';
   const indentation = (lines[node.lineNumber].match(/^[ \t]*/) || [''])[0];
+  if (node.heading) return indentation;
   return indentation + ' '.repeat(node.contentIndent ? node.contentIndent - node.indent : 2);
 };
 
@@ -129,7 +135,11 @@ export const insertMarkdownArchiveBlocks = (
             : lines.length;
       while (insertAt > 0 && !lines[insertAt - 1].trim()) insertAt--;
       const prefix = childPrefix(target, lines);
-      lines.splice(insertAt, 0, `${prefix}${block.path[depth]}:`);
+      const recreateHeading = !intoArchive && (!target || (target.heading && target.heading < 6));
+      const header = recreateHeading
+        ? `${prefix}${'#'.repeat(target ? target.heading + 1 : 1)} ${block.path[depth]}`
+        : `${prefix}${block.path[depth]}:`;
+      lines.splice(insertAt, 0, header);
       nodes = parse();
       target = nodes.find((node) => node.lineNumber === insertAt);
     }

@@ -80,7 +80,7 @@ const activate = function (context: vscode.ExtensionContext) {
     clearTimeout(dueRefreshTimer);
     dueRefreshTimer = setTimeout(() => {
       Due.refresh();
-      ViewFiles.refreshActivityBarBadge();
+      ViewFiles.refresh();
     }, 250);
   };
   const refreshDueDocument = (document: vscode.TextDocument) => {
@@ -165,7 +165,17 @@ const activate = function (context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeConfiguration(updateMarkdownContext),
     vscode.workspace.onDidChangeConfiguration(updateFileCaches),
     vscode.workspace.onDidChangeConfiguration(Utils.statistics.tokens.updateDisabledAll),
-    vscode.workspace.onDidChangeConfiguration(() => DocumentDecorator.update()),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('todo.markdown.enabled')) {
+        vscode.window.visibleTextEditors
+          .filter(
+            (editor) =>
+              editor !== vscode.window.activeTextEditor && editor.document.languageId === 'markdown'
+          )
+          .forEach((editor) => DocumentDecorator.update(editor));
+      }
+      DocumentDecorator.update();
+    }),
     vscode.workspace.onDidChangeTextDocument(ChangesDecorator.onChanges),
     vscode.workspace.onDidChangeTextDocument(updateMarkdownContext),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshEmbeddedDocument(document)),

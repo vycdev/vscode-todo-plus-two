@@ -52,10 +52,14 @@ export const matchesTodoStatus = (text: string, pattern: RegExp): boolean => {
   return pattern.test(maskInlineCode(text));
 };
 
-export const removeTodoStatusTag = (text: string, pattern: RegExp): string => {
+export const removeTodoStatusTag = (
+  text: string,
+  pattern: RegExp,
+  mask = maskInlineCode
+): string => {
   pattern.lastIndex = 0;
 
-  const match = pattern.exec(maskInlineCode(text));
+  const match = pattern.exec(mask(text));
 
   if (!match) return text;
 

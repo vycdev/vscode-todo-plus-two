@@ -114,6 +114,10 @@ class Todo extends Item {
 
   /* TIMEKEEPING */
 
+  getTimekeepingText(): string {
+    return this.lineNextText;
+  }
+
   create() {
     if (Config.getKey('timekeeping.created.enabled')) {
       if (Config.getKey('timekeeping.created.time')) {
@@ -175,7 +179,7 @@ class Todo extends Item {
       finishedDate = new Date(),
       startedFormat = Config.getKey('timekeeping.started.format'),
       timerState = started
-        ? getTimerState(this.lineNextText, startedFormat, finishedDate)
+        ? getTimerState(this.getTimekeepingText(), startedFormat, finishedDate)
         : undefined;
 
     this.removeTags(Config.getKey('timekeeping.finished.remove.tags'));

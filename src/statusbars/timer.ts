@@ -96,7 +96,12 @@ class Timer {
       todo =
         doc &&
         doc.getTodosBoxStarted().find((candidate) => {
-          const state = getTimerState(candidate.text, startedFormat, new Date(), timestampOffset);
+          const state = getTimerState(
+            candidate.getTimekeepingText ? candidate.getTimekeepingText() : candidate.text,
+            startedFormat,
+            new Date(),
+            timestampOffset
+          );
 
           return Boolean(state && state.active);
         });
@@ -114,6 +119,7 @@ class Timer {
         filePath: doc.textDocument.uri.fsPath,
         line: todo.line,
         text: todo.text,
+        timerText: todo.getTimekeepingText ? todo.getTimekeepingText() : todo.text,
         startedTag,
         startedFormat,
         // Preserve sub-minute precision while the task is edited or moved.
@@ -125,7 +131,7 @@ class Timer {
       if (estTag) {
         // Resolve calendar estimates from the preserved start time before subtracting elapsed time.
         const state = getTimerState(
-            todo.text,
+            this.data.timerText,
             startedFormat,
             new Date(),
             this.data.timestampOffset
@@ -157,7 +163,7 @@ class Timer {
 
   updateText() {
     const state = getTimerState(
-      this.data.text,
+      this.data.timerText || this.data.text,
       this.data.startedFormat,
       new Date(),
       this.data.timestampOffset

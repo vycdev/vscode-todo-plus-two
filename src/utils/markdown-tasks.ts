@@ -1,5 +1,5 @@
-import { maskInlineCode } from './todo-status';
 import { splitLines } from './line-splitting';
+import { getMarkdownCommentRanges, maskMarkdownTaskText } from './markdown-task-text';
 
 export interface MarkdownTaskOptions {
   scope?: 'all' | 'sections';
@@ -23,6 +23,7 @@ export interface MarkdownTaskNode {
   indent: number;
   contentIndent?: number;
   heading?: number;
+  headingOwner?: number;
   inArchive: boolean;
   archiveRoot?: boolean;
 }
@@ -47,13 +48,14 @@ export const parseMarkdownTasks = (
   const symbols = options.symbols || {};
   const symbolNames = Array.from(
     new Set(['☐', '✔', '✘', symbols.box, symbols.done, symbols.cancelled].filter(Boolean))
-  );
+  ).sort((left, right) => right.length - left.length);
   const taskPattern = new RegExp(
     `^([ \\t]*)(?:(?:[-+*]|\\d+[.)])[ \\t]+)?(\\[[ xX]\\]|${symbolNames.map(escapeRegex).join('|')})(?=[ \\t]|$)([ \\t]*)(.*)$`
   );
-  let fence: { marker: string; length: number; start: number } | undefined;
-  const fencedEnds = new Map<number, number>();
+  let fence: { marker: string; length: number; start: number; baseIndent: number } | undefined;
+  const ignoredEnds = new Map<number, number>();
   let comment = false;
+  let commentStart = 0;
   let frontMatter =
     lines[0] === '---' && lines.slice(1).some((line) => /^(---|\.\.\.)\s*$/.test(line));
 
@@ -66,41 +68,102 @@ export const parseMarkdownTasks = (
     }
     if (fence) {
       const close = raw.match(/^[ \t]*(`{3,}|~{3,})[ \t]*$/);
-      if (close && close[1][0] === fence.marker && close[1].length >= fence.length) {
-        fencedEnds.set(fence.start, lineNumber + 1);
+      if (
+        close &&
+        indent <= fence.baseIndent + 3 &&
+        close[1][0] === fence.marker &&
+        close[1].length >= fence.length
+      ) {
+        ignoredEnds.set(fence.start, lineNumber + 1);
         fence = undefined;
       }
       continue;
     }
+    const wasComment = comment;
+    let cursor = 0;
     if (comment) {
-      if (raw.includes('-->')) comment = false;
-      continue;
+      const closing = raw.indexOf('-->');
+      if (closing < 0) continue;
+      ignoredEnds.set(commentStart, lineNumber + 1);
+      comment = false;
+      cursor = closing + 3;
     }
-    if (/^[ \t]*<!--/.test(raw)) {
-      comment = !raw.includes('-->');
-      continue;
+    if (!wasComment && !raw.trim()) continue;
+    if (!wasComment) {
+      while (indented.length && indent <= indented[indented.length - 1].indent) {
+        indented.pop().endLine = lineNumber;
+      }
+      while (
+        headings.length &&
+        headings[headings.length - 1].headingOwner !== undefined &&
+        !indented.some((node) => node.lineNumber === headings[headings.length - 1].headingOwner)
+      ) {
+        headings.pop().endLine = lineNumber;
+      }
     }
+    const container = indented
+      .slice()
+      .reverse()
+      .find((node) => node.indent < indent);
+    const fenceBase = container
+      ? container.contentIndent === undefined
+        ? container.indent + 2
+        : container.contentIndent
+      : 0;
+    if (
+      !wasComment &&
+      (!container || container.contentIndent !== undefined) &&
+      indent >= fenceBase + 4
+    )
+      continue;
     const openingFence = raw.match(/^[ \t]*(`{3,}|~{3,})(.*)$/);
-    if (openingFence) {
-      fence = { marker: openingFence[1][0], length: openingFence[1].length, start: lineNumber };
+    if (
+      !wasComment &&
+      openingFence &&
+      indent <= fenceBase + 3 &&
+      !(openingFence[1][0] === '`' && openingFence[2].includes('`'))
+    ) {
+      fence = {
+        marker: openingFence[1][0],
+        length: openingFence[1].length,
+        start: lineNumber,
+        baseIndent: fenceBase,
+      };
       continue;
     }
+    const comments = getMarkdownCommentRanges(raw.slice(cursor));
+    comments.forEach((range) => {
+      if (!range.closed) {
+        comment = true;
+        commentStart = lineNumber;
+      }
+    });
+    if (wasComment || (comments.length && !raw.slice(0, cursor + comments[0].start).trim()))
+      continue;
     if (!raw.trim() || /^[ \t]*>/.test(raw)) continue;
 
     const setext =
-      indent < 4 &&
+      indent <= fenceBase + 3 &&
       !taskPattern.test(raw) &&
+      !/^[ \t]*(?:[-+*]|\d+[.)])[ \t]+/.test(raw) &&
       lines[lineNumber + 1] &&
-      /^ {0,3}(=+|-+)[ \t]*$/.exec(lines[lineNumber + 1]);
+      indentWidth(lines[lineNumber + 1]) <= fenceBase + 3 &&
+      /^[ \t]*(=+|-+)[ \t]*$/.exec(lines[lineNumber + 1]);
     const heading =
-      raw.match(/^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/) ||
+      raw.match(/^[ \t]*(#{1,6})[ \t]+(.+?)\s*$/) ||
       (setext ? ['', setext[1][0] === '=' ? '#' : '##', raw.trim()] : undefined);
     if (heading) {
-      while (headings.length && headings[headings.length - 1].heading >= heading[1].length) {
+      const owner = container && container.lineNumber;
+      while (
+        headings.length &&
+        headings[headings.length - 1].headingOwner === owner &&
+        headings[headings.length - 1].heading >= heading[1].length
+      ) {
         headings.pop().endLine = lineNumber;
       }
-      indented.length = 0;
-      const parent = headings[headings.length - 1];
+      if (owner === undefined) indented.length = 0;
+      const section = headings[headings.length - 1];
+      const parent = section && section.headingOwner === owner ? section : container;
       const title = headingTitle(heading[2]);
       const archiveRoot = title.toLowerCase() === (options.archiveName || 'Archive').toLowerCase();
       const node: MarkdownTaskNode = {
@@ -112,6 +175,7 @@ export const parseMarkdownTasks = (
         title,
         indent,
         heading: heading[1].length,
+        headingOwner: owner,
         inArchive: archiveRoot || !!(parent && parent.inArchive),
         archiveRoot,
       };
@@ -121,11 +185,12 @@ export const parseMarkdownTasks = (
       continue;
     }
 
-    while (indented.length && indent <= indented[indented.length - 1].indent) {
-      const previous = indented.pop();
-      previous.endLine = lineNumber;
-    }
-    const parent = indented[indented.length - 1] || headings[headings.length - 1];
+    const listParent = indented[indented.length - 1];
+    const sectionParent = headings[headings.length - 1];
+    const parent =
+      listParent && (!sectionParent || listParent.lineNumber > sectionParent.lineNumber)
+        ? listParent
+        : sectionParent;
     // Four spaces outside a list/project are an indented code block. Inside
     // a task, an additional four spaces beyond its content also introduce code.
     const contentIndent = parent && parent.contentIndent;
@@ -142,7 +207,7 @@ export const parseMarkdownTasks = (
     if (task) {
       const markerStart = raw.indexOf(task[2], task[1].length);
       const marker = task[2];
-      const masked = maskInlineCode(task[4]);
+      const masked = maskMarkdownTaskText(task[4]);
       const tagged = (name: string) =>
         new RegExp(`(?:^|[^a-zA-Z0-9])@${name}(?:\\([^)]*\\)|(?![a-zA-Z0-9]))`).test(masked);
       const status =
@@ -166,7 +231,7 @@ export const parseMarkdownTasks = (
         status,
         markerStart,
         markerEnd: markerStart + marker.length,
-        style: marker.startsWith('[') ? 'checkbox' : 'symbol',
+        style: /^\[[ xX]\]$/.test(marker) ? 'checkbox' : 'symbol',
         indent,
         contentIndent: Math.max(
           indent + 2,
@@ -201,16 +266,17 @@ export const parseMarkdownTasks = (
       indented.push(node);
     }
   }
-  if (fence) fencedEnds.set(fence.start, lines.length);
+  if (fence) ignoredEnds.set(fence.start, lines.length);
+  if (comment) ignoredEnds.set(commentStart, lines.length);
 
   // Block ranges include indented notes and children, but leave separating
   // blank lines in place when a task is archived.
   nodes.forEach((node) => {
     if (node.heading) return;
-    let end = node.lineNumber + 1;
+    let end = ignoredEnds.get(node.lineNumber) || node.lineNumber + 1;
     for (; end < node.endLine; end++) {
       if (lines[end].trim() && indentWidth(lines[end]) <= node.indent) break;
-      if (fencedEnds.has(end)) end = fencedEnds.get(end) - 1;
+      if (ignoredEnds.has(end)) end = ignoredEnds.get(end) - 1;
     }
     while (end > node.lineNumber + 1 && !lines[end - 1].trim()) end--;
     node.endLine = end;

@@ -10,6 +10,7 @@ import Folder from './folder';
 import Regex from './regex';
 import { matchesTodoStatus } from './todo-status';
 import { getMarkdownTaskNodes, isMarkdownTaskDocument, isTaskDocument } from './task-source';
+import { maskMarkdownTaskText } from './markdown-task-text';
 
 /* TYPES */
 
@@ -80,7 +81,8 @@ const DependencyIndex = {
           status: markdownTask ? markdownTask.status : undefined,
         });
 
-        getDependencies(text).forEach((reference) => {
+        const referenceText = markdownTask ? maskMarkdownTaskText(text) : text;
+        getDependencies(referenceText).forEach((reference) => {
           const dependency = makeLocation(reference);
 
           if (!dependencies[dependency.id]) dependencies[dependency.id] = [];
@@ -88,7 +90,7 @@ const DependencyIndex = {
           dependencies[dependency.id].push(dependency);
         });
 
-        getIds(text).forEach((reference) => {
+        getIds(referenceText).forEach((reference) => {
           const target = makeLocation(reference);
 
           if (!targets[target.id]) targets[target.id] = [];
