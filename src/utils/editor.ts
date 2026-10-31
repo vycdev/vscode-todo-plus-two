@@ -4,12 +4,13 @@ import * as _ from 'lodash';
 import * as diff from 'diff';
 import * as vscode from 'vscode';
 import Consts from '../consts';
+import { isTaskEditor } from './task-source';
 
 /* EDITOR */
 
 const Editor = {
   isSupported(textEditor?: vscode.TextEditor) {
-    return textEditor && textEditor.document.languageId === Consts.languageId;
+    return isTaskEditor(textEditor);
   },
 
   async open(content: string) {

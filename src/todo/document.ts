@@ -5,6 +5,9 @@ import stringMatches from 'string-matches';
 import * as vscode from 'vscode';
 import Consts from '../consts';
 import Utils from '../utils';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
+import { replaceMarkdownTaskMarker } from '../utils/markdown-tasks';
+import { maskInlineCode, removeTodoStatusTag } from '../utils/todo-status';
 import {
   Line,
   Archive,
@@ -29,7 +32,7 @@ class Document {
   constructor(res: string | vscode.TextEditor | vscode.TextDocument) {
     if (_.isString(res)) {
       this.text = res;
-    } else {
+    } else if (res) {
       if ('document' in res) {
         // => vscode.TextEditor
 
@@ -61,6 +64,7 @@ class Document {
       | typeof TodoCancelled,
     regex: RegExp
   ) {
+    if (this.isMarkdown()) return this.getMarkdownItems(Item, regex);
     const matchText = _.isString(this.text) ? this.text : this.textDocument.getText(),
       matches = stringMatches(matchText, regex);
 
@@ -89,6 +93,14 @@ class Document {
     lineNumber: number,
     checkValidity = true
   ) {
+    if (this.isMarkdown()) {
+      const item = this.getMarkdownItems(
+        Item,
+        Item === TodoBox ? Consts.regexes.todo : undefined,
+        lineNumber
+      ).find((candidate) => candidate.lineNumber === lineNumber);
+      return item;
+    }
     const line = this.textDocument.lineAt(lineNumber);
 
     if (checkValidity && !Item.is(line.text)) return;
@@ -149,7 +161,7 @@ class Document {
   }
 
   getTodosBox() {
-    return this.getItems(TodoBox, Consts.regexes.todo).filter((todo) => TodoBox.is(todo.text));
+    return this.getItems(TodoBox, Consts.regexes.todo).filter((todo) => todo.isBox());
   }
 
   getTodoBoxAt(lineNumber: number, checkValidity?) {
@@ -161,7 +173,7 @@ class Document {
   }
 
   getTodosDone() {
-    return this.getItems(TodoDone, Consts.regexes.todo).filter((todo) => TodoDone.is(todo.text));
+    return this.getItems(TodoDone, Consts.regexes.todo).filter((todo) => todo.isDone());
   }
 
   getTodoDoneAt(lineNumber: number, checkValidity?) {
@@ -169,9 +181,7 @@ class Document {
   }
 
   getTodosCancelled() {
-    return this.getItems(TodoCancelled, Consts.regexes.todo).filter((todo) =>
-      TodoCancelled.is(todo.text)
-    );
+    return this.getItems(TodoCancelled, Consts.regexes.todo).filter((todo) => todo.isCancelled());
   }
 
   getTodoCancelledAt(lineNumber: number, checkValidity?) {
@@ -179,9 +189,7 @@ class Document {
   }
 
   getTodosFinished() {
-    return this.getItems(TodoFinished, Consts.regexes.todo).filter((todo) =>
-      TodoFinished.is(todo.text)
-    );
+    return this.getItems(TodoFinished, Consts.regexes.todo).filter((todo) => todo.isFinished());
   }
 
   getTodoFinishedAt(lineNumber: number, checkValidity?) {
@@ -189,6 +197,82 @@ class Document {
   }
 
   /* IS */
+
+  isMarkdown() {
+    return !!this.textDocument && isMarkdownTaskDocument(this.textDocument);
+  }
+
+  /** Source adapter: domain items keep their real source lines and native edits. */
+  private getMarkdownItems(Item, regex?: RegExp, lineNumber?: number): any[] {
+    const nodes = getMarkdownTaskNodes(this.textDocument);
+    const todoType = Item === Todo || Item.prototype instanceof Todo;
+    if (Item === Comment || Item === Formatted || Item === Line) return [];
+    const items = [];
+    nodes.forEach((node) => {
+      if (lineNumber !== undefined && node.lineNumber !== lineNumber) return;
+      if (todoType && node.kind !== 'todo') return;
+      if ((Item === Project || Item === Archive) && node.kind !== 'project') return;
+      if (Item === Archive && !node.archiveRoot) return;
+      if (Item === TodoBox && node.status !== 'box') return;
+      if (Item === TodoDone && node.status !== 'done') return;
+      if (Item === TodoCancelled && node.status !== 'cancelled') return;
+      if (Item === TodoFinished && node.status === 'box') return;
+      const line = this.textDocument.lineAt(node.lineNumber);
+      if (Item === Tag) {
+        if (node.kind !== 'todo') return;
+        stringMatches(maskInlineCode(line.text), regex).forEach((match) => {
+          const tag = new Item(this.textEditor, line, match);
+          const range = Utils.regex.match2range(match);
+          tag._range = new vscode.Range(node.lineNumber, range.start, node.lineNumber, range.end);
+          tag._pos = tag._range.start;
+          tag.textDocument = this.textDocument;
+          tag.markdownNode = node;
+          items.push(tag);
+        });
+        return;
+      }
+      const item = new Item(this.textEditor, line);
+      item.textDocument = this.textDocument;
+      item.markdownNode = node;
+      item.level = node.level;
+      if (todoType) {
+        item.getTag = (pattern: RegExp) => {
+          pattern.lastIndex = 0;
+          const match = pattern.exec(maskInlineCode(item.lineNextText));
+          return match && item.lineNextText.slice(match.index, match.index + match[0].length);
+        };
+        item.hasTag = (pattern: RegExp) => !!item.getTag(pattern);
+        item.removeTag = (pattern: RegExp) => {
+          item.lineNextText = removeTodoStatusTag(item.lineNextText, pattern).trimEnd();
+        };
+        item.isBox = () => node.status === 'box';
+        item.isDone = () => node.status === 'done';
+        item.isCancelled = () => node.status === 'cancelled';
+        item.setSymbolAndState = (symbol, state) => {
+          const was = item.getStatus();
+          item.lineNextText = replaceMarkdownTaskMarker(
+            item.lineNextText,
+            node,
+            state,
+            Consts.symbols
+          );
+          if (state === 'done' || state === 'cancelled') item.unfinish();
+          item.setStatus(item.makeStatus(state), was);
+          if (
+            state === 'cancelled' &&
+            node.style === 'checkbox' &&
+            !/@cancelled(?:\(|\b)/.test(maskInlineCode(item.lineNextText))
+          ) {
+            item.addTag('@cancelled');
+          }
+        };
+        if (regex === Consts.regexes.todoBoxStarted && !item.hasTag(Consts.regexes.tagStarted))
+          return;
+      }
+      items.push(item);
+    });
+    return items;
+  }
 
   isSupported() {
     return Utils.editor.isSupported(this.textEditor);

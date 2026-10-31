@@ -21,6 +21,8 @@ import { getTimerState, getToggleTag } from './utils/timekeeping';
 import { HtmlExportLine, renderTodoHtml } from './utils/html-export';
 import { renderTodoMarkdown } from './utils/markdown-export';
 import DocumentDecorator from './todo/decorators/document';
+import { getTaskLevel, getMarkdownTaskNodes, isMarkdownTaskDocument } from './utils/task-source';
+import { archiveMarkdownTasks } from './utils/markdown-archive-command';
 import { ProjectCopyLine, renderProjectCopy } from './utils/project-copy';
 import {
   DependencyReference,
@@ -187,12 +189,14 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
 
         return {
           lineNumber,
-          level: Utils.ast.getLevel(textEditor.document, text),
+          level: getTaskLevel(textEditor.document, lineNumber, () =>
+            Utils.ast.getLevel(textEditor.document, text)
+          ),
           status,
           isProject: !!project,
         };
       })
-      .filter((line) => textEditor.document.lineAt(line.lineNumber).text.trim()),
+      .filter((line) => line.level >= 0 && textEditor.document.lineAt(line.lineNumber).text.trim()),
     possibleLines = getAutoCompletableParentLines(lines, completedLines);
 
   if (!possibleLines.length) return;
@@ -314,11 +318,15 @@ function getExportLines(textEditor: vscode.TextEditor, doc: Document): HtmlExpor
 
     const todo = doc.getTodoAt(lineNumber, true) as Todo,
       project = doc.getProjectAt(lineNumber, true) as Project,
-      level = Utils.ast.getLevel(textDocument, raw);
+      level = getTaskLevel(textDocument, lineNumber, () => Utils.ast.getLevel(textDocument, raw));
+
+    if (level < 0) return result;
 
     if (todo) {
       const status = todo.getStatus(),
-        text = raw.replace(Consts.regexes.todoSymbol, '').trim();
+        text = todo.markdownNode
+          ? todo.markdownNode.title
+          : raw.replace(Consts.regexes.todoSymbol, '').trim();
 
       result.push({
         kind: 'todo',
@@ -328,8 +336,12 @@ function getExportLines(textEditor: vscode.TextEditor, doc: Document): HtmlExpor
       });
     } else if (project) {
       const match = raw.match(Consts.regexes.projectParts),
-        title = match ? match[2].trim() : raw.trim(),
-        tags = match && match[3] ? match[3].trim() : '';
+        title = project.markdownNode
+          ? project.markdownNode.title
+          : match
+            ? match[2].trim()
+            : raw.trim(),
+        tags = project.markdownNode ? '' : match && match[3] ? match[3].trim() : '';
 
       result.push({
         kind: 'project',
@@ -485,14 +497,22 @@ async function copyProjectWithStatistics() {
     }),
     endOfLine = textDocument.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
     includeRemainingDocument = !!items.archive && items.archive.lineNumber === projectLine,
-    content = renderProjectCopy(
-      lines,
-      projectLine,
-      statistics,
-      project.range.end.character,
-      endOfLine,
-      includeRemainingDocument
-    );
+    content = project.markdownNode
+      ? _.range(projectLine, project.markdownNode.endLine)
+          .map((lineNumber) => {
+            const text = textDocument.lineAt(lineNumber).text;
+            return lineNumber === projectLine ? `${text} ${statistics}` : text;
+          })
+          .join(endOfLine)
+          .trimEnd()
+      : renderProjectCopy(
+          lines,
+          projectLine,
+          statistics,
+          project.range.end.character,
+          endOfLine,
+          includeRemainingDocument
+        );
 
   try {
     await clipboard.writeText(content);
@@ -679,6 +699,7 @@ async function archive() {
 
   Utils.log.debug(`archive on document: ${textEditor.document.fileName}`);
   try {
+    if (isMarkdownTaskDocument(textEditor.document)) return await archiveMarkdownTasks(textEditor);
     return await Utils.archive.run(doc);
   } catch (error) {
     return vscode.window.showErrorMessage(`Unable to archive tasks: ${error.message || error}`);
@@ -702,6 +723,19 @@ async function unarchive() {
     return vscode.window.showInformationMessage(
       'Unarchive is available only when todo.archive.type is set to InSameFile'
     );
+  }
+
+  if (isMarkdownTaskDocument(textEditor.document)) {
+    try {
+      const count = await archiveMarkdownTasks(textEditor, getSelectedLines(textEditor));
+      return vscode.window.showInformationMessage(
+        count
+          ? `Unarchived ${count} task block${count === 1 ? '' : 's'}`
+          : 'No finished archived task found at the cursor'
+      );
+    } catch (error) {
+      return vscode.window.showErrorMessage(`Unable to unarchive tasks: ${error.message || error}`);
+    }
   }
 
   const archive = doc.getArchive();
@@ -778,6 +812,11 @@ async function viewCallTodosMethod(todo: ItemTodo, options?) {
 
   const textEditor = await viewRevealTodo(todo);
   if (!textEditor) return;
+  if (
+    todo.obj.documentVersion !== undefined &&
+    !isCurrentDocument(textEditor.document, todo.obj.documentVersion)
+  )
+    return;
 
   return callTodosMethod(options, textEditor);
 }
@@ -806,6 +845,11 @@ async function viewToggleStart(todo: ItemTodo) {
 
   const textEditor = await viewRevealTodo(todo);
   if (!textEditor) return;
+  if (
+    todo.obj.documentVersion !== undefined &&
+    !isCurrentDocument(textEditor.document, todo.obj.documentVersion)
+  )
+    return;
 
   return toggleStart(textEditor);
 }

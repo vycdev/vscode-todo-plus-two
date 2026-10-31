@@ -19,6 +19,7 @@ import ViewFiles from './views/files';
 import { Due } from './views/due';
 import StatusbarStatistics from './statusbars/statistics';
 import StatusbarTimer from './statusbars/timer';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from './utils/task-source';
 
 /* ACTIVATE */
 
@@ -33,6 +34,20 @@ const activate = function (context: vscode.ExtensionContext) {
 
   Config.check(config);
   updateUnarchiveContext();
+  const updateMarkdownContext = () => {
+    const editor = vscode.window.activeTextEditor;
+    const enabled = !!editor && isMarkdownTaskDocument(editor.document);
+    vscode.commands.executeCommand('setContext', 'todo-markdown-active', enabled);
+    vscode.commands.executeCommand(
+      'setContext',
+      'todo-markdown-task',
+      enabled &&
+        getMarkdownTaskNodes(editor.document).some(
+          (node) => node.kind === 'todo' && node.lineNumber === editor.selection.active.line
+        )
+    );
+  };
+  updateMarkdownContext();
 
   ViewEmbedded.expanded = config.embedded.view.expanded;
 
@@ -76,6 +91,7 @@ const activate = function (context: vscode.ExtensionContext) {
 
     if (
       document.languageId === Consts.languageId ||
+      isMarkdownTaskDocument(document) ||
       (filesData && filesData.hasOwnProperty(filePath))
     ) {
       dueRefresh();
@@ -127,21 +143,31 @@ const activate = function (context: vscode.ExtensionContext) {
       },
     },
     vscode.languages.registerCompletionItemProvider(
-      Consts.languageId,
+      [Consts.languageId, 'markdown'],
       new CompletionProvider(),
       ...CompletionProvider.triggerCharacters
     ),
-    vscode.languages.registerDocumentLinkProvider(Consts.languageId, new DependencyLinkProvider()),
+    vscode.languages.registerDocumentLinkProvider(
+      [Consts.languageId, 'markdown'],
+      new DependencyLinkProvider()
+    ),
     vscode.languages.registerFoldingRangeProvider(Consts.languageId, new FoldingProvider()),
-    vscode.languages.registerDocumentLinkProvider(Consts.languageId, new FileLinkProvider()),
+    vscode.languages.registerDocumentLinkProvider(
+      [Consts.languageId, 'markdown'],
+      new FileLinkProvider()
+    ),
     vscode.languages.registerDocumentSymbolProvider(Consts.languageId, new SymbolsProvider()),
     vscode.window.onDidChangeActiveTextEditor(() => DocumentDecorator.update()),
+    vscode.window.onDidChangeActiveTextEditor(updateMarkdownContext),
+    vscode.window.onDidChangeTextEditorSelection(updateMarkdownContext),
     vscode.workspace.onDidChangeConfiguration(Consts.update),
     vscode.workspace.onDidChangeConfiguration(updateUnarchiveContext),
+    vscode.workspace.onDidChangeConfiguration(updateMarkdownContext),
     vscode.workspace.onDidChangeConfiguration(updateFileCaches),
     vscode.workspace.onDidChangeConfiguration(Utils.statistics.tokens.updateDisabledAll),
     vscode.workspace.onDidChangeConfiguration(() => DocumentDecorator.update()),
     vscode.workspace.onDidChangeTextDocument(ChangesDecorator.onChanges),
+    vscode.workspace.onDidChangeTextDocument(updateMarkdownContext),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshEmbeddedDocument(document)),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshDueDocument(document)),
     Due.onDidChangeDate(() => {

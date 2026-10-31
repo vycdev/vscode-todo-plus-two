@@ -176,7 +176,11 @@ const Statistics = {
           items,
           (acc, value, key) => {
             const newValue = _.isArray(value)
-              ? value.filter((item) => item.lineNumber < items.archive.lineNumber)
+              ? value.filter((item) =>
+                  item.markdownNode
+                    ? !item.markdownNode.inArchive
+                    : item.lineNumber < items.archive.lineNumber
+                )
               : value;
 
             acc[key] = newValue;
@@ -279,7 +283,8 @@ const Statistics = {
       project.level = project.level || AST.getLevel(textDocument, project.line.text);
 
       const tokens = new Tokens(),
-        includeRemainingDocument = project.lineNumber === archiveLineNumber,
+        includeRemainingDocument =
+          !project.markdownNode && project.lineNumber === archiveLineNumber,
         scopeEnd = getStatisticsScopeEnd(
           lines,
           lineNr,

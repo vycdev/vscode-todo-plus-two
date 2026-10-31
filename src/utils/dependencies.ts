@@ -9,6 +9,7 @@ export interface DependencyReference {
 }
 
 export interface DependencyTarget extends DependencyReference {
+  status?: 'box' | 'done' | 'cancelled';
   filePath: string;
   lineNumber: number;
   text: string;

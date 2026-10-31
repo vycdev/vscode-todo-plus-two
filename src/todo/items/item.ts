@@ -3,10 +3,13 @@
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Utils from '../../utils';
+import type { MarkdownTaskNode } from '../../utils/markdown-tasks';
 
 /* ITEM */
 
 class Item {
+  markdownNode?: MarkdownTaskNode;
+  level?: number;
   /* PROPERTIES */
 
   textEditor: vscode.TextEditor;

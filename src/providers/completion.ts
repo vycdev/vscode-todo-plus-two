@@ -12,6 +12,7 @@ import {
   getTagNameCompletions,
 } from '../utils/tag_completions';
 import Timestamps from '../utils/timestamps';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
 
 /* COMPLETION */
 
@@ -22,6 +23,14 @@ class Completion implements vscode.CompletionItemProvider {
   static triggerCharacters = _.uniq(TAG_TRIGGER_CHARACTERS.concat(TIMESTAMP_TRIGGER_CHARACTERS));
 
   async provideCompletionItems(textDocument: vscode.TextDocument, pos: vscode.Position) {
+    if (
+      textDocument.languageId === 'markdown' &&
+      (!isMarkdownTaskDocument(textDocument) ||
+        !getMarkdownTaskNodes(textDocument).some(
+          (node) => node.kind === 'todo' && node.lineNumber === pos.line
+        ))
+    )
+      return null;
     const line = textDocument.lineAt(pos.line).text;
     const character = line[pos.character - 1];
     const tagPrefix = Timestamps.getPrefix(line, pos.character);

@@ -9,6 +9,7 @@ import Item from './items/item';
 import Placeholder from './items/placeholder';
 import Todo from './items/todo';
 import View from './view';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
 
 class DueView extends View {
   id = 'todo.views.3due';
@@ -63,8 +64,23 @@ class DueView extends View {
         lines.push(data.textEditor.lineAt(lineNumber).text);
       }
 
+      const markdownNodes = isMarkdownTaskDocument(data.textEditor)
+        ? getMarkdownTaskNodes(data.textEditor)
+        : undefined;
+      const dueLines = markdownNodes
+        ? lines.map((line, lineNumber) => {
+            const node = markdownNodes.find(
+              (candidate) =>
+                candidate.kind === 'todo' &&
+                candidate.lineNumber === lineNumber &&
+                candidate.status === 'box' &&
+                !candidate.inArchive
+            );
+            return node ? `☐ ${node.title}` : '';
+          })
+        : lines;
       getDueTaskLines(
-        lines,
+        dueLines,
         Consts.regexes.todo,
         Consts.regexes.todoFinished,
         today,
@@ -77,6 +93,7 @@ class DueView extends View {
             lineNr: task.lineNumber,
             relativePath: data.relativePath,
             textEditor: data.textEditor,
+            documentVersion: markdownNodes ? data.textEditor.version : undefined,
           },
           todo = new Todo(obj, _.trimStart(task.text));
 

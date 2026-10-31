@@ -1,3 +1,13 @@
+### Version 5.4.0
+
+#### New features
+
+- Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
+
+#### Fixes
+
+- Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
+
 ### Version 5.3.0
 
 A large release: nearly 30 new features and well over a hundred fixes since 5.2.0. If you customize statistics conditions or bound a key to `Todo: Toggle Timer`, read the compatibility notes first.

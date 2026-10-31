@@ -9,6 +9,7 @@ import Files from './files';
 import Folder from './folder';
 import Regex from './regex';
 import { matchesTodoStatus } from './todo-status';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument, isTaskDocument } from './task-source';
 
 /* TYPES */
 
@@ -40,13 +41,13 @@ const DependencyIndex = {
         },
       },
       vscode.workspace.onDidChangeTextDocument(({ document }) => {
-        if (document.languageId === Consts.languageId) updateDiagnostics();
+        if (isTaskDocument(document)) updateDiagnostics();
       }),
       vscode.workspace.onDidOpenTextDocument((document) => {
-        if (document.languageId === Consts.languageId) updateDiagnostics();
+        if (isTaskDocument(document)) updateDiagnostics();
       }),
       vscode.workspace.onDidCloseTextDocument((document) => {
-        if (document.languageId === Consts.languageId) updateDiagnostics();
+        if (isTaskDocument(document)) updateDiagnostics();
       }),
       vscode.workspace.onDidChangeWorkspaceFolders(updateDiagnostics),
       vscode.workspace.onDidChangeConfiguration(updateDiagnostics)
@@ -61,15 +62,22 @@ const DependencyIndex = {
     const dependencies: { [id: string]: DependencyTarget[] } = Object.create(null);
 
     documents.forEach((candidate) => {
+      const markdownNodes = isMarkdownTaskDocument(candidate)
+        ? getMarkdownTaskNodes(candidate)
+        : undefined;
       for (let lineNumber = 0; lineNumber < candidate.lineCount; lineNumber++) {
         const text = candidate.lineAt(lineNumber).text;
-        if (!Regex.test(Consts.regexes.todo, text)) continue;
+        const markdownTask =
+          markdownNodes &&
+          markdownNodes.find((node) => node.lineNumber === lineNumber && node.kind === 'todo');
+        if (markdownNodes ? !markdownTask : !Regex.test(Consts.regexes.todo, text)) continue;
 
         const makeLocation = (reference: DependencyReference): DependencyTarget => ({
           ...reference,
           filePath: candidate.uri.fsPath,
           lineNumber,
           text,
+          status: markdownTask ? markdownTask.status : undefined,
         });
 
         getDependencies(text).forEach((reference) => {
@@ -94,6 +102,7 @@ const DependencyIndex = {
   },
 
   isFinished(target: DependencyTarget) {
+    if (target.status) return target.status !== 'box';
     return matchesTodoStatus(target.text, Consts.regexes.todoFinished);
   },
 
@@ -142,7 +151,7 @@ const DependencyIndex = {
 
   async getTodoDocuments(document?: vscode.TextDocument) {
     const documents = vscode.workspace.textDocuments
-      .filter((candidate) => candidate.languageId === Consts.languageId)
+      .filter((candidate) => isTaskDocument(candidate))
       .slice();
 
     try {

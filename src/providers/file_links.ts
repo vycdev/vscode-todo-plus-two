@@ -2,16 +2,26 @@
 
 import * as vscode from 'vscode';
 import { findRelativeFileLinks } from '../utils/file-links';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
 
 /* FILE LINKS */
 
 export class FileLinkProvider implements vscode.DocumentLinkProvider {
   provideDocumentLinks(document: vscode.TextDocument): vscode.DocumentLink[] {
     if (document.uri.scheme !== 'file') return [];
+    if (document.languageId === 'markdown' && !isMarkdownTaskDocument(document)) return [];
+    const markdownTasks = isMarkdownTaskDocument(document)
+      ? new Set(
+          getMarkdownTaskNodes(document)
+            .filter((node) => node.kind === 'todo')
+            .map((node) => node.lineNumber)
+        )
+      : undefined;
 
     const links: vscode.DocumentLink[] = [];
 
     for (let lineNumber = 0; lineNumber < document.lineCount; lineNumber++) {
+      if (markdownTasks && !markdownTasks.has(lineNumber)) continue;
       findRelativeFileLinks(document.lineAt(lineNumber).text, document.uri.fsPath).forEach(
         (link) => {
           const range = new vscode.Range(

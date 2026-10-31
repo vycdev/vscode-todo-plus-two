@@ -83,6 +83,7 @@ const loadCommands = (activeEditor = makeEditor(), todoText = '☐ Task') => {
     './todo/document': { default: Document },
     './utils': { default: utils },
     './utils/dependency_index': { default: dependencyIndex },
+    './utils/task-source': { isMarkdownTaskDocument: () => false },
   };
   NodeModule._load = (request, parent, isMain) => {
     if (parent && parent.filename === modulePath) {

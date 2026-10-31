@@ -86,7 +86,11 @@ const loadExtension = () => {
       onDidChangeWorkspaceFolders: folders.subscribe,
       onDidChangeTextDocument: documents.subscribe,
     },
-    window: { onDidChangeActiveTextEditor: editors.subscribe, visibleTextEditors: visibleEditors },
+    window: {
+      onDidChangeActiveTextEditor: editors.subscribe,
+      onDidChangeTextEditorSelection: editors.subscribe,
+      visibleTextEditors: visibleEditors,
+    },
     languages: {
       registerCompletionItemProvider: () => disposable('completion'),
       registerDocumentLinkProvider: () => disposable('links'),

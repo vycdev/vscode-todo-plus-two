@@ -13,6 +13,7 @@ import { getWorkspaceExcludeRules } from './workspace-excludes';
 import { getBatchSize } from './batch-size';
 import { getUniqueRootKeys } from './file-groups';
 import { discoverFiles, isAllowedFilePath } from './file-discovery';
+import { getTaskFileIncludes, getMarkdownTaskNodes, isMarkdownTaskDocument } from './task-source';
 
 /* FILES */
 
@@ -44,13 +45,14 @@ class Files {
 
     const config = Config.get();
 
-    this.include = config.file.include;
+    this.include = getTaskFileIncludes(config);
     this.exclude = config.file.exclude;
 
     const configSignature = JSON.stringify({
       include: this.include,
       exclude: this.exclude,
       followSymlinks: !!config.followSymlinks,
+      markdown: config.markdown,
       workspaceExclude: rootPaths.map((rootPath) => getWorkspaceExcludeRules(rootPath)),
     });
 
@@ -197,13 +199,14 @@ class Files {
   async getFilePaths(rootPaths): Promise<string[]> {
     const config = Config.get();
 
-    return discoverFiles(
+    const files = await discoverFiles(
       rootPaths,
-      config.file.include || [],
+      getTaskFileIncludes(config),
       config.file.exclude || [],
       !!config.followSymlinks,
       getWorkspaceExcludeRules
     );
+    return files.map((filePath) => filePath.replace(/\\/g, '/'));
   }
 
   async initFilesData(rootPaths) {
@@ -281,6 +284,18 @@ class Files {
       .map((filePath) => ({ filePath, data: this.filesData[filePath] }))
       .filter(({ filePath, data }) => {
         if (!data) return false;
+        if (isMarkdownTaskDocument(data.textEditor)) {
+          const nodes = getMarkdownTaskNodes(data.textEditor);
+          if (!nodes.some((node) => node.kind === 'todo')) return false;
+          return (
+            !filter ||
+            matchesFilesViewFilter(
+              filter,
+              filePath,
+              nodes.map((node) => node.title)
+            )
+          );
+        }
         return !filter || matchesFilesViewFilter(filter, filePath, [data.textEditor.getText()]);
       });
     const rootKeys = getUniqueRootKeys(

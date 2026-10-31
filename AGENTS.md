@@ -54,10 +54,11 @@ export const activate = (context: ExtensionContext): void => { ... };
 - `src/statusbars/` — statistics + timer status bar items
 - `src/utils/embedded/providers/` — ag, rg, js backends for embedded code todos
 
-Two independent todo sources with separate views:
+Task sources:
 
 1. `.todo` files (structured project/todo format)
 2. Embedded todos (regex-extracted from code comments)
+3. Markdown notes (`markdown-tasks.ts` / `task-source.ts`), sharing the Files and Due views and task commands with Todo files. Keep original source ranges and marker styles; do not parse prose or code examples as tasks.
 
 ## Key constraints
 
@@ -84,6 +85,7 @@ All settings under `todo.*`. Key prefix groups:
 - `todo.statistics.*` — project & statusbar stats
 - `todo.timer.*` — statusbar timer for started todos
 - `todo.embedded.*` — embedded todos batch size and comment visibility
+- `todo.markdown.*` — Markdown task discovery and section scoping
 - `todo.followSymlinks` — follow symlinks during file enumeration
 
 Types are in `src/config.ts`. Defaults in `package.json` under `contributes.configuration.properties`.
