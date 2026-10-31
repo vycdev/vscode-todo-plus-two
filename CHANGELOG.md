@@ -113,7 +113,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 - Recalculated calendar and natural-language time estimates as time passes instead of reusing stale cached durations, while keeping running timer estimates anchored to their start time across edits.
 - Rejected impossible ISO and slash-formatted calendar dates in time estimates instead of silently rolling them into another month.
 - Rejected impossible `@due` dates written with single-digit month, day, or hour components instead of letting natural-date parsing roll them into a different day.
-- Rejected impossible `@due` timestamps with seconds, including ISO timestamps with time zones, instead of rolling them forward; valid timestamps remain accepted.
+- Rejected impossible `@due` timestamps with seconds and invalid time-zone offsets instead of rolling them forward; valid timestamps, including loosely padded components, remain accepted.
 - Accepted an explicit leading `+` in time estimates and other duration expressions, alongside existing negative durations.
 - Fixed duration strings such as `3 hours` and `1 week` so they are calculated from the supplied base date instead of the current time.
 - Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. [#18](https://github.com/vycdev/vscode-todo-plus-two/issues/18)

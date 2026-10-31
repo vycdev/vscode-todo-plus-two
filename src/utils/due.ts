@@ -22,11 +22,11 @@ const Due = {
       'YYYY-M-D H:mm:ssZ',
       'YYYY-M-DTH:mm:ssZ',
       'YYYY/M/D H:mm:ssZ',
-      'YYYY-MM-DD HH:mm:ss',
-      'YYYY-MM-DDTHH:mm:ss',
+      'YYYY-M-D H:mm:ss',
+      'YYYY-M-DTH:mm:ss',
       'YYYY-MM-DD HH:mm',
       'YYYY-MM-DD',
-      'YYYY/MM/DD HH:mm:ss',
+      'YYYY/M/D H:mm:ss',
       'YYYY/MM/DD HH:mm',
       'YYYY/MM/DD',
       'YYYY-M-D H:mm',
@@ -42,7 +42,13 @@ const Due = {
 
     const parsed = moment(value, formats, true);
 
-    if (parsed.isValid()) return parsed.toDate();
+    if (parsed.isValid()) {
+      // Moment's strict mode does not validate timezone offset ranges.
+      const offset = value.match(/[+-](\d{2}):?(\d{2})$/);
+      if (offset && (Number(offset[1]) > 23 || Number(offset[2]) > 59)) return;
+
+      return parsed.toDate();
+    }
 
     const formattedDateRe =
       /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]\d{1,2}:\d{2}(?::\d{2}(?:Z|[+-]\d{2}:\d{2})?)?)?|\d{2}-\d{2}-\d{2}(?: \d{2}:\d{2})?|\d{2}\/\d{2}\/(?:\d{2}|\d{4})(?: \d{2}:\d{2})?)$/;
