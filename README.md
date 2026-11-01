@@ -513,7 +513,12 @@ If you found a problem, or have a feature request, please open an [issue](https:
 
 You can find more about contributing here: [CONTRIBUTING.md](CONTRIBUTING.md)
 
-Run `npm run check` for types, unit/integration tests, the development build, and formatting. Run `npm run test:e2e:tags` in a desktop session with Node.js 22.12+ or 24 to launch an isolated VS Code Extension Development Host for tag styling. It exercises real task commands, undo/redo, dependencies, archiving, Markdown handling, live settings, and rendered styles in dark and light themes. The runner downloads VS Code through `@vscode/test-electron` and writes a JSON report and screenshots to a temporary artifact directory. The separate `npm run test:e2e` suite covers fenced code notes.
+Development uses Node.js 22.12+ on the 22.x line or Node.js 24 and pnpm 10.33.4
+(pinned in `package.json`). Enable it with `corepack enable pnpm`, then run
+`pnpm install --frozen-lockfile`. See the contributor guide for bootstrap alternatives
+and the `pnpm run package` / Marketplace-only `pnpm run publish` scripts.
+
+Run `pnpm run check` for types, unit/integration tests, the development build, and formatting. Run `pnpm run test:e2e:tags` in a desktop session with Node.js 22.12+ or 24 to launch an isolated VS Code Extension Development Host for tag styling. It exercises real task commands, undo/redo, dependencies, archiving, Markdown handling, live settings, and rendered styles in dark and light themes. The runner downloads VS Code through `@vscode/test-electron` and writes a JSON report and screenshots to a temporary artifact directory. The separate `pnpm run test:e2e` suite covers fenced code notes.
 
 Set `VSCODE_EXECUTABLE_PATH` to reuse a VS Code executable, `VSCODE_TEST_VERSION` to select a version, or `TODO_E2E_ARTIFACT_DIR` to choose where reports and screenshots are saved. Tests use a temporary workspace, profile, and extensions directory.
 

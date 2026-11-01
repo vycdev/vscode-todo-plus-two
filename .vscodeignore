@@ -27,4 +27,9 @@ AGENTS.md
 CODE_REVIEW.md
 CONTRIBUTING.md
 node_modules/**
+pnpm-lock.yaml
+pnpm-workspace.yaml
+.npmrc
+.pnpmfile.cjs
+.pnpm-store/**
 .claude/**
