@@ -1,13 +1,16 @@
 ### Version 5.4.0
 
+Markdown task management, planned work windows, configurable tag styles, and richer Todo sidebars and notes. Read the compatibility notes before upgrading existing task files.
+
 #### Compatibility notes
 
 - Task-text styling now follows literal tags through `todo.tags.styles`. Symbol-only done/cancelled tasks use syntax-theme styling until they have an `@done`/`@cancelled` tag; existing files are not rewritten. Legacy colors and the done-strikethrough preference supply default rule values. Timer commands maintain an `@paused` marker; use `Todo: Sync Paused Tags` to repair markers after manual edits or migrate existing paused tasks. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Markdown task support and numbered-list continuation are enabled by default. Set `todo.markdown.enabled` or `todo.autoRenumber` to `false` to disable them. Planned work windows, Files tag grouping, and embedded manual ordering are opt-in.
+- The minimum VS Code version remains 1.36. Embedded drag-and-drop requires 1.66+ and image paste requires 1.97+; older supported versions retain the other features and embedded Move Up/Down actions.
 
 #### New features
 
 - Added opt-in `@planned(...)` work windows with daily or dated time ranges, multiple sessions, and automatic active-tag highlighting. Enable `todo.planned.enabled` and customize the active color with `todo.colors.planned`. [#82](https://github.com/vycdev/vscode-todo-plus-two/issues/82)
-
 - Added configurable task-text styles selected by tags, with default Done, Cancelled, Started, and Paused rules. Rules support colors, backgrounds, bold, italic, strikethrough, theme overrides, and per-property priority with the last matching tag breaking ties. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Added Edit Task and Toggle Done row actions to the Files and Due sidebars. Edit task text and tags through a prefilled input prompt, or change task status, while keeping the current editor active. Actions support Todo files and Markdown tasks and reject stale tree rows or prompt edits. VS Code may add an inactive tab for unsaved changes. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
 - Added a root favicon using the Todo+2 logo so T3 Code can discover the project's icon. [#284](https://github.com/vycdev/vscode-todo-plus-two/issues/284)
@@ -17,14 +20,26 @@
 - Added automatic continuation and renumbering of plain numbered lists on Enter in Todo files, enabled by default and configurable with `todo.autoRenumber`. [#19](https://github.com/vycdev/vscode-todo-plus-two/issues/19)
 - Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
 - Added PNG/JPEG image paste in saved local Todo files on VS Code 1.97 or newer. Images are stored in a sibling `<filename>.assets` folder and inserted as clickable relative links, with undo/redo and existing-file protection. Non-empty clipboard text keeps its normal paste behavior without waiting for image reads or showing image errors; images can also be selected with Paste As. [#6](https://github.com/vycdev/vscode-todo-plus-two/issues/6)
+- Added fenced code notes with GitHub Linguist language names and aliases, highlighted using VS Code's bundled and installed TextMate grammars. Fenced content stays literal to Todo features, and attached blocks are preserved when archiving or unarchiving tasks. [#66](https://github.com/vycdev/vscode-todo-plus-two/issues/66)
+- Added opt-in manual ordering of embedded todo groups, files, and tasks with `todo.embedded.view.sort: "manual"`, Move Up/Down actions, drag-and-drop on VS Code 1.66+, workspace-local persistence, and a Reset Manual Order command. [#40](https://github.com/vycdev/vscode-todo-plus-two/issues/40)
+- Refreshed the README with current commands, settings, compatibility guidance, and eleven real VS Code screenshots, including planned work windows. [#295](https://github.com/vycdev/vscode-todo-plus-two/issues/295)
 
 #### Fixes
 
 - Updated file-discovery dependencies to remove vulnerable glob parsers, preserving filesystem casing and symlink rules, and modernized the build and test tooling while retaining VS Code 1.36 support. [#299](https://github.com/vycdev/vscode-todo-plus-two/issues/299)
+- Rejected impossible `@due` timestamps with seconds and invalid time-zone offsets instead of rolling them forward; valid timestamps, including loosely padded components, remain accepted.
+- Rejected impossible `@due` dates with minute-precision timezone offsets instead of silently moving them into the next month.
+- Rejected impossible `@due` dates and invalid timezone offsets with lowercase `z` or hour-only offsets, while preserving valid timestamps as exact instants. [#277](https://github.com/vycdev/vscode-todo-plus-two/issues/277)
+- Cached unchanged Todo lines and their highlighting, reused unaffected project statistics, and kept tag, status, formatting, and line insertion/deletion edits incremental. Split editors, date-sensitive statistics, archive boundaries, and configuration changes remain synchronized. Fenced code notes retain full parsing so examples stay excluded from task state. [#94](https://github.com/vycdev/vscode-todo-plus-two/issues/94)
+- Fixed unsaved embedded todos being missed when workspace and editor paths use different aliases for the same workspace, including macOS `/var` and `/private/var` paths. [#8](https://github.com/vycdev/vscode-todo-plus-two/issues/8)
+- Rescan embedded todos when a workspace alias changes targets, and keep filesystem updates incremental when the embedded cache is large.
+- Keep dirty alias buffers bound to their original workspace target and restore disk-change notifications after an alias is retargeted.
+- Normalize embedded provider cache paths so an initial Windows scan cannot duplicate or overwrite a newer unsaved edit.
+- Fixed absolute paths in `todo.file.include` so global Todo files stay in the Files sidebar across projects and with no folder open, and refresh on edits, deletion, and recreation. [#17](https://github.com/vycdev/vscode-todo-plus-two/issues/17)
+- Fixed root grouping for workspace folder paths with a trailing separator, including the workspace folder itself.
 - Kept checked Markdown tasks out of pending-task results when `-` is the configured todo box symbol.
 - Preserved `@due(...)` urgency colors when refreshing planned work windows.
 - Rejected malformed planned windows containing inline code in their arguments.
-
 - Replaced the Todo activity bar's standalone checkmark with a checklist icon to make the Todo views easier to recognize. [#53](https://github.com/vycdev/vscode-todo-plus-two/issues/53)
 - Preserved literal tag text in IDs, dependencies, and other arguments during paused-marker cleanup, and ignored nested timer examples when synchronizing markers. Released obsolete tag-style decoration resources when tags are removed or documents close. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Kept backticks inside tag arguments literal so they cannot hide following task-style or timer tags. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
@@ -54,6 +69,7 @@
 - Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
 - Kept selected Todo text intact when an image attachment cannot be written.
 - Preserved relative file and image attachment links in tasks, project titles, and attached notes when archiving into a workspace-root archive. Project titles containing attachment links keep their hierarchy across repeated archives; fenced code examples remain literal.
+- Excluded worktree Git metadata, benchmark reports, test samples, and editable logo sources from the VSIX package.
 
 ### Version 5.3.0
 
@@ -80,7 +96,6 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Colors and decorations
 
-- Added fenced code notes with GitHub Linguist language names and aliases, highlighted using VS Code's bundled and installed TextMate grammars. Fenced content stays literal to Todo features, and attached blocks are preserved when archiving or unarchiving tasks. [#66](https://github.com/vycdev/vscode-todo-plus-two/issues/66)
 - Added strikethrough styling for done todos, enabled by default and configurable with `todo.decorations.done.strikethrough`. [#54](https://github.com/vycdev/vscode-todo-plus-two/issues/54)
 - Added configurable coloring for started todos with `todo.colors.started`. [#59](https://github.com/vycdev/vscode-todo-plus-two/issues/59)
 - Added urgency coloring for `@due(...)` tags, configurable with `todo.colors.due.*` and `todo.due.soonDays`. [#95](https://github.com/vycdev/vscode-todo-plus-two/issues/95)
@@ -118,7 +133,6 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Embedded todos
 
-- Added opt-in manual ordering of embedded todo groups, files, and tasks with `todo.embedded.view.sort: "manual"`, Move Up/Down actions, drag-and-drop on VS Code 1.66+, workspace-local persistence, and a Reset Manual Order command. [#40](https://github.com/vycdev/vscode-todo-plus-two/issues/40)
 - Added embedded todo detection for inline and multiline Liquid comments, including nested `comment` blocks inside `{% liquid %}` tags. Scans respect raw blocks, avoid duplicate matches, and batch file reads to keep the editor responsive. [#46](https://github.com/vycdev/vscode-todo-plus-two/issues/46)
 - Added opt-in Problems view diagnostics for embedded markers through `todo.embedded.problems`. [#60](https://github.com/vycdev/vscode-todo-plus-two/issues/60)
 - Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`. Embedded view filters also search visible context lines. [#79](https://github.com/vycdev/vscode-todo-plus-two/issues/79)
@@ -172,9 +186,6 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 - Recalculated calendar and natural-language time estimates as time passes instead of reusing stale cached durations, while keeping running timer estimates anchored to their start time across edits.
 - Rejected impossible ISO and slash-formatted calendar dates in time estimates instead of silently rolling them into another month.
 - Rejected impossible `@due` dates written with single-digit month, day, or hour components instead of letting natural-date parsing roll them into a different day.
-- Rejected impossible `@due` timestamps with seconds and invalid time-zone offsets instead of rolling them forward; valid timestamps, including loosely padded components, remain accepted.
-- Rejected impossible `@due` dates with minute-precision timezone offsets instead of silently moving them into the next month.
-- Rejected impossible `@due` dates and invalid timezone offsets with lowercase `z` or hour-only offsets, while preserving valid timestamps as exact instants. [#277](https://github.com/vycdev/vscode-todo-plus-two/issues/277)
 - Accepted an explicit leading `+` in time estimates and other duration expressions, alongside existing negative durations.
 - Fixed duration strings such as `3 hours` and `1 week` so they are calculated from the supplied base date instead of the current time.
 - Fixed numeric-looking tags such as `@1.` being interpreted as time estimates and corrupting remaining-time statistics. [#18](https://github.com/vycdev/vscode-todo-plus-two/issues/18)
@@ -211,7 +222,6 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Views, decorations, and status bar
 
-- Cached unchanged Todo lines and their highlighting, reused unaffected project statistics, and kept tag, status, formatting, and line insertion/deletion edits incremental. Split editors, date-sensitive statistics, archive boundaries, and configuration changes remain synchronized. Fenced code notes retain full parsing so examples stay excluded from task state. [#94](https://github.com/vycdev/vscode-todo-plus-two/issues/94)
 - Refreshed timers, statistics, due state, decorations, and view filters after text and configuration changes, including edits that keep the same length, updates to background editors, and due-date rollover at midnight.
 - Fixed symbol parenting, indentation setting changes, decoration range subtraction, dependency completion boundaries, signed duration parsing, and elapsed-only statistics templates.
 - Fixed project and special-tag decorations so color and tag settings refresh without a restart. [#24](https://github.com/vycdev/vscode-todo-plus-two/issues/24), [#2](https://github.com/vycdev/vscode-todo-plus-two/issues/2)
@@ -225,10 +235,6 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 ##### Embedded todos
 
 - Serialized file scans and provider initialization, preserved unsaved editor content, and cancelled watcher callbacks, refresh timers, and provider work during disposal.
-- Fixed unsaved embedded todos being missed when workspace and editor paths use different aliases for the same workspace, including macOS `/var` and `/private/var` paths. [#8](https://github.com/vycdev/vscode-todo-plus-two/issues/8)
-- Rescan embedded todos when a workspace alias changes targets, and keep filesystem updates incremental when the embedded cache is large.
-- Keep dirty alias buffers bound to their original workspace target and restore disk-change notifications after an alias is retargeted.
-- Normalize embedded provider cache paths so an initial Windows scan cannot duplicate or overwrite a newer unsaved edit.
 - Serialized embedded view file refreshes so overlapping filesystem and editor updates cannot duplicate search results.
 - Bounded external-search command lengths, retained partial search results, and parsed multiple `ag` matches on one line. Invalid or empty-match embedded regex settings no longer crash or freeze the extension.
 - Fixed embedded todo parsing so plain `--` in a todo message no longer truncates the embedded view entry. [#33](https://github.com/vycdev/vscode-todo-plus-two/issues/33)
@@ -243,14 +249,12 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Files, workspace, and settings
 
-- Fixed absolute paths in `todo.file.include` so global Todo files stay in the Files sidebar across projects and with no folder open, and refresh on edits, deletion, and recreation. [#17](https://github.com/vycdev/vscode-todo-plus-two/issues/17)
 - Enforced `todo.followSymlinks` consistently across file discovery, literal glob prefixes, watchers, and document updates. Shared discovery now handles overlapping roots and inaccessible files consistently.
 - Sped up Todo file discovery by scanning each workspace once for all `todo.file.include` globs and skipping the contents of excluded folders. Fixed discovery finding no Todo files when the workspace itself is inside a folder that matches `todo.file.exclude`, such as `out` or `build`.
 - Fixed default Todo file discovery globs so valid Todo files are not hidden by an overly broad dot-directory exclude. [#3](https://github.com/vycdev/vscode-todo-plus-two/issues/3), [#11](https://github.com/vycdev/vscode-todo-plus-two/issues/11)
 - Kept scanning accessible workspace roots for Todo files and embedded todos when another path cannot be read. [#9](https://github.com/vycdev/vscode-todo-plus-two/issues/9)
 - Fixed Todo wrapper lookup and file grouping so similarly prefixed sibling folders are not treated as part of a workspace root.
 - Fixed workspace root matching when Windows or macOS path casing differs.
-- Fixed root grouping for workspace folder paths with a trailing separator, including the workspace folder itself.
 - Fixed Todo file grouping so same-named roots in multi-root workspaces remain separate in the files view.
 - Guarded embedded and Todo-file batch settings against zero, negative, fractional, and non-finite values that could stall scanning or produce invalid batches.
 - Fixed fulfilled promise batches so errors in optional rejection observers do not discard successful results.
