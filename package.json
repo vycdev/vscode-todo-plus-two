@@ -16,6 +16,7 @@
     "onView:todo.views.2embedded",
     "onView:todo.views.3due",
     "onCommand:todo.open",
+    "onCommand:todo.numberedListEnter",
     "onCommand:todo.openEmbedded",
     "onCommand:todo.toggleBox",
     "onCommand:todo.toggleDone",
@@ -207,6 +208,11 @@
           "type": "boolean",
           "description": "Automatically insert a new todo box when Enter is pressed at the end of a non-empty todo",
           "default": false
+        },
+        "todo.autoRenumber": {
+          "type": "boolean",
+          "description": "Continue plain numbered lists and renumber following items when pressing Enter at the end of an item in Todo files",
+          "default": true
         },
         "todo.autoCompleteParents": {
           "type": "boolean",
@@ -1005,6 +1011,10 @@
     },
     "commands": [
       {
+        "command": "todo.numberedListEnter",
+        "title": "Todo: Continue Numbered List"
+      },
+      {
         "command": "todo.open",
         "title": "Todo: Open"
       },
@@ -1251,6 +1261,11 @@
     ],
     "keybindings": [
       {
+        "command": "todo.numberedListEnter",
+        "key": "Enter",
+        "when": "editorTextFocus && editorLangId == todo && !editorReadonly && !isComposing && config.todo.autoRenumber && !suggestWidgetVisible && !inSnippetMode && !editorHasSelection && !editorHasMultipleSelections"
+      },
+      {
         "command": "todo.toggleBox",
         "key": "Ctrl+Enter",
         "mac": "Cmd+Enter",
@@ -1331,6 +1346,10 @@
     },
     "menus": {
       "commandPalette": [
+        {
+          "command": "todo.numberedListEnter",
+          "when": "false"
+        },
         {
           "command": "todo.toggleBox",
           "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
