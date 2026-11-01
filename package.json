@@ -56,6 +56,7 @@
     "onCommand:todo.viewEmbeddedResetOrder",
     "onCommand:todo.viewOpenFile",
     "onCommand:todo.viewRevealTodo",
+    "onCommand:todo.viewEditTodo",
     "onCommand:todo.viewToggleBox",
     "onCommand:todo.viewToggleDone",
     "onCommand:todo.viewToggleCancelled",
@@ -1236,12 +1237,24 @@
         "title": "Open"
       },
       {
+        "command": "todo.viewEditTodo",
+        "title": "Edit Task",
+        "icon": {
+          "light": "resources/icons/edit_light.svg",
+          "dark": "resources/icons/edit_dark.svg"
+        }
+      },
+      {
         "command": "todo.viewToggleBox",
         "title": "Toggle Box"
       },
       {
         "command": "todo.viewToggleDone",
-        "title": "Toggle Done"
+        "title": "Toggle Done",
+        "icon": {
+          "light": "resources/icons/done_light.svg",
+          "dark": "resources/icons/done_dark.svg"
+        }
       },
       {
         "command": "todo.viewToggleCancelled",
@@ -1480,6 +1493,10 @@
           "when": "false"
         },
         {
+          "command": "todo.viewEditTodo",
+          "when": "false"
+        },
+        {
           "command": "todo.editorToggleBox",
           "when": "false"
         },
@@ -1663,6 +1680,21 @@
           "command": "todo.viewToggleStart",
           "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
           "group": "1_status@4"
+        },
+        {
+          "command": "todo.viewEditTodo",
+          "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
+          "group": "navigation@2"
+        },
+        {
+          "command": "todo.viewEditTodo",
+          "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
+          "group": "inline@1"
+        },
+        {
+          "command": "todo.viewToggleDone",
+          "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
+          "group": "inline@2"
         }
       ]
     }
