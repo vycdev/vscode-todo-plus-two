@@ -100,8 +100,14 @@ module.exports.run = async () => {
       const span = [...line.querySelectorAll('span')].reverse().find(el => el.textContent.includes(${JSON.stringify(token)}));
       if (!span) return null;
       const css = getComputedStyle(span);
+      const rect = span.getBoundingClientRect(), x = rect.x + rect.width / 2, y = rect.y + rect.height / 2;
+      const backgrounds = [...span.closest('.monaco-editor').querySelectorAll('.view-overlays *')].filter(el => {
+        const box = el.getBoundingClientRect();
+        return x >= box.left && x < box.right && y >= box.top && y < box.bottom;
+      }).map(el => getComputedStyle(el).backgroundColor);
+      backgrounds.push(css.backgroundColor);
       let decoration = ''; for (let node = span; node && node !== line; node = node.parentElement) decoration += ' ' + getComputedStyle(node).textDecorationLine;
-      return {color: css.color, weight: css.fontWeight, italic: css.fontStyle, decoration, text: line.textContent};
+      return {color: css.color, backgrounds, weight: css.fontWeight, italic: css.fontStyle, decoration, text: line.textContent};
     })()`;
     const result = await renderer.call('Runtime.evaluate', { expression, returnByValue: true });
     if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
@@ -136,6 +142,21 @@ module.exports.run = async () => {
   const command = (name) => vscode.commands.executeCommand(`todo.${name}`);
   const marker = (value) => /(?:^|\s)@paused(?:\s|$)/.test(value);
   const settings = vscode.workspace.getConfiguration('todo');
+  const setTheme = async (theme) => {
+    await vscode.workspace
+      .getConfiguration('workbench')
+      .update(
+        'colorTheme',
+        theme === 'dark' ? 'Default Dark Modern' : 'Default Light Modern',
+        vscode.ConfigurationTarget.Workspace
+      );
+    const expected = theme === 'dark' ? vscode.ColorThemeKind.Dark : vscode.ColorThemeKind.Light;
+    await waitFor(
+      () => vscode.window.activeColorTheme.kind,
+      (kind) => kind === expected,
+      `Active ${theme} theme`
+    );
+  };
   try {
     await step('activate the real extension in a desktop VS Code host', async () => {
       const extension = vscode.extensions.getExtension('vycdev.vscode-todo-plus-two');
@@ -299,6 +320,105 @@ module.exports.run = async () => {
       await todo.document.save();
       await markdown.document.save();
     });
+    await step(
+      'clear theme colors and backgrounds without falling back to base styles',
+      async () => {
+        const line = select(todo, 'E2ECosmetic');
+        await todo.edit((edit) => edit.replace(line.range, '  ☐ E2ECosmetic @reset'));
+        for (const theme of ['dark', 'light']) {
+          const other = theme === 'dark' ? 'light' : 'dark';
+          await settings.update(
+            'tags.styles',
+            {
+              reset: {
+                color: '#ff0000',
+                backgroundColor: '#ffff00',
+                [theme]: { color: '', backgroundColor: '' },
+                [other]: { color: '#112233', backgroundColor: '#ddeeff' },
+              },
+            },
+            vscode.ConfigurationTarget.Workspace
+          );
+          await setTheme(theme);
+          await expectStyle(
+            'E2ECosmetic',
+            (css) => css.color !== 'rgb(255, 0, 0)' && !css.backgrounds.includes('rgb(255, 255, 0)')
+          );
+          await setTheme(other);
+          await expectStyle(
+            'E2ECosmetic',
+            (css) =>
+              css.color === 'rgb(17, 34, 51)' && css.backgrounds.includes('rgb(221, 238, 255)')
+          );
+        }
+        await screenshot('theme-color-reset');
+      }
+    );
+    await step('render explicit false font properties ahead of lower-priority styles', async () => {
+      await settings.update(
+        'tags.styles',
+        {
+          bold: { color: '#ff0000', bold: true, italic: true, strikethrough: true },
+          plain: { priority: 5, bold: false, italic: false, strikethrough: false },
+        },
+        vscode.ConfigurationTarget.Workspace
+      );
+      const line = select(todo, 'E2ECosmetic');
+      await todo.edit((edit) => edit.replace(line.range, '  ☐ E2ECosmetic @bold @plain'));
+      await expectStyle(
+        'E2ECosmetic',
+        (css) =>
+          css.color === 'rgb(255, 0, 0)' &&
+          Number(css.weight) < 600 &&
+          css.italic !== 'italic' &&
+          !css.decoration.includes('line-through')
+      );
+      assert(text(todo, 'E2ECosmetic').includes('☐'));
+    });
+    await step('disable a matching rule without leaving stale task colors', async () => {
+      await settings.update(
+        'tags.styles',
+        { bold: false, plain: { bold: false, italic: false, strikethrough: false } },
+        vscode.ConfigurationTarget.Workspace
+      );
+      await expectStyle(
+        'E2ECosmetic',
+        (css) =>
+          css.color !== 'rgb(255, 0, 0)' &&
+          Number(css.weight) < 600 &&
+          !css.decoration.includes('line-through')
+      );
+    });
+    await step(
+      'synchronize multiple selected tasks while retaining literal paused references',
+      async () => {
+        const archive = todo.document
+          .getText()
+          .split('\n')
+          .findIndex((line) => line.startsWith('Archive:'));
+        assert(archive >= 0);
+        await todo.edit((edit) =>
+          edit.insert(
+            new vscode.Position(archive, 0),
+            [
+              '  ☐ E2EBulkPaused @id(@paused) @started(2020-01-01 10:00:00) @toggle(2020-01-01 10:30:00)',
+              '  ☐ E2EBulkActive @note(@paused) @started(2020-01-01 10:00:00) @paused',
+              '',
+            ].join('\n')
+          )
+        );
+        const first = select(todo, 'E2EBulkPaused').lineNumber;
+        todo.selection = new vscode.Selection(first, 0, first + 2, 0);
+        await command('syncPausedTags');
+        assert(marker(text(todo, 'E2EBulkPaused')));
+        assert(text(todo, 'E2EBulkPaused').includes('@id(@paused)'));
+        assert(!marker(text(todo, 'E2EBulkActive')));
+        assert(text(todo, 'E2EBulkActive').includes('@note(@paused)'));
+        await expectStyle('E2EBulkPaused', (css) => css.color === 'rgb(229, 209, 69)');
+        await expectStyle('E2EBulkActive', (css) => css.color === 'rgb(79, 193, 255)');
+        await screenshot('bulk-paused-markers');
+      }
+    );
     report.status = 'passed';
   } catch (error) {
     report.status = 'failed';

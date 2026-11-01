@@ -136,6 +136,48 @@ describe('Task tag decorations', () => {
     });
   });
 
+  it('lets empty theme overrides clear base colors without affecting the other theme', () => {
+    for (const theme of ['dark', 'light']) {
+      withTaskStyles(({ getTaskTagDecorations, todo, config }) => {
+        config.tags.styles.custom = {
+          color: '#ff0000',
+          backgroundColor: '#ffff00',
+          [theme]: { color: '', backgroundColor: '' },
+        };
+        const [decoration] = getTaskTagDecorations([todo('☐ Work @custom')]);
+        expect(decoration.type.options, theme).not.to.have.property('color');
+        expect(decoration.type.options, theme).not.to.have.property('backgroundColor');
+        expect(decoration.type.options[theme], theme).not.to.have.property('color');
+        expect(decoration.type.options[theme], theme).not.to.have.property('backgroundColor');
+        const otherTheme = theme === 'dark' ? 'light' : 'dark';
+        expect(decoration.type.options[otherTheme], theme).to.include({
+          color: '#ff0000',
+          backgroundColor: '#ffff00',
+        });
+      });
+    }
+  });
+
+  it('clears each theme property independently while retaining its other appearance', () => {
+    withTaskStyles(({ getTaskTagDecorations, todo, config }) => {
+      config.tags.styles.custom = {
+        color: '#ff0000',
+        backgroundColor: '#ffff00',
+        bold: true,
+        dark: { backgroundColor: '' },
+        light: { color: '' },
+      };
+      const [decoration] = getTaskTagDecorations([todo('☐ Work @custom')]);
+      expect(decoration.type.options.dark).to.include({ color: '#ff0000', fontWeight: 'bold' });
+      expect(decoration.type.options.dark).not.to.have.property('backgroundColor');
+      expect(decoration.type.options.light).to.include({
+        backgroundColor: '#ffff00',
+        fontWeight: 'bold',
+      });
+      expect(decoration.type.options.light).not.to.have.property('color');
+    });
+  });
+
   it('does not infer styling from task symbols or toggle counts', () => {
     withTaskStyles(({ getTaskTagDecorations, todo }) => {
       expect(getTaskTagDecorations([todo('✔ Done'), todo('✘ Cancelled')])).to.deep.equal([]);

@@ -60,6 +60,11 @@ export const getTaskTagDecorations = (todos: Todo[], document: object = defaultD
         light: renderStyle(style.light, colors),
         rangeBehavior: DecorationRangeBehavior.ClosedOpen,
       };
+    // An absent theme property inherits the base decoration in VS Code. Keep
+    // colors in the theme variants when either theme explicitly clears them.
+    for (const property of ['color', 'backgroundColor']) {
+      if (style.dark[property] === '' || style.light[property] === '') delete options[property];
+    }
     if (
       !Object.keys(style.base).length &&
       !Object.keys(style.dark).length &&
