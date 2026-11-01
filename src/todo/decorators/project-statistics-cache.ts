@@ -20,7 +20,7 @@ interface Scope<T> {
   start: number;
   end: number;
   boundary?: T;
-  archive: boolean;
+  unbounded: boolean;
 }
 
 const getScopes = <T extends ProjectLine>(lines: T[]) => {
@@ -39,13 +39,26 @@ const getScopes = <T extends ProjectLine>(lines: T[]) => {
       continue;
     while (stack.length && stack[stack.length - 1].line.level >= line.level) {
       const scope = stack.pop();
-      scope.end = line.lineNumber;
-      scope.boundary = line;
+      if (!scope.unbounded) {
+        scope.end = line.lineNumber;
+        scope.boundary = line;
+      }
     }
     if (items.projects.length) {
-      const scope = { line, start: line.lineNumber, end: lines.length, archive: line === archive };
+      const scope = {
+        line,
+        start: line.lineNumber,
+        end: lines.length,
+        unbounded: line === archive,
+      };
       scopes.set(line, scope);
-      if (!scope.archive) stack.push(scope);
+      if (scope.unbounded) {
+        // The canonical calculator includes the Archive through EOF recursively.
+        // Its ancestors therefore depend on that suffix as well.
+        stack.forEach((parent) => {
+          parent.unbounded = true;
+        });
+      } else stack.push(scope);
     }
   }
   return scopes;
@@ -68,7 +81,7 @@ export class ProjectStatisticsCache<T extends ProjectLine> {
       if (
         previous &&
         previous.boundary === scope.boundary &&
-        previous.archive === scope.archive &&
+        previous.unbounded === scope.unbounded &&
         !intersects(previous, previousChanges) &&
         !intersects(scope, nextChanges) &&
         dynamic[scope.end] === dynamic[scope.start] &&

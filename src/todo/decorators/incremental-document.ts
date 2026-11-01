@@ -247,6 +247,7 @@ export class IncrementalDocument {
       items: line.items,
       lineNumber: line.lineNumber,
       contribution: line.contribution,
+      dynamic: line.dynamic,
     }));
     const wasStarted = removed.some((line) => line.items.todosStarted.length);
     removed.forEach((line) => this.dynamicLines.delete(line));
@@ -312,6 +313,7 @@ export class IncrementalDocument {
       const canDelta =
         !structural &&
         !dynamic &&
+        !oldRecords.some((line) => line.dynamic) &&
         previousArchive === archive &&
         statistics.disabled.global.tagged === true &&
         scalarKeys.every((key) => Number.isSafeInteger(previousGlobal[key]));

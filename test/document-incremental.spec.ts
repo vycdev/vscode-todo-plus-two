@@ -260,6 +260,18 @@ describe('Incremental Todo decorations and statistics', () => {
     });
   });
 
+  it('invalidates ancestors of a nested Archive when its EOF scope changes', () => {
+    withDecorationEditor('Root:\n  Archive:\n    ✔ Archived\nOther:\n  ☐ Task', (state) => {
+      state.decorator.update(state.editor);
+      state.edit(4, 2, 3, '✔');
+      expect(state.utils.statistics.tokens.projects[0].pending).to.equal(0);
+      expect(state.utils.statistics.tokens.projects[0].done).to.equal(2);
+      expectFullParse(state);
+      state.edit(1, 0, 10, '  Old tasks:');
+      expectFullParse(state);
+    });
+  });
+
   it('updates project annotations whose visibility depends on global statistics', () => {
     withDecorationEditor('One:\n  ☐ First\nTwo:\n  ☐ Second', (state) => {
       state.config.statistics.project.enabled = 'global.done > 0';
@@ -336,6 +348,34 @@ describe('Incremental Todo decorations and statistics', () => {
       (global as any).Date = RealDate;
     }
   });
+
+  for (const [replacement, seconds] of [
+    ['  ☐ Task @est(1h)', 3600],
+    ['  ☐ Task', 0],
+  ] as const) {
+    it(`drops stale calendar contributions when switching to ${JSON.stringify(replacement)}`, () => {
+      const RealDate = Date;
+      let now = new RealDate(2026, 10, 1, 12).getTime();
+      (global as any).Date = new Proxy(RealDate, {
+        construct: (target, args) => Reflect.construct(target, args.length ? args : [now]),
+        get: (target, key) => (key === 'now' ? () => now : Reflect.get(target, key)),
+      });
+      try {
+        withDecorationEditor('Todo:\n  ☐ Task @est(2026-11-02)', (state) => {
+          state.config.statistics.statusbar.text = '[est]';
+          state.utils.statistics.tokens.updateDisabledAll();
+          state.decorator.update(state.editor);
+          expect(state.utils.statistics.tokens.global.estSeconds).to.equal(43200);
+          now += 60000;
+          state.edit(1, 0, state.editor.document.lineAt(1).text.length, replacement);
+          expect(state.utils.statistics.tokens.global.estSeconds).to.equal(seconds);
+          expectFullParse(state);
+        });
+      } finally {
+        (global as any).Date = RealDate;
+      }
+    });
+  }
 
   it('refreshes relative due colors when their meaning changes within the same day', () => {
     const RealDate = Date;
