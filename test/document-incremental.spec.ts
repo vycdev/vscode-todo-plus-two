@@ -204,6 +204,23 @@ describe('Incremental Todo decorations and statistics', () => {
     );
   });
 
+  for (const eol of ['\n', '\r\n']) {
+    it(`preserves the configured line ending when inserting the first newline (${JSON.stringify(eol)})`, () => {
+      withDecorationEditor('  ✔ Done', (state) => {
+        Object.defineProperty(state.editor.document, 'eol', {
+          enumerable: true,
+          value: eol === '\r\n' ? 2 : 1,
+        });
+        state.decorator.update(state.editor);
+        const reads = state.calls.fullText,
+          end = state.editor.document.lineAt(0).text.length;
+        state.edit(0, end, end, `${eol}  ☐ New`);
+        expect(state.calls.fullText).to.equal(reads);
+        expectFullParse(state);
+      });
+    });
+  }
+
   it('rebuilds safely when the document line endings change', () => {
     withDecorationEditor('Todo:\n  ✔ First @high', (state) => {
       state.decorator.update(state.editor);

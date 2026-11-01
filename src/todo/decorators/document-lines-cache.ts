@@ -31,11 +31,9 @@ export const getChangedLines = (changes: readonly TextDocumentContentChangeEvent
 export class DocumentLinesCache<T> {
   lines: T[];
   private version: number;
-  readonly crlf: boolean;
 
   constructor(document: TextDocument, text: string, parse: (text: string, line: number) => T) {
     this.version = document.version;
-    this.crlf = text.includes('\r\n');
     this.lines = text.split('\n').map((line, index) => parse(line.replace(/\r$/, ''), index));
   }
 

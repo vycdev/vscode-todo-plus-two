@@ -119,6 +119,7 @@ export const withDecorationEditor = (text: string, run) => {
         window,
         Position,
         Range,
+        EndOfLine: { LF: 1, CRLF: 2 },
         DecorationRangeBehavior: { OpenOpen: 0, ClosedClosed: 1, OpenClosed: 2, ClosedOpen: 3 },
       };
     if (/^(?:\.\.\/|\.\/)+config$/.test(request))

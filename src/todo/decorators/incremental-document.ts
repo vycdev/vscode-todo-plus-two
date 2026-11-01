@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import { Range } from 'vscode';
+import { EndOfLine, Range } from 'vscode';
 import type { TextDocumentContentChangeEvent, TextEditor, TextEditorDecorationType } from 'vscode';
 import Config from '../../config';
 import Consts from '../../consts';
@@ -234,7 +234,8 @@ export class IncrementalDocument {
   private parse(text: string, lineNumber: number) {
     if (hasMultilineSyntax(text)) return;
     const doc = new DocumentModule(
-      text + (this.lines.crlf && lineNumber < this.editor.document.lineCount - 1 ? '\r' : '')
+      text +
+        (this.eol === EndOfLine.CRLF && lineNumber < this.editor.document.lineCount - 1 ? '\r' : '')
     );
     doc.textEditor = this.editor;
     doc.textDocument = this.editor.document;
