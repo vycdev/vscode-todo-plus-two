@@ -26,6 +26,7 @@ Markdown task management, planned work windows, configurable tag styles, and ric
 
 #### Fixes
 
+- Updated file-discovery dependencies to remove vulnerable glob parsers, preserving filesystem casing and symlink rules, and modernized the build and test tooling while retaining VS Code 1.36 support.
 - Rejected impossible `@due` timestamps with seconds and invalid time-zone offsets instead of rolling them forward; valid timestamps, including loosely padded components, remain accepted.
 - Rejected impossible `@due` dates with minute-precision timezone offsets instead of silently moving them into the next month.
 - Rejected impossible `@due` dates and invalid timezone offsets with lowercase `z` or hour-only offsets, while preserving valid timestamps as exact instants. [#277](https://github.com/vycdev/vscode-todo-plus-two/issues/277)

@@ -6,7 +6,7 @@ This document explains how to set up the project locally, install prerequisites,
 
 ## Prerequisites
 
-- Node.js 22 or 24 and npm for development and tests
+- Node.js 22.12 or newer on the 22.x line, or Node.js 24, and npm for development and tests
 - Visual Studio Code 1.36 or newer to run the extension
 - (Optional) `vsce` if you want to package/publish the extension locally:
 
@@ -55,7 +55,7 @@ The Extension Host check verifies edits and reports asynchronous errors and edit
 
 ## Build the extension
 
-This project uses webpack to compile the TypeScript source into `out/` (the compiled extension). Build commands from `package.json`:
+This project uses webpack 5 to compile the TypeScript source into `out/` (the compiled extension). It cleans the output directory before emitting files and targets Node.js 10.11, the runtime shipped with VS Code 1.36. Development tools use the newer Node.js versions listed above. Build commands from `package.json`:
 
 ```powershell
 # One-time build (development mode)
