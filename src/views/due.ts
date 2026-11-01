@@ -99,7 +99,7 @@ class DueView extends View {
             lineNr: task.lineNumber,
             relativePath: data.relativePath,
             textEditor: data.textEditor,
-            documentVersion: markdownNodes ? data.textEditor.version : undefined,
+            documentVersion: data.textEditor.version,
           },
           todo = new Todo(obj, _.trimStart(markdownNodes ? line.text : task.text));
 

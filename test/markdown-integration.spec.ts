@@ -120,6 +120,7 @@ const loadMarkdown = (initial: string, settings = {}) => {
       visibleTextEditors: [editor],
       showInformationMessage: (text) => messages.push(text),
       showErrorMessage: (text) => messages.push(text),
+      showInputBox: async (_options): Promise<string | undefined> => undefined,
       createTextEditorDecorationType: () => ({ dispose() {} }),
     },
     workspace: {
@@ -230,6 +231,7 @@ const loadMarkdown = (initial: string, settings = {}) => {
       dependencyIndex,
       getTodoDocuments,
       workspace: vscode.workspace,
+      window: vscode.window,
       Document,
       decorator,
       utils,
@@ -420,7 +422,7 @@ describe('Markdown task integration', () => {
   });
 
   it('refuses old tree rows when a note is reopened at the same document version', async () => {
-    for (const action of ['viewToggleDone', 'viewToggleStart']) {
+    for (const action of ['viewEditTodo', 'viewToggleDone', 'viewToggleStart']) {
       const state = loadMarkdown('[ ] Original', { 'timekeeping.autoToggle': false });
       const items = await state.filesView.getChildren({
         obj: { filePath: state.document.uri.fsPath, textEditor: state.document },
@@ -890,6 +892,314 @@ describe('Markdown task integration', () => {
       [note, todo, excluded].forEach((file) => fs.unlinkSync(file));
       fs.rmdirSync(fixture);
     }
+  });
+});
+
+describe('Sidebar task editing', () => {
+  const getTasks = async (state) => {
+    const visit = async (item) => {
+      const tasks = [];
+      for (const child of await state.filesView.getChildren(item)) {
+        if (child.contextValue === 'todo') tasks.push(child);
+        if (child.collapsibleState) tasks.push(...(await visit(child)));
+      }
+      return tasks;
+    };
+    return visit({ obj: { filePath: state.document.uri.fsPath, textEditor: state.document } });
+  };
+
+  const keepEditorHidden = (state) => {
+    state.window.activeTextEditor = undefined;
+    state.window.visibleTextEditors = [];
+    state.utils.file.open = async () => {
+      throw new Error('Sidebar actions must not reveal the source editor');
+    };
+  };
+
+  for (const language of ['todo', 'markdown']) {
+    it(`preserves a configured multi-character ${language} marker when editing`, async () => {
+      const initial = 'Project:\n  [TODO] Task @id(task)';
+      const state = loadMarkdown(initial, { 'symbols.box': '[TODO]' });
+      state.document.languageId = language;
+      const [task] = await getTasks(state);
+      keepEditorHidden(state);
+      state.window.showInputBox = async (options) => {
+        expect(options.value).to.equal('Task @id(task)');
+        return 'Changed @id(task)';
+      };
+
+      await state.commands.viewEditTodo(task);
+
+      expect(state.document.getText()).to.equal(initial.replace('Task @', 'Changed @'));
+    });
+
+    it(`rejects stale ${language} rows before editing text or status`, async () => {
+      const state = loadMarkdown('☐ Original');
+      state.document.languageId = language;
+      const [task] = await getTasks(state);
+      keepEditorHidden(state);
+      state.setText('☐ Replacement');
+      state.window.showInputBox = async () => {
+        throw new Error('Stale tasks must not open an edit prompt');
+      };
+
+      for (const action of [
+        'viewEditTodo',
+        'viewToggleBox',
+        'viewToggleDone',
+        'viewToggleCancelled',
+        'viewToggleStart',
+      ])
+        await state.commands[action](task);
+
+      expect(state.document.getText()).to.equal('☐ Replacement');
+      expect(state.messages).to.have.length(5);
+      expect(state.messages.every((message) => message.includes('file changed'))).to.equal(true);
+    });
+
+    it(`edits hidden ${language} tasks using raw text while preserving tags, markers and CRLF`, async () => {
+      const initial =
+        language === 'todo'
+          ? 'Project:\r\n\t☐   Old @id(ship) @today\r\n'
+          : '# Project\r\n  7. [X]   Old @id(ship) @today\r\n';
+      const state = loadMarkdown(initial, { 'file.view.showTags': false });
+      state.document.languageId = language;
+      const task = (await getTasks(state))[0];
+      expect(task.label).not.to.include('@id');
+      keepEditorHidden(state);
+      const selections = state.editor.selections;
+      state.window.showInputBox = async (options) => {
+        expect(options.value).to.equal('Old @id(ship) @today');
+        expect(options.validateInput('')).to.be.a('string');
+        expect(options.validateInput('  ')).to.be.a('string');
+        expect(options.validateInput('First\nSecond')).to.be.a('string');
+        expect(options.validateInput('New @id(ship) @today')).to.equal(undefined);
+        return 'New @id(ship) @today';
+      };
+
+      await state.commands.viewEditTodo(task);
+
+      expect(state.document.getText()).to.equal(initial.replace('Old', 'New'));
+      expect(state.window.activeTextEditor).to.equal(undefined);
+      expect(state.editor.selections).to.equal(selections);
+      expect(state.messages).to.deep.equal([]);
+    });
+
+    it(`keeps ${language} completion and parent completion working without an editor`, async () => {
+      const state = loadMarkdown(
+        language === 'todo'
+          ? '☐ Parent\n  ☐ Child @id(child)'
+          : '- [ ] Parent\n  - [ ] Child @id(child)',
+        { autoCompleteParents: true, 'timekeeping.finished.enabled': false }
+      );
+      state.document.languageId = language;
+      const child = (await getTasks(state)).find((task) => task.obj.lineNr === 1);
+      keepEditorHidden(state);
+
+      await state.commands.viewToggleDone(child);
+
+      const completed = new state.Document(state.document).getTodosDone();
+      expect(completed.map((todo) => todo.lineNumber)).to.deep.equal([0, 1]);
+      const refreshed = (await getTasks(state)).find((task) => task.obj.lineNr === 1);
+      await state.commands.viewToggleDone(refreshed);
+      expect(new state.Document(state.document).getTodoAt(1).isBox()).to.equal(true);
+      expect(state.document.lineAt(1).text).to.include('@id(child)');
+      expect(state.window.activeTextEditor).to.equal(undefined);
+    });
+
+    it(`blocks ${language} sidebar completion on unfinished dependencies`, async () => {
+      const initial = '☐ Setup @id(setup)\n☐ Ship @depends(setup)';
+      const state = loadMarkdown(initial);
+      state.document.languageId = language;
+      const ship = (await getTasks(state)).find((task) => task.obj.lineNr === 1);
+      keepEditorHidden(state);
+
+      await state.commands.viewToggleDone(ship);
+
+      expect(state.document.getText()).to.equal(initial);
+      expect(state.messages[0]).to.include('unresolved dependencies (setup)');
+    });
+
+    it(`edits and regroups duplicated ${language} task rows by their source`, async () => {
+      const state = loadMarkdown('☐ First\n☐ Target @low @high @id(target)', {
+        'file.view.groupByTags': ['low', 'high'],
+        'file.view.showTags': false,
+      });
+      state.document.languageId = language;
+      const tasks = await getTasks(state);
+      expect(tasks.filter((task) => task.obj.lineNr === 1)).to.have.length(2);
+      keepEditorHidden(state);
+      state.window.showInputBox = async () => 'Renamed @high @id(target)';
+
+      await state.commands.viewEditTodo(tasks[0]);
+
+      expect(state.document.lineAt(0).text).to.equal('☐ First');
+      expect(state.document.lineAt(1).text).to.equal('☐ Renamed @high @id(target)');
+      expect((await getTasks(state)).filter((task) => task.obj.lineNr === 1)).to.have.length(1);
+      await state.commands.viewToggleDone(tasks[1]);
+      expect(state.document.lineAt(1).text).to.equal('☐ Renamed @high @id(target)');
+      expect(state.messages[0]).to.include('file changed');
+    });
+
+    it(`edits ${language} Due tasks and removes them from their previous due group`, async () => {
+      const state = loadMarkdown('☐ Task @due(2020-01-01)');
+      state.document.languageId = language;
+      state.utils.files.filesData = {
+        [state.document.uri.fsPath]: { textEditor: state.document },
+      };
+      const groups = await state.dueView.getChildren();
+      const [task] = await state.dueView.getChildren(groups[0]);
+      keepEditorHidden(state);
+      state.window.showInputBox = async () => 'Renamed';
+
+      await state.commands.viewEditTodo(task);
+
+      expect(state.document.getText()).to.equal('☐ Renamed');
+      expect((await state.dueView.getChildren())[0].label).to.equal(
+        'No unfinished tasks with due dates found'
+      );
+    });
+  }
+
+  for (const value of [undefined, 'Task @id(task)', '', '  ', 'First\nSecond', 'First\rSecond']) {
+    it(`keeps the source unchanged for a cancelled, unchanged or invalid edit: ${JSON.stringify(value)}`, async () => {
+      const initial = '☐ Task @id(task)';
+      const state = loadMarkdown(initial);
+      const [task] = await getTasks(state);
+      keepEditorHidden(state);
+      state.window.showInputBox = async () => value;
+
+      await state.commands.viewEditTodo(task);
+
+      expect(state.document.getText()).to.equal(initial);
+      expect(state.document.version).to.equal(1);
+    });
+  }
+
+  it('does not overwrite text changed while the edit prompt was open', async () => {
+    const state = loadMarkdown('☐ Original @id(task)');
+    const [task] = await getTasks(state);
+    keepEditorHidden(state);
+    state.window.showInputBox = async () => {
+      state.setText('☐ Newer source @id(task)');
+      return 'Stale input @id(task)';
+    };
+
+    await state.commands.viewEditTodo(task);
+
+    expect(state.document.getText()).to.equal('☐ Newer source @id(task)');
+    expect(state.messages[0]).to.include('file changed');
+  });
+
+  for (const setting of ['scope', 'sections']) {
+    it(`rejects a prompt edit when Markdown ${setting} settings exclude the task`, async () => {
+      const initial = '# Tasks\n- [ ] Original @id(task)';
+      const state = loadMarkdown(initial, {
+        'markdown.scope': setting === 'scope' ? 'all' : 'sections',
+        'markdown.sections': ['Tasks'],
+      });
+      const [task] = await getTasks(state);
+      keepEditorHidden(state);
+      state.window.showInputBox = async () => {
+        _.set(state.config, 'markdown.scope', 'sections');
+        _.set(state.config, 'markdown.sections', ['Other']);
+        return 'Edited outside the task sections @id(task)';
+      };
+
+      await state.commands.viewEditTodo(task);
+
+      expect(new state.Document(state.document).getTodos()).to.have.length(0);
+      expect(state.document.getText()).to.equal(initial);
+      expect(state.document.version).to.equal(1);
+      expect(state.messages[0]).to.include('no longer included');
+    });
+  }
+
+  it('ignores fenced examples when completing a hidden Todo parent', async () => {
+    const state = loadMarkdown('☐ Parent\n  ☐ Child\n  ```text\n  ☐ Example task\n  ```', {
+      autoCompleteParents: true,
+      'timekeeping.finished.enabled': false,
+    });
+    state.document.languageId = 'todo';
+    const child = (await getTasks(state)).find((task) => task.obj.lineNr === 1);
+    keepEditorHidden(state);
+
+    await state.commands.viewToggleDone(child);
+
+    expect(
+      new state.Document(state.document).getTodosDone().map((todo) => todo.lineNumber)
+    ).to.deep.equal([0, 1]);
+    expect(state.document.lineAt(3).text).to.equal('  ☐ Example task');
+  });
+
+  it('does not complete a hidden task changed during an asynchronous dependency check', async () => {
+    const state = loadMarkdown('☐ Ready @id(ready)\n☐ Ship @depends(ready)');
+    const task = (await getTasks(state))[1];
+    keepEditorHidden(state);
+    state.dependencyIndex.get = async () => {
+      state.setText('☐ Ready @id(ready)\n☐ Replacement');
+      return { targets: { ready: [{}] }, dependencies: {} };
+    };
+    state.dependencyIndex.isFinished = () => true;
+
+    await state.commands.viewToggleDone(task);
+
+    expect(state.document.lineAt(1).text).to.equal('☐ Replacement');
+    expect(state.messages[0]).to.include('file changed');
+  });
+
+  it('reports a rejected workspace edit without changing the source', async () => {
+    const state = loadMarkdown('☐ Original');
+    const [task] = await getTasks(state);
+    keepEditorHidden(state);
+    state.window.showInputBox = async () => 'Replacement';
+    state.workspace.applyEdit = async () => false;
+
+    await state.commands.viewEditTodo(task);
+
+    expect(state.document.getText()).to.equal('☐ Original');
+    expect(state.messages).to.deep.equal(['Unable to edit the selected task']);
+  });
+
+  it('reports an unavailable source file without opening the edit prompt', async () => {
+    const state = loadMarkdown('☐ Original');
+    const [task] = await getTasks(state);
+    state.workspace.openTextDocument = async () => {
+      throw new Error('File unavailable');
+    };
+    state.window.showInputBox = async () => {
+      throw new Error('The prompt must not open');
+    };
+
+    await state.commands.viewEditTodo(task);
+
+    expect(state.document.getText()).to.equal('☐ Original');
+    expect(state.messages).to.deep.equal(['Unable to open the selected task: File unavailable']);
+  });
+
+  it('refreshes both sidebars after rejecting a disposed background document', async () => {
+    const state = loadMarkdown('☐ Original');
+    const [task] = await getTasks(state);
+    const refreshes = [];
+    state.filesView.refresh = () => refreshes.push('files');
+    state.dueView.refresh = () => refreshes.push('due');
+    state.document.isClosed = true;
+    const reopened = { ...state.document, isClosed: false };
+    state.workspace.openTextDocument = async () => reopened;
+    let prompts = 0;
+    state.window.showInputBox = async () => {
+      prompts++;
+      return undefined;
+    };
+
+    await state.commands.viewEditTodo(task);
+
+    expect(prompts).to.equal(0);
+    expect(state.messages[0]).to.include('file changed');
+    expect(refreshes).to.deep.equal(['files', 'due']);
+    // A row rebuilt from the reopened buffer can be edited on the next attempt.
+    await state.commands.viewEditTodo({ obj: { ...task.obj, textEditor: reopened } });
+    expect(prompts).to.equal(1);
   });
 });
 

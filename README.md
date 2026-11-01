@@ -452,6 +452,12 @@ work in project text, status bar text and status bar tooltips.
 
 ### Activity bar views
 
+The Files and Due views let you edit existing tasks without switching away from your current editor. Hover over a task and choose **Edit Task** (pencil) to edit its text and tags in a prefilled input prompt, or **Toggle Done** (check mark) to complete or reopen it. The same actions are available from the task's right-click menu, alongside Toggle Box, Toggle Cancelled, and Toggle Start. Status actions also keep the current editor active.
+
+Editing preserves the task's indentation and status marker. The prompt includes all source text after the marker, including tags hidden by `todo.file.view.showTags`; keep those tags when changing the title. Press Escape to cancel. If the source changes while the prompt is open, the edit is rejected so it cannot overwrite newer text. Changes stay in the document buffer, support undo/redo, and follow your normal save or Auto Save settings. VS Code may add an inactive tab for a modified file to keep unsaved edits accessible; it does not switch to that tab.
+
+These actions work with Todo files and supported Markdown tasks, including tasks in tag groups and tasks with children. The Embedded view continues to navigate to code comments. Text editing uses VS Code's input prompt; it does not turn the sidebar into a text editor.
+
 ![Activity bar views](resources/demo/activity_bar_views.png)
 
 ### Statistics

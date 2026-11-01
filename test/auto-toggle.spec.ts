@@ -6,6 +6,8 @@ const loadToggleStart = (applyPauses = true) => {
     modulePath = require.resolve('../src/commands'),
     previous = require.cache[modulePath],
     currentDocument = {
+      languageId: 'todo',
+      lineCount: 1,
       uri: { toString: () => 'file:///current.todo' },
       version: 1,
       isClosed: false,
@@ -36,6 +38,7 @@ const loadToggleStart = (applyPauses = true) => {
   const vscode = {
     window: { activeTextEditor: editor, showErrorMessage() {}, showInformationMessage() {} },
     workspace: {
+      openTextDocument: async (_path) => currentDocument,
       applyEdit: async (edit) => {
         appliedPauses.push(edit);
         return applyPauses;
@@ -85,6 +88,7 @@ const loadToggleStart = (applyPauses = true) => {
       './config': { default: { getKey: (key) => key === 'timekeeping.autoToggle' } },
       './consts': { default: { regexes: { tagStarted: /@started/ }, symbols: { tag: '@' } } },
       './todo/document': { default: Document },
+      './utils/task-source': { isTaskDocument: () => true },
       './utils': {
         default: {
           editor: { edits: { apply: async () => true } },
@@ -120,6 +124,7 @@ const loadToggleStart = (applyPauses = true) => {
     return {
       toggleStart: commands.toggleStart,
       viewToggleStart: commands.viewToggleStart,
+      currentDocument,
       paused,
       started,
       appliedPauses,
@@ -158,7 +163,14 @@ describe('Automatic timer toggling', () => {
   it('uses the same auto-toggle path when starting a task from the tree', async () => {
     const state = loadToggleStart();
 
-    await state.viewToggleStart({ obj: { filePath: '/workspace/current.todo', lineNr: 0 } });
+    await state.viewToggleStart({
+      obj: {
+        filePath: '/workspace/current.todo',
+        lineNr: 0,
+        textEditor: state.currentDocument,
+        documentVersion: state.currentDocument.version,
+      },
+    });
 
     expect(state.paused).to.deep.equal(['current:1:@toggle(now)', 'other:0:@toggle(now)']);
     expect(state.started).to.deep.equal([0]);

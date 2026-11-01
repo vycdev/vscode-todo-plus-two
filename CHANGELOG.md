@@ -2,6 +2,7 @@
 
 #### New features
 
+- Added Edit Task and Toggle Done row actions to the Files and Due sidebars. Edit task text and tags through a prefilled input prompt, or change task status, while keeping the current editor active. Actions support Todo files and Markdown tasks and reject stale tree rows or prompt edits. VS Code may add an inactive tab for unsaved changes. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
 - Added a root favicon using the Todo+2 logo so T3 Code can discover the project's icon. [#284](https://github.com/vycdev/vscode-todo-plus-two/issues/284)
 - Added explicit, nestable `@region` / `@endregion` folding markers for Todo files, including support for the editor's Fold All Regions command. [#92](https://github.com/vycdev/vscode-todo-plus-two/issues/92)
 - Added **Todo: Focus on Tag…** and **Todo: Clear Focus** commands to fold nonmatching lines while keeping matching tasks and their parent context visible. Focus inserts or reuses one persistent header and refreshes after edits. [#92](https://github.com/vycdev/vscode-todo-plus-two/issues/92)
@@ -12,6 +13,8 @@
 
 #### Fixes
 
+- Refreshed the Files and Due sidebars after rejecting a stale task action so a retry uses the current document when VS Code has disposed and reopened a background file. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
+- Rejected sidebar prompt edits when Markdown section settings exclude the task while the prompt is open. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
 - Prevented the default embedded-todo regex from freezing the Extension Host on long runs of spaces in comments, affecting both JavaScript scanning and external-search result parsing. [#21](https://github.com/vycdev/vscode-todo-plus-two/issues/21)
 - Kept tag groups and other task views current when a previously indexed file is reopened and edited without saving. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
 - Kept Markdown task discovery and hierarchy correct around indented fence examples, HTML comments, headings inside list items, and custom bracketed symbols. Hidden comment metadata no longer changes task status, dependencies, due dates, estimates, or timers.

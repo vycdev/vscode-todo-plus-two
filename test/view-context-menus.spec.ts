@@ -38,4 +38,23 @@ describe('Todo task view context menus', () => {
       expect(menu.when).to.equal('view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo');
     });
   });
+
+  it('contributes Edit Task and Toggle Done as inline actions only for Files and Due tasks', () => {
+    const menus = pkg.contributes.menus['view/item/context'];
+    const edit = pkg.contributes.commands.find(({ command }) => command === 'todo.viewEditTodo');
+    expect(pkg.activationEvents).to.include('onCommand:todo.viewEditTodo');
+    expect(edit.title).to.equal('Edit Task');
+    expect(menus).to.deep.include({
+      command: 'todo.viewEditTodo',
+      when: 'view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo',
+      group: 'navigation@2',
+    });
+    ['todo.viewEditTodo', 'todo.viewToggleDone'].forEach((command, index) => {
+      expect(menus).to.deep.include({
+        command,
+        when: 'view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo',
+        group: `inline@${index + 1}`,
+      });
+    });
+  });
 });
