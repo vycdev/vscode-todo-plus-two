@@ -1,20 +1,23 @@
 /* IMPORT */
 
 import * as _ from 'lodash';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import type { TextDocument } from 'vscode';
 import Config from '../config';
 import FilesView from '../views/files';
 import { Due } from '../views/due';
-import { hasConditionalExcludeGlobs, isFileIncluded } from './file-globs';
+import { getFilePathKey, hasConditionalExcludeGlobs } from './file-globs';
 import Folder from './folder';
 import { matchesFilesViewFilter } from './files-view-filter';
 import { mapFulfilled } from './promises';
 import { getWorkspaceExcludeRules } from './workspace-excludes';
 import { getBatchSize } from './batch-size';
 import { getUniqueRootKeys } from './file-groups';
-import { discoverFiles, isAllowedFilePath } from './file-discovery';
+import { isAllowedFilePath } from './file-discovery';
 import { getTaskFileIncludes, getMarkdownTaskNodes, isMarkdownTaskDocument } from './task-source';
+import { discoverTodoFiles, getAbsoluteFilePaths, isTodoFileIncluded } from './todo-file-discovery';
 
 /* FILES */
 
@@ -84,6 +87,7 @@ class Files {
     /* HELPERS */
 
     const pathNormalizer = (filePath) => filePath.replace(/\\/g, '/');
+    const absolutePaths = getAbsoluteFilePaths(this.include);
 
     /* HANDLERS */
 
@@ -110,6 +114,8 @@ class Files {
       const filePath = pathNormalizer(event.fsPath);
       if (this.filesData.hasOwnProperty(filePath)) return;
       if (!this.isIncluded(filePath)) return;
+      // A new workspace path may alias an explicit file already in the cache.
+      if (absolutePaths.length) return rescan();
       invalidate(filePath);
       this.filesData[filePath] = undefined;
       refresh();
@@ -118,12 +124,22 @@ class Files {
     const change = (event) => {
       if (!this.filesData) return;
       const filePath = pathNormalizer(event.fsPath);
+      const cached = this.filesData.hasOwnProperty(filePath);
       if (!this.isIncluded(filePath)) {
         invalidate(filePath);
         delete this.filesData[filePath];
-        refresh();
+        if (absolutePaths.length && cached) rescan();
+        else refresh();
         return;
       }
+      // A followed alias may now refer to a different explicit file. Ordinary
+      // cached workspace files can still use the cheaper incremental update.
+      if (
+        absolutePaths.length &&
+        (!cached ||
+          (Config.get().followSymlinks && !isAllowedFilePath(filePath, this.rootPaths, false)))
+      )
+        return rescan();
       invalidate(filePath);
       this.filesData[filePath] = undefined;
       refresh();
@@ -132,20 +148,58 @@ class Files {
     const unlink = (event) => {
       if (!this.filesData) return;
       const filePath = pathNormalizer(event.fsPath);
+      const cached = this.filesData.hasOwnProperty(filePath);
       invalidate(filePath);
       delete this.filesData[filePath];
-      refresh();
+      // Discovery may have picked this workspace alias instead of the explicit
+      // path. Find a remaining path to the same file before rebuilding the tree.
+      if (absolutePaths.length && cached) rescan();
+      else refresh();
     };
 
     /* WATCHING */
 
-    this.include.forEach((glob) => {
-      const watcher = vscode.workspace.createFileSystemWatcher(glob);
+    this.include
+      .filter((entry) => !path.isAbsolute(entry))
+      .forEach((glob) => {
+        const watcher = vscode.workspace.createFileSystemWatcher(glob);
 
-      watcher.onDidCreate(add);
-      watcher.onDidChange(change);
-      watcher.onDidDelete(unlink);
-      this.watchers.push(watcher);
+        watcher.onDidCreate(add);
+        watcher.onDidChange(change);
+        watcher.onDidDelete(unlink);
+        this.watchers.push(watcher);
+      });
+
+    // VS Code 1.36 only watches workspace files. Poll explicitly configured
+    // files as well, including missing files so deletion/recreation is detected.
+    const pollPaths = new Map<string, string>();
+    const poll = (filePath: string) => pollPaths.set(getFilePathKey(filePath), filePath);
+    absolutePaths.forEach((filePath) => {
+      poll(filePath);
+      const basename = path.basename(filePath, path.extname(filePath));
+      const excludes = getWorkspaceExcludeRules(filePath);
+      Object.keys(excludes).forEach((glob) => {
+        const rule = excludes[glob];
+        if (rule && typeof rule !== 'boolean' && typeof rule.when === 'string') {
+          poll(
+            path.resolve(path.dirname(filePath), rule.when.replace(/\$\(basename\)/g, basename))
+          );
+        }
+      });
+    });
+    const generation = this.watcherGeneration;
+    pollPaths.forEach((filePath) => {
+      const listener = (current: fs.Stats, previous: fs.Stats) => {
+        if (this.disposed || generation !== this.watcherGeneration) return;
+        // watchFile initially reports zero stats for a missing file. Rescanning
+        // that event would recreate the watcher and repeat it indefinitely.
+        if (!current.nlink && !previous.nlink) return;
+        // Rescan to preserve realpath deduplication when an explicit file also
+        // appears through a workspace glob or a symlink.
+        rescan();
+      };
+      fs.watchFile(filePath, { persistent: false, interval: 1000 }, listener);
+      this.watcherCleanup.push(() => fs.unwatchFile(filePath, listener));
     });
 
     if (
@@ -176,20 +230,15 @@ class Files {
   }
 
   getIncluded(filePaths) {
-    return filePaths.filter(
-      (filePath) =>
-        isAllowedFilePath(
-          filePath,
-          this.rootPaths || Folder.getAllRootPaths(),
-          !!Config.getKey('followSymlinks')
-        ) &&
-        isFileIncluded(
-          filePath,
-          Folder.getRootPath(filePath),
-          this.include,
-          this.exclude || [],
-          getWorkspaceExcludeRules(filePath)
-        )
+    return filePaths.filter((filePath) =>
+      isTodoFileIncluded(
+        filePath,
+        this.rootPaths || Folder.getAllRootPaths(),
+        this.include || [],
+        this.exclude || [],
+        !!Config.getKey('followSymlinks'),
+        getWorkspaceExcludeRules
+      )
     );
   }
 
@@ -200,14 +249,13 @@ class Files {
   async getFilePaths(rootPaths): Promise<string[]> {
     const config = Config.get();
 
-    const files = await discoverFiles(
+    return discoverTodoFiles(
       rootPaths,
       getTaskFileIncludes(config),
       config.file.exclude || [],
       !!config.followSymlinks,
       getWorkspaceExcludeRules
     );
-    return files.map((filePath) => filePath.replace(/\\/g, '/'));
   }
 
   async initFilesData(rootPaths) {

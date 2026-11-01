@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { getNumberedListEnterEdits } from '../src/utils/numbered-list';
+import { getCodeBlocks } from '../src/utils/code-blocks';
 
 const pkg = require('../package.json');
 
@@ -98,6 +99,7 @@ const loadCommand = (initialText = '1. First\n2. Second', eol = '\n') => {
     Range,
   };
   const mocks = {
+    './utils/code-blocks': { getCodeBlocks },
     './config': { default: { getKey: () => state.enabled } },
     './consts': { default: { languageId: 'todo' } },
     './todo/items': {
@@ -126,6 +128,16 @@ const loadCommand = (initialText = '1. First\n2. Second', eol = '\n') => {
 };
 
 describe('Numbered list Enter command', () => {
+  it('preserves numbered examples inside fenced code', async () => {
+    const loaded = loadCommand('```text\n1. Example\n2. Leave alone\n```');
+    const caret = new loaded.Position(1, loaded.editor.document.lineAt(1).text.length);
+    loaded.editor.selection.active = caret;
+    loaded.editor.selection.anchor = caret;
+    await loaded.numberedListEnter();
+    expect(loaded.batches).to.deep.equal([]);
+    expect(loaded.calls).to.deep.equal([['type', { text: '\n' }]]);
+    expect(loaded.state.text).to.equal('```text\n1. Example\n2. Leave alone\n```');
+  });
   it('continues and renumbers in one edit using cursor-tracking insertion', async () => {
     const loaded = loadCommand();
     await loaded.numberedListEnter();

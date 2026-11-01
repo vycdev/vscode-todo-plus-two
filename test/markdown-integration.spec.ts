@@ -258,6 +258,15 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('keeps Markdown task completion after an indented code example containing backticks', async () => {
+    const line = '[ ] Ship @depends(r';
+    const state = loadMarkdown('    ```python\n    literal code\n\n[ ] Setup @id(real)\n' + line);
+    const items = await state.completion.provideCompletionItems(state.document, {
+      line: 4,
+      character: line.length,
+    });
+    expect(items.map((item) => item.label)).to.deep.equal(['real']);
+  });
   it('keeps archived source unchanged when the original parent path is ambiguous', async () => {
     const state = loadMarkdown(
       '# Tasks\n- [ ] Parent @started(2026-01-01 10:00)\n- [ ] Parent @started(2026-02-01 10:00)\n  - [x] Child',
@@ -1080,6 +1089,47 @@ describe('Sidebar task editing', () => {
 
     expect(state.document.getText()).to.equal('☐ Newer source @id(task)');
     expect(state.messages[0]).to.include('file changed');
+  });
+
+  for (const setting of ['scope', 'sections']) {
+    it(`rejects a prompt edit when Markdown ${setting} settings exclude the task`, async () => {
+      const initial = '# Tasks\n- [ ] Original @id(task)';
+      const state = loadMarkdown(initial, {
+        'markdown.scope': setting === 'scope' ? 'all' : 'sections',
+        'markdown.sections': ['Tasks'],
+      });
+      const [task] = await getTasks(state);
+      keepEditorHidden(state);
+      state.window.showInputBox = async () => {
+        _.set(state.config, 'markdown.scope', 'sections');
+        _.set(state.config, 'markdown.sections', ['Other']);
+        return 'Edited outside the task sections @id(task)';
+      };
+
+      await state.commands.viewEditTodo(task);
+
+      expect(new state.Document(state.document).getTodos()).to.have.length(0);
+      expect(state.document.getText()).to.equal(initial);
+      expect(state.document.version).to.equal(1);
+      expect(state.messages[0]).to.include('no longer included');
+    });
+  }
+
+  it('ignores fenced examples when completing a hidden Todo parent', async () => {
+    const state = loadMarkdown('☐ Parent\n  ☐ Child\n  ```text\n  ☐ Example task\n  ```', {
+      autoCompleteParents: true,
+      'timekeeping.finished.enabled': false,
+    });
+    state.document.languageId = 'todo';
+    const child = (await getTasks(state)).find((task) => task.obj.lineNr === 1);
+    keepEditorHidden(state);
+
+    await state.commands.viewToggleDone(child);
+
+    expect(
+      new state.Document(state.document).getTodosDone().map((todo) => todo.lineNumber)
+    ).to.deep.equal([0, 1]);
+    expect(state.document.lineAt(3).text).to.equal('  ☐ Example task');
   });
 
   it('does not complete a hidden task changed during an asynchronous dependency check', async () => {

@@ -159,6 +159,25 @@ Grouping works with Todo files and Markdown notes and updates as you edit. The g
 
 For a temporary text search instead, use `Todo: Files View - Filter` and enter `@low`. Text filtering matches substrings, including longer tag names, rather than exact tags.
 
+### Code blocks
+
+Add fenced code notes to Todo files using at least three backticks and an optional language name:
+
+````todo
+Wallet Services:
+  ☐ Generate a wallet
+    ```ts
+    const wallet = walletService.generate();
+    console.log(wallet.address);
+    ```
+````
+
+Language names and aliases follow [GitHub's Linguist catalog](https://github.com/github-linguist/linguist/blob/73ee9a3b277f398c37ca4ab0dea0193849de6460/lib/linguist/languages.yml), including `python`/`py`, `c++`/`cpp`, `bash`/`sh`, `rust`, `go`, `html`, `json`, `yaml`/`yml`, `js`, `jsx`, `ts`, and `tsx`. Names are case-insensitive; a space before the name is optional. Syntax colors come from the active theme and VS Code's installed TextMate grammars. Many common languages work with VS Code's bundled grammars; uncommon languages need an extension providing the corresponding grammar. Unlabelled blocks, unknown names, and unavailable grammars remain literal code. `todo.colors.code` continues to control inline code only.
+
+Fences may be indented with spaces or tabs. Close a block with a line containing only backticks (at least as many as the opening fence), plus optional indentation or trailing whitespace. An unfinished block continues to the end of the file. Code stays literal regardless of `todo.formatting.enabled` or `todo.colors.enabled`: task symbols, project headers, and tags inside it do not affect Todo statistics, dependencies, due dates, or task commands. Code blocks are omitted from the Files tree and can be folded in the editor.
+
+A block following a task at the same or deeper indentation moves with that task when archived or unarchived. Its code and relative whitespace are preserved while the task indentation changes. Close unfinished blocks before archiving. HTML and Markdown exports currently render code-block lines as ordinary notes; they do not export fenced syntax highlighting.
+
 ### Task dependencies
 
 Task identities are plain text, so they remain intact when you copy, move, or archive tasks. Add a non-empty `@id(...)` to a task and reference it with `@depends(...)` elsewhere in the workspace:
@@ -179,13 +198,31 @@ Typing `@created` or `@now` offers timestamp completions using `todo.timekeeping
 
 Missing IDs receive a warning in the Problems panel. A task cannot be marked done or cancelled until every task with each referenced ID is finished; therefore, a duplicated ID deliberately requires _all_ of its matching tasks to be finished. Both colors are configurable with `todo.colors.id` and `todo.colors.dependency`.
 
+### Global Todo files
+
+To keep a Todo file in the **Files** sidebar when switching projects, add its absolute path to `todo.file.include` in **Preferences: Open User Settings (JSON)**:
+
+```json
+{
+  "todo.file.include": ["**/TODO", "**/*.todo", "C:/Users/you/Documents/global.todo"]
+}
+```
+
+On Linux or macOS, use a path such as `/home/you/global.todo` or `/Users/you/global.todo`. On Windows, use forward slashes as above or escape each backslash as `\\`. Paths refer to the filesystem where the extension runs, including in remote workspaces.
+
+This example retains `TODO` and `*.todo` workspace discovery. Setting this array replaces the defaults; copy the default array from Settings before adding your path if you want to retain every supported filename. Workspace settings can override your User setting.
+
+Relative entries remain workspace globs. Absolute entries name individual files, including paths with spaces or brackets; absolute wildcards, `~`, and environment-variable expansion are not supported. Global files also appear with no folder open. Changes, deletion, and recreation are detected by polling about once per second, and unsaved edits refresh the sidebar.
+
+`todo.file.exclude`, enabled `files.exclude` rules, and `todo.followSymlinks` still apply. Exclusions match workspace-relative paths inside a workspace and full paths outside it. Missing or unreadable files are skipped without hiding other Todo files.
+
 ## Settings
 
 ```js
 {
   "todo.file.name": "TODO", // Todo file name. Other supported names are: `*.todo`, `*.todos`, `*.task`, `*.tasks`, `*.taskpaper` and `todolist.txt`
   "todo.file.defaultContent": "\nTodo:\n  ☐ Item\n", // New todo files default content
-  "todo.file.include": ["**/TODO", "**/TODO.md", ...], // Globs to use for including files
+  "todo.file.include": ["**/TODO", "**/TODO.md", ...], // Workspace globs or absolute paths to individual Todo files
   "todo.file.exclude": ["**/.git/**", ...], // Globs to use for excluding files
   "todo.followSymlinks": false, // Follow symbolic links when enumerating files (can cause cycles)
   "todo.file.batchSize": 50, // Number of Todo files to process in each discovery batch

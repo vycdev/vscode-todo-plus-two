@@ -22,6 +22,7 @@ import { AutoCompleteLine, getAutoCompletableParentLines } from './utils/auto-co
 import { getTimerState, getToggleTag } from './utils/timekeeping';
 import { HtmlExportLine, renderTodoHtml } from './utils/html-export';
 import { renderTodoMarkdown } from './utils/markdown-export';
+import { getCodeBlocks } from './utils/code-blocks';
 import DocumentDecorator from './todo/decorators/document';
 import {
   getTaskLevel,
@@ -108,12 +109,15 @@ async function numberedListEnter() {
 
   const document = editor.document;
   const position = editor.selection.active;
+  const code = getCodeBlocks(document);
+  if (code.byLine.has(position.line)) return insertNewline();
   if (position.character !== document.lineAt(position.line).text.length) return insertNewline();
 
   const edits = getNumberedListEnterEdits(
     position.line,
     (line) => {
       if (line >= document.lineCount) return;
+      if (code.byLine.has(line)) return;
       const text = document.lineAt(line).text;
       return Todo.is(text) || Project.is(text) ? undefined : text;
     },
@@ -292,7 +296,13 @@ async function autoCompleteParents(textDocument: TextDocument, completedLines: n
           isProject: !!project,
         };
       })
-      .filter((line) => line.level >= 0 && textDocument.lineAt(line.lineNumber).text.trim()),
+      .filter(
+        (line) =>
+          line.level >= 0 &&
+          (isMarkdownTaskDocument(textDocument) ||
+            !getCodeBlocks(textDocument).byLine.has(line.lineNumber)) &&
+          textDocument.lineAt(line.lineNumber).text.trim()
+      ),
     possibleLines = getAutoCompletableParentLines(lines, completedLines);
 
   if (!possibleLines.length) return;
@@ -988,6 +998,13 @@ function viewEditTodo(todo: ItemTodo) {
     if (invalid) return vscode.window.showErrorMessage(invalid);
     if (!isCurrentDocument(document, version) || !isTaskDocument(document)) return;
 
+    if (!new Document(document).getTodoAt(task.line.lineNumber, true)) {
+      vscode.window.showInformationMessage(
+        'This task is no longer included by the current settings. Please run the command again.'
+      );
+      return;
+    }
+
     task.lineNextText = text.slice(0, start) + next;
     const edits = task.makeEdit();
     if (edits && edits.length && !(await Utils.editor.edits.apply(document, edits)))
@@ -1203,10 +1220,12 @@ async function getIdAtCursorOrPrompt(prompt: string) {
     const raw = textEditor.document.lineAt(textEditor.selection.active.line).text;
     const markdown = isMarkdownTaskDocument(textEditor.document);
     const isTask =
-      !markdown ||
-      getMarkdownTaskNodes(textEditor.document).some(
-        (node) => node.kind === 'todo' && node.lineNumber === textEditor.selection.active.line
-      );
+      (!markdown &&
+        !getCodeBlocks(textEditor.document).byLine.has(textEditor.selection.active.line)) ||
+      (markdown &&
+        getMarkdownTaskNodes(textEditor.document).some(
+          (node) => node.kind === 'todo' && node.lineNumber === textEditor.selection.active.line
+        ));
     const line = !isTask ? '' : markdown ? maskMarkdownTaskText(raw) : raw;
     const references: DependencyReference[] = getIds(line).concat(getDependencies(line));
     const reference = references.find(
