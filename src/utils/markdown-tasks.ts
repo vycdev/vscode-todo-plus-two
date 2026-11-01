@@ -122,18 +122,20 @@ export const parseMarkdownTasks = (
       indent >= fenceBase + 4
     )
       continue;
-    const openingFence = raw.match(/^[ \t]*(`{3,}|~{3,})(.*)$/);
+    const openingFence = raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)(`{3,}|~{3,})(.*)$/);
     if (
       !wasComment &&
       openingFence &&
       indent <= fenceBase + 3 &&
-      !(openingFence[1][0] === '`' && openingFence[2].includes('`'))
+      !(openingFence[2][0] === '`' && openingFence[3].includes('`'))
     ) {
       fence = {
-        marker: openingFence[1][0],
-        length: openingFence[1].length,
+        marker: openingFence[2][0],
+        length: openingFence[2].length,
         start: lineNumber,
-        baseIndent: fenceBase,
+        baseIndent: openingFence[1].trim()
+          ? openingFence[1].replace(/\t/g, '    ').length
+          : fenceBase,
       };
       continue;
     }
@@ -333,7 +335,23 @@ export const getMarkdownTaskCreation = (
 ): { node: MarkdownTaskNode; text: string } | undefined => {
   const lines = splitLines(content);
   const raw = lines[lineNumber];
-  if (raw === undefined || /^[ \t]*(?:>|#{1,6}\s|`{3,}|~{3,}|<!--|(?:---|\.\.\.)\s*$)/.test(raw))
+  if (
+    raw === undefined ||
+    /^[ \t]*(?:>|#{1,6}(?:\s|$)|(?:(?:[-+*]|\d+[.)])[ \t]+)?(?:`{3,}|~{3,})|<!--|(?:---|\.\.\.)\s*$)/.test(
+      raw
+    )
+  )
+    return;
+  const headings = parseMarkdownTasks(content, { ...options, includeEmptyProjects: true }).filter(
+    (node) => node.heading
+  );
+  if (
+    headings.some(
+      (node) =>
+        node.lineNumber === lineNumber ||
+        (node.lineNumber === lineNumber - 1 && /^[ \t]*(=+|-+)[ \t]*$/.test(raw))
+    )
+  )
     return;
   const list = raw.match(/^([ \t]*(?:[-+*]|\d+[.)])[ \t]+)(.*)$/);
   const indentation = (raw.match(/^[ \t]*/) || [''])[0];

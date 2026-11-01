@@ -7,6 +7,20 @@ import {
 } from '../src/utils/markdown-archive';
 
 describe('Markdown task sources', () => {
+  it('ignores fences opened directly after a list marker without hiding later tasks', () => {
+    for (const content of [
+      '- ```markdown\n  [ ] Example\n  ```\n- [ ] Real',
+      '12. ~~~\n    [ ] Example\n    ~~~\n[ ] Real',
+      '- [ ] Parent\n  - ```\n    [ ] Example\n    ```\n  - [ ] Real',
+    ]) {
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title)
+      ).to.deep.equal(content.includes('Parent') ? ['Parent', 'Real'] : ['Real']);
+    }
+  });
+
   it('honors Markdown backslash escapes before status tags and comment delimiters', () => {
     expect(parseMarkdownTasks('[ ] Literal \\@done')[0].status).to.equal('box');
     expect(parseMarkdownTasks('[ ] Real \\\\@done')[0].status).to.equal('done');

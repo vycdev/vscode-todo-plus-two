@@ -22,7 +22,11 @@ const loadExtension = () => {
   const documents = makeEvent();
   const editors = makeEvent();
   const dates = makeEvent();
-  const visibleEditors = [{ supported: true }, { supported: false }];
+  const visibleEditors = [
+    { supported: true, document: { languageId: 'markdown' } },
+    { supported: false, document: { languageId: 'plaintext' } },
+  ];
+  const decorationEditors = [];
   const events: string[] = [];
   const disposed: string[] = [];
   const disposable = (name: string) => ({ dispose: () => disposed.push(name) });
@@ -111,7 +115,14 @@ const loadExtension = () => {
     './consts': { default: { languageId: 'todo', update() {} } },
     './providers/file_links': { FileLinkProvider: Provider },
     './providers/embedded_diagnostics': { default: Diagnostics },
-    './todo/decorators/document': { default: { update: () => events.push('decorations') } },
+    './todo/decorators/document': {
+      default: {
+        update: (editor?) => {
+          events.push('decorations');
+          decorationEditors.push(editor);
+        },
+      },
+    },
     './todo/decorators/changes': { default: { onChanges() {} } },
     './utils': { default: utils },
     './utils/dependency_index': { default: { initialize: initialize('index') } },
@@ -152,6 +163,8 @@ const loadExtension = () => {
       provider,
       events,
       disposed,
+      decorationEditors,
+      visibleEditors,
     };
   } finally {
     NodeModule._load = originalLoad;
@@ -161,6 +174,31 @@ const loadExtension = () => {
 };
 
 describe('Extension lifecycle wiring', () => {
+  it('refreshes background Markdown editors when parser settings change', () => {
+    const state = loadExtension();
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    state.activate(context);
+    try {
+      for (const setting of [
+        'todo.markdown.scope',
+        'todo.markdown.sections',
+        'todo.symbols.box',
+        'todo.archive.name',
+      ]) {
+        state.decorationEditors.length = 0;
+        state.configuration.fire({
+          affectsConfiguration: (key) => setting === key || setting.startsWith(key + '.'),
+        });
+        expect(state.decorationEditors, setting).to.deep.equal([
+          state.visibleEditors[0],
+          undefined,
+        ]);
+      }
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
+    }
+  });
+
   it('refreshes the Files tree after unsaved task changes', async () => {
     const state = loadExtension();
     const context = { subscriptions: [] as { dispose(): void }[] };

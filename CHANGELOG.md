@@ -13,6 +13,8 @@
 - Enabled the explicit Toggle Box command to create and restore Markdown checkboxes on eligible prose and list items.
 - Removed previously loaded Markdown notes from workspace dependency discovery when discovery settings exclude them.
 - Kept escaped Markdown tags literal during task actions and archive cleanup while preserving plain-text dependency IDs.
+- Ignored code fences opened directly after Markdown list markers and protected Setext heading titles and underlines from Toggle Box edits.
+- Preserved escaped punctuation in partially typed dependency completions and refreshed visible Markdown editors when parser settings change.
 - Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
 
 ### Version 5.3.0

@@ -34,7 +34,6 @@ class Completion implements vscode.CompletionItemProvider {
       return null;
     const raw = textDocument.lineAt(pos.line).text;
     const line = isMarkdownTaskDocument(textDocument) ? maskMarkdownTaskText(raw) : raw;
-    if (raw[pos.character - 1] !== line[pos.character - 1]) return null;
     const character = line[pos.character - 1];
     const tagPrefix = Timestamps.getPrefix(line, pos.character);
     const tagArgumentPrefix = getTagArgumentPrefix(line, pos.character);
@@ -44,9 +43,12 @@ class Completion implements vscode.CompletionItemProvider {
       return Completion.getDependencyIds(
         textDocument,
         pos,
-        dependency.text.slice(dependency.text.indexOf('(') + 1)
+        // Only the tag opener needs Markdown visibility checks. Its argument
+        // remains plaintext even before a closing parenthesis is typed.
+        raw.slice(dependency.start + dependency.name.length + 1, pos.character)
       );
     }
+    if (raw[pos.character - 1] !== line[pos.character - 1]) return null;
 
     if (
       !character ||

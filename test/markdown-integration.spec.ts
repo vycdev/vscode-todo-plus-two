@@ -255,6 +255,65 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('completes partially typed dependency IDs without changing escaped punctuation', async () => {
+    const id = String.raw`path\*glob`;
+    for (const prefix of [String.raw`path\*`, String.raw`path\*g`]) {
+      const line = `[ ] Ship @depends(${prefix}`;
+      const state = loadMarkdown(`[ ] Setup @id(${id})\n${line}`);
+      const items = await state.completion.provideCompletionItems(state.document, {
+        line: 1,
+        character: line.length,
+      });
+      expect(items && items.map((item) => item.label)).to.deep.equal([id]);
+      const item = items[0];
+      const edit = {
+        entries: new Map([
+          [state.document.uri.toString(), [{ range: item.range, newText: item.insertText }]],
+        ]),
+      };
+      await state.workspace.applyEdit(edit);
+      expect(state.document.lineAt(1).text).to.equal(`[ ] Ship @depends(${id})`);
+    }
+    for (const hidden of [
+      String.raw`[ ] Ship \@depends(path\*g`,
+      String.raw`[ ] Ship ` + '`' + String.raw`@depends(path\*g` + '`',
+      String.raw`[ ] Ship <!-- @depends(path\*g -->`,
+    ]) {
+      const state = loadMarkdown(`[ ] Setup @id(${id})\n${hidden}`);
+      const position = hidden.indexOf('g') + 1;
+      expect(
+        await state.completion.provideCompletionItems(state.document, {
+          line: 1,
+          character: position,
+        })
+      ).to.equal(null);
+    }
+  });
+
+  it('leaves list-fenced examples unchanged through task commands', async () => {
+    const original = '- ```markdown\n  [ ] Example\n  ```\n- [ ] Real';
+    const state = loadMarkdown(original, { 'timekeeping.finished.enabled': false });
+    for (const line of [0, 1, 2]) {
+      state.select(line);
+      await state.commands.toggleBox();
+      await state.commands.toggleDone();
+      expect(state.document.getText()).to.equal(original);
+    }
+    state.select(3);
+    await state.commands.toggleDone();
+    expect(state.document.lineAt(3).text).to.equal('- [x] Real');
+  });
+
+  it('does not rewrite Setext headings or their underlines through Toggle Box', async () => {
+    const original = 'Title\n=====\n\nTodos\n-----\n[ ] Work';
+    const state = loadMarkdown(original);
+    for (const line of [0, 1, 3, 4]) {
+      state.select(line);
+      await state.commands.toggleBox();
+      expect(state.document.getText()).to.equal(original);
+    }
+  });
+
   it('keeps dependency IDs containing Markdown escape characters portable', async () => {
     const id = String.raw`path\*glob`;
     const state = loadMarkdown(`[ ] Setup @id(${id})\n[ ] Ship @depends(${id})`, {

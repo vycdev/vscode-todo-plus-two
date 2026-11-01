@@ -166,7 +166,11 @@ const activate = function (context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeConfiguration(updateFileCaches),
     vscode.workspace.onDidChangeConfiguration(Utils.statistics.tokens.updateDisabledAll),
     vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration('todo.markdown.enabled')) {
+      if (
+        event.affectsConfiguration('todo.markdown') ||
+        event.affectsConfiguration('todo.symbols') ||
+        event.affectsConfiguration('todo.archive.name')
+      ) {
         vscode.window.visibleTextEditors
           .filter(
             (editor) =>
