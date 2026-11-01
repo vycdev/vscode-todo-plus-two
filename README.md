@@ -121,6 +121,14 @@ Set `todo.markdown.scope` to `"sections"` to limit discovery to the named headin
 
 Archiving moves finished task blocks with their indented notes and finished children, while keeping Markdown headings and unrelated prose in the source. A finished parent with unfinished children stays in place; eligible finished children can still be archived. `InSameFile` uses a Markdown Archive heading and supports Unarchive. Restoring a child still finds its original parent after the parent's timekeeping or completion-cleanup tags change. If its parent path matches multiple destinations, tasks stay in the Archive until the parent labels identify a single destination. `InMultiSeparateFile` writes `ARCHIVE.<original-filename>`; `InSeparateFile` uses a shared `ARCHIVE.<todo-file-base-name>.md` at the workspace root. Archive tag cleanup applies to task lines, preserving note text and code examples. Project labels are escaped when necessary, and merges retain source tasks if the archive cannot expose every transferred task. Existing dirty-buffer, write-failure, and concurrent-transfer protections also apply to Markdown archives.
 
+### Numbered lists
+
+Press Enter at the end of a plain numbered item such as `1. First item` to insert the next number and renumber the following items. For example, inserting after the first item in `1, 2, 3` produces `1, 2 (new), 3, 4`. This is enabled by default; set `todo.autoRenumber` to `false` to disable it.
+
+Numbering preserves the current item's number, indentation, and spacing after the dot. It updates only consecutive numbered lines with the same indentation, stopping at blank lines, headings, other text, or indentation changes. Enter on an empty item removes its marker. Use one cursor at the end of an item; other cursor positions, selections, and multiple cursors keep normal Enter behavior.
+
+These numbered entries remain notes rather than checkbox todos. Configured Todo symbols take precedence: numbering falls back to normal Enter if it would create a Todo using one of those symbols. Use the usual Todo symbols for status, statistics, dependencies, and archiving. Numbering is updated only by Enter, not on open, save, deletion, paste, or reordering. Markdown-language documents and nested list numbering are outside this feature's scope.
+
 ### Task priorities
 
 Use special tags as visual priority labels without changing the plain-text task format. The default `todo.tags.names` setting includes `critical`, `high`, and `low`, so these tags are highlighted automatically:
@@ -170,6 +178,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.file.view.showTags": true, // Show tags in Todo files view labels
   "todo.file.view.icons": true, // Show icons next to groups in the Todo files view
   "todo.automaticSymbol": false, // Insert a new todo box after pressing Enter at the end of a non-empty todo
+  "todo.autoRenumber": true, // Continue plain numbered lists and renumber following items on Enter
   "todo.autoCompleteParents": false, // Mark parents done when Todo: Toggle Done completes all nested todos
   "todo.symbols.box": "☐", // Box symbol
   "todo.symbols.done": "✔", // Done symbol
