@@ -45,15 +45,12 @@ const withDecorator = (run) => {
         },
       };
     if (request === '../document') return { default: Document };
+    if (request === './task-tags') return { getTaskTagDecorations: () => [] };
     if (request === '../../statusbars/timer')
       return { default: { update: (doc) => timerDocuments.push(doc && doc.textDocument) } };
     if (request === '../../statusbars/statistics')
       return { default: { update: () => statisticsUpdates.push(tokens.global) } };
-    if (
-      /^\.\/(comment|formatted|project|tag|todo_due|todo_done|todo_cancelled|todo_started)$/.test(
-        request
-      )
-    ) {
+    if (/^\.\/(comment|formatted|project|tag|todo_due)$/.test(request)) {
       return { default: class Decorator {} };
     }
     return originalLoad(request, parent, isMain);

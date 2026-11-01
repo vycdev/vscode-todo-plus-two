@@ -58,6 +58,9 @@ const scanTaskText = (text: string) => {
 /** Code and comments protect their contents from each other's delimiters. */
 export const getMarkdownCommentRanges = (text: string) => scanTaskText(text).comments;
 
+/** Source spans that task decorations must leave to Markdown's renderer. */
+export const getMarkdownTaskProtectedRanges = (text: string) => scanTaskText(text).protectedRanges;
+
 /** Keep original UTF-16 offsets while hiding escaped text, code and comments. */
 export const maskMarkdownTaskText = (text: string): string => scanTaskText(text).masked;
 

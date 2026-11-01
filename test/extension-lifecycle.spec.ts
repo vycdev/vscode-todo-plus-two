@@ -124,6 +124,7 @@ const loadExtension = () => {
       },
     },
     './todo/decorators/changes': { default: { onChanges() {} } },
+    './todo/decorators/task-tags': { disposeTaskTagStyles: () => disposed.push('task-tag-styles') },
     './utils': { default: utils },
     './utils/dependency_index': { default: { initialize: initialize('index') } },
     './utils/task-source': {
@@ -174,7 +175,7 @@ const loadExtension = () => {
 };
 
 describe('Extension lifecycle wiring', () => {
-  it('refreshes background Markdown editors when parser settings change', () => {
+  it('refreshes background Markdown editors when parser or tag-style settings change', () => {
     const state = loadExtension();
     const context = { subscriptions: [] as { dispose(): void }[] };
     state.activate(context);
@@ -184,6 +185,8 @@ describe('Extension lifecycle wiring', () => {
         'todo.markdown.sections',
         'todo.symbols.box',
         'todo.archive.name',
+        'todo.tags.styles',
+        'todo.colors.done',
       ]) {
         state.decorationEditors.length = 0;
         state.configuration.fire({
@@ -231,7 +234,7 @@ describe('Extension lifecycle wiring', () => {
       expect(state.provider.generation).to.equal(1);
       expect(state.files.filesData).to.equal(filesData);
       expect(state.provider.filesData).to.equal(embeddedData);
-      expect(state.events).to.deep.equal(['tokens', 'decorations']);
+      expect(state.events).to.deep.equal(['tokens', 'decorations', 'decorations']);
 
       state.events.length = 0;
       state.dates.fire();
@@ -285,6 +288,7 @@ describe('Extension lifecycle wiring', () => {
         'command',
         'log',
         'diagnostics',
+        'task-tag-styles',
       ]);
       [state.configuration, state.folders, state.documents, state.editors, state.dates].forEach(
         (event) => expect(event.listeners.size).to.equal(0)

@@ -1,7 +1,7 @@
 /* INLINE CODE */
 
-export const maskInlineCode = (text: string): string => {
-  const masked = text.split('');
+export const getInlineCodeRanges = (text: string): { start: number; end: number }[] => {
+  const ranges: { start: number; end: number }[] = [];
   let cursor = 0;
 
   while (cursor < text.length) {
@@ -36,11 +36,18 @@ export const maskInlineCode = (text: string): string => {
 
     if (closingEnd < 0) continue;
 
-    for (let index = openingStart; index < closingEnd; index++) masked[index] = ' ';
-
+    ranges.push({ start: openingStart, end: closingEnd });
     cursor = closingEnd;
   }
 
+  return ranges;
+};
+
+export const maskInlineCode = (text: string): string => {
+  const masked = text.split('');
+  getInlineCodeRanges(text).forEach(({ start, end }) => {
+    for (let index = start; index < end; index++) masked[index] = ' ';
+  });
   return masked.join('');
 };
 

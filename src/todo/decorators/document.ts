@@ -10,9 +10,7 @@ import Formatted from './formatted';
 import Project from './project';
 import Tag from './tag';
 import TodoDue from './todo_due';
-import TodoDone from './todo_done';
-import TodoCancelled from './todo_cancelled';
-import TodoStarted from './todo_started';
+import { getTaskTagDecorations } from './task-tags';
 import { DocumentLinesCache } from './document-lines-cache';
 import { applyCustomColors } from './theme-colors';
 
@@ -119,7 +117,6 @@ const Document = {
       tags: doc.getTags(),
       tagsDue: doc.getTagsDue(),
       todosBox: doc.getTodosBox(),
-      todosStarted: doc.getTodosBoxStarted(),
       todosDone: doc.getTodosDone(),
       todosCancelled: doc.getTodosCancelled(),
     };
@@ -134,9 +131,7 @@ const Document = {
       applyCustomColors(new Tag().getDecorations(items.tags), colorsEnabled),
       applyCustomColors(new TodoDue().getDecorations(items.tagsDue), colorsEnabled),
       new Project().getDecorations(items.projects),
-      applyCustomColors(new TodoStarted().getDecorations(items.todosStarted), colorsEnabled),
-      new TodoDone().getDecorations(items.todosDone),
-      applyCustomColors(new TodoCancelled().getDecorations(items.todosCancelled), colorsEnabled)
+      getTaskTagDecorations([...items.todosBox, ...items.todosDone, ...items.todosCancelled])
     );
   },
 };

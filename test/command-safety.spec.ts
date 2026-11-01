@@ -72,6 +72,7 @@ const loadCommands = (activeEditor = makeEditor(), todoText = '☐ Task') => {
         toggleBox: mutate,
         toggleDone: mutate,
         toggleCancelled: mutate,
+        syncPausedTag: mutate,
         addTag: mutate,
         makeEdit: () => [{ text: '✔ Task' }],
       };
@@ -153,6 +154,20 @@ describe('Command edit safety', () => {
     await state.commands.toggleDone();
     expect(state.edits).to.deep.equal([]);
     expect(state.messages[0]).to.include('unresolved dependencies (setup)');
+  });
+
+  it('synchronizes selected paused markers in one editor edit without dependency checks', async () => {
+    const editor = makeEditor();
+    editor.selections[0].end = { line: 2, character: 0 };
+    const state = loadCommands(editor);
+    state.dependencyIndex.get = async () => {
+      throw new Error('Synchronizing a styling marker should not resolve dependencies');
+    };
+    await state.commands.syncPausedTags();
+    expect(state.mutatedLines).to.deep.equal([0, 1]);
+    expect(state.edits).to.have.length(1);
+    expect(state.edits[0][1]).to.have.length(2);
+    expect(state.messages).to.deep.equal([]);
   });
 
   it('does not edit a task changed while its dependency picker was open', async () => {

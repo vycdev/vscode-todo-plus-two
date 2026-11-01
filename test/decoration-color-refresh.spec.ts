@@ -42,7 +42,6 @@ const withColorDecorator = (name, run) => {
 describe('Live decoration colors', () => {
   for (const [name, color] of [
     ['comment', 'comment'],
-    ['todo_cancelled', 'cancelled'],
     ['formatted', 'code'],
   ]) {
     it(`updates ${color} colors and disposes obsolete decoration types`, () => {

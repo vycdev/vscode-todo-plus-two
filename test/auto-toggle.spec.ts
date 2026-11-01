@@ -54,6 +54,7 @@ const loadToggleStart = (applyPauses = true) => {
     text: 'active @started(now)',
     line: { lineNumber },
     addTag: (tag) => paused.push(`${file}:${lineNumber}:${tag}`),
+    syncPausedTag: () => paused.push(`${file}:${lineNumber}:@paused`),
     makeEdit: () => [{ text: `paused ${file}:${lineNumber}` }],
   });
 
@@ -137,7 +138,12 @@ describe('Automatic timer toggling', () => {
 
     await state.toggleStart();
 
-    expect(state.paused).to.deep.equal(['current:1:@toggle(now)', 'other:0:@toggle(now)']);
+    expect(state.paused).to.deep.equal([
+      'current:1:@toggle(now)',
+      'current:1:@paused',
+      'other:0:@toggle(now)',
+      'other:0:@paused',
+    ]);
     expect(state.started).to.deep.equal([0]);
     expect(state.appliedPauses).to.have.length(1);
     expect([...state.appliedPauses[0].edits.keys()]).to.deep.equal([
@@ -160,7 +166,12 @@ describe('Automatic timer toggling', () => {
 
     await state.viewToggleStart({ obj: { filePath: '/workspace/current.todo', lineNr: 0 } });
 
-    expect(state.paused).to.deep.equal(['current:1:@toggle(now)', 'other:0:@toggle(now)']);
+    expect(state.paused).to.deep.equal([
+      'current:1:@toggle(now)',
+      'current:1:@paused',
+      'other:0:@toggle(now)',
+      'other:0:@paused',
+    ]);
     expect(state.started).to.deep.equal([0]);
   });
 });

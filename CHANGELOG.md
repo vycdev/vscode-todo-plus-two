@@ -1,7 +1,12 @@
 ### Version 5.4.0
 
+#### Compatibility notes
+
+- Task-text styling now follows literal tags through `todo.tags.styles`. Symbol-only done/cancelled tasks use syntax-theme styling until they have an `@done`/`@cancelled` tag; existing files are not rewritten. Legacy colors and the done-strikethrough preference supply default rule values. Timer commands maintain an `@paused` marker; use `Todo: Sync Paused Tags` to repair markers after manual edits or migrate existing paused tasks. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+
 #### New features
 
+- Added configurable task-text styles selected by tags, with default Done, Cancelled, Started, and Paused rules. Rules support colors, backgrounds, bold, italic, strikethrough, theme overrides, and per-property priority with the last matching tag breaking ties. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
 
 #### Fixes
