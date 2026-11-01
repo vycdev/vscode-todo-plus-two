@@ -117,6 +117,7 @@ const loadExtension = () => {
     },
     './consts': { default: { languageId: 'todo', update() {} } },
     './providers/file_links': { FileLinkProvider: Provider },
+    './providers/image_paste': { registerImagePasteProvider: () => disposable('image-paste') },
     './providers/embedded_diagnostics': { default: Diagnostics },
     './todo/decorators/document': {
       default: {
@@ -310,6 +311,7 @@ describe('Extension lifecycle wiring', () => {
         'log',
         'diagnostics',
         'task-tag-styles',
+        'image-paste',
       ]);
       [state.configuration, state.folders, state.documents, state.editors, state.dates].forEach(
         (event) => expect(event.listeners.size).to.equal(0)

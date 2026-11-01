@@ -25,6 +25,20 @@ export const disposeTaskTagStyles = () => {
   signature = undefined;
 };
 
+export const pruneTaskTagDocument = (
+  document: object,
+  retained: Iterable<TextEditorDecorationType>
+) => {
+  const types = documents.get(document);
+  if (!types) return;
+  const used = new Set(retained);
+  types.forEach((type, key) => {
+    if (used.has(type)) return;
+    type.dispose();
+    types.delete(key);
+  });
+};
+
 const renderStyle = (style: TaskTagStyle, colors: boolean): DecorationRenderOptions => {
   const options: DecorationRenderOptions = {};
   if (colors && style.color) options.color = style.color;
@@ -36,7 +50,11 @@ const renderStyle = (style: TaskTagStyle, colors: boolean): DecorationRenderOpti
   return options;
 };
 
-export const getTaskTagDecorations = (todos: Todo[], document: object = defaultDocument) => {
+export const getTaskTagDecorations = (
+  todos: Todo[],
+  document: object = defaultDocument,
+  prune: boolean = true
+) => {
   const config = Config.get(),
     rules = getTaskTagStyleRules(config),
     colors = Config.getKey('colors.enabled') !== false,
@@ -95,10 +113,6 @@ export const getTaskTagDecorations = (todos: Todo[], document: object = defaultD
 
   // Disposing obsolete types clears their editor ranges and bounds the cache by
   // the styles currently used in each document, rather than the edit history.
-  types.forEach((type, key) => {
-    if (ranges.has(type)) return;
-    type.dispose();
-    types.delete(key);
-  });
+  if (prune) pruneTaskTagDocument(document, ranges.keys());
   return Array.from(ranges, ([type, ranges]) => ({ type, ranges }));
 };

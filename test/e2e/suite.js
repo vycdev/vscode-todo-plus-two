@@ -505,6 +505,63 @@ module.exports.run = async () => {
       await expectStyle('E2ECosmetic', (css) => css.color === 'rgb(0, 255, 0)');
       await screenshot('tag-focus-styling');
     });
+    await step(
+      'preserve cached task styles across batch edits, line shifts, undo and redo in splits',
+      async () => {
+        await settings.update(
+          'tags.styles',
+          {
+            cacheRed: { color: '#ff0000' },
+            cacheBlue: { color: '#0000ff' },
+            cacheGreen: { color: '#00ff00' },
+          },
+          vscode.ConfigurationTarget.Workspace
+        );
+        fs.writeFileSync(
+          path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, 'cache.todo'),
+          'Cache:\n  ☐ E2ECacheFirst @cacheRed\n  ☐ E2ECacheSecond @cacheBlue\n  ☐ E2ECacheThird @cacheRed\n'
+        );
+        const cache = await open('cache.todo');
+        const split = await vscode.window.showTextDocument(cache.document, {
+          viewColumn: vscode.ViewColumn.Two,
+          preview: false,
+        });
+        const both = (token, color) =>
+          waitFor(
+            () => style(token, true),
+            (styles) => styles.length === 2 && styles.every((css) => css && css.color === color),
+            `Cached styles for ${token} in both splits`
+          );
+        await both('E2ECacheFirst', 'rgb(255, 0, 0)');
+        await both('E2ECacheSecond', 'rgb(0, 0, 255)');
+        let line = select(split, 'E2ECacheFirst');
+        await split.edit((edit) => edit.replace(line.range, '  ☐ E2ECacheFirst @cacheBlue'));
+        await both('E2ECacheFirst', 'rgb(0, 0, 255)');
+        await both('E2ECacheThird', 'rgb(255, 0, 0)');
+        const second = select(split, 'E2ECacheSecond');
+        const third = select(split, 'E2ECacheThird');
+        await split.edit((edit) => {
+          edit.replace(second.range, '  ☐ E2ECacheSecond @cacheGreen');
+          edit.replace(third.range, '  ☐ E2ECacheThird @cacheBlue');
+        });
+        await both('E2ECacheFirst', 'rgb(0, 0, 255)');
+        await both('E2ECacheSecond', 'rgb(0, 255, 0)');
+        await both('E2ECacheThird', 'rgb(0, 0, 255)');
+        line = select(split, 'E2ECacheFirst');
+        await split.edit((edit) =>
+          edit.insert(new vscode.Position(line.lineNumber, 0), '  ☐ E2ECacheInserted\n')
+        );
+        await both('E2ECacheSecond', 'rgb(0, 255, 0)');
+        await vscode.commands.executeCommand('undo');
+        assert(!cache.document.getText().includes('E2ECacheInserted'));
+        await both('E2ECacheThird', 'rgb(0, 0, 255)');
+        await vscode.commands.executeCommand('redo');
+        assert(cache.document.getText().includes('E2ECacheInserted'));
+        await both('E2ECacheSecond', 'rgb(0, 255, 0)');
+        await both('E2ECacheThird', 'rgb(0, 0, 255)');
+        await screenshot('incremental-task-styles');
+      }
+    );
     report.status = 'passed';
   } catch (error) {
     report.status = 'failed';

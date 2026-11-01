@@ -116,18 +116,16 @@ class Project extends Line {
 
   getDecorations(projects: ProjectItem[]) {
     const types = ensureDecorationTypes(),
-      condition = Config.getKey('statistics.project.enabled'),
-      textEditor = projects.length ? projects[0].textEditor : vscode.window.activeTextEditor;
+      condition = Config.getKey('statistics.project.enabled');
     const markdown = projects.some((project) => !!project.markdownNode);
-    if (textEditor) textEditor.setDecorations(types.markdownStatistics, []);
 
     if (condition === false) {
-      if (textEditor) textEditor.setDecorations(types.statistics, []);
-
-      return super.getDecorations(markdown ? [] : projects);
+      return [
+        ...super.getDecorations(markdown ? [] : projects),
+        { type: types.statistics, ranges: [] },
+        { type: types.markdownStatistics, ranges: [] },
+      ];
     }
-
-    if (textEditor) textEditor.setDecorations(types.statistics, []);
 
     const template = Config.getKey('statistics.project.text'),
       basicRanges = [],

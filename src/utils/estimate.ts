@@ -16,3 +16,8 @@ export const getEstimateDuration = (tag: string): string | undefined => {
 
   return match ? match[2] || match[1] : undefined;
 };
+
+export const isFixedEstimateDuration = (duration: string): boolean =>
+  /^\s*(?:\d+(?:\.\d+)?\s*(?:m[dw]|ms|[smhdwy]|milliseconds?|seconds?|minutes?|hours?|days?|weeks?|years?)\s*)+$/i.test(
+    duration
+  );

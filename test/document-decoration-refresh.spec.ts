@@ -33,6 +33,7 @@ const withDecorator = (run) => {
   }
   NodeModule._load = (request, parent, isMain) => {
     if (request === 'vscode') return { window };
+    if (request === './incremental-document') return { hasMultilineSyntax: () => false };
     if (request === '../../config')
       return {
         default: {
@@ -48,7 +49,11 @@ const withDecorator = (run) => {
       };
     if (request === '../document') return { default: Document };
     if (request === './task-tags')
-      return { getTaskTagDecorations: () => [], disposeTaskTagDocument() {} };
+      return {
+        getTaskTagDecorations: () => [],
+        disposeTaskTagDocument() {},
+        pruneTaskTagDocument() {},
+      };
     if (request === '../../statusbars/timer')
       return { default: { update: (doc) => timerDocuments.push(doc && doc.textDocument) } };
     if (request === '../../statusbars/statistics')
@@ -100,7 +105,7 @@ describe('Document decoration refresh', () => {
       decorator.update(split);
       decorator.getItemsDecorations = () => [{ type: updated, ranges: ['changed'] }];
       setText('task @review');
-      decorator.updateLines(editor.document, [0]);
+      decorator.updateLines(editor.document, []);
       expect(applied).to.deep.equal([
         { type: initial, ranges: ['original'] },
         { type: updated, ranges: ['changed'] },
@@ -140,9 +145,9 @@ describe('Document decoration refresh', () => {
     withDecorator(({ decorator, editor, setText, timerDocuments }) => {
       decorator.update(editor);
       setText('task @est(20m)');
-      decorator.updateLines(editor, [0]);
+      decorator.updateLines(editor, []);
       expect(timerDocuments).to.have.length(2);
-      decorator.updateLines(editor, [0]);
+      decorator.updateLines(editor, []);
       expect(timerDocuments).to.have.length(2);
     });
   });

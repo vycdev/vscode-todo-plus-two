@@ -13,6 +13,7 @@
 - Added opt-in tag grouping in the Files sidebar with `todo.file.view.groupByTags`, including Todo files and Markdown notes, per-group counts, original project and parent-task context, and an Other group for tasks without a selected tag. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
 - Added automatic continuation and renumbering of plain numbered lists on Enter in Todo files, enabled by default and configurable with `todo.autoRenumber`. [#19](https://github.com/vycdev/vscode-todo-plus-two/issues/19)
 - Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
+- Added PNG/JPEG image paste in saved local Todo files on VS Code 1.97 or newer. Images are stored in a sibling `<filename>.assets` folder and inserted as clickable relative links, with undo/redo and existing-file protection. Non-empty clipboard text keeps its normal paste behavior without waiting for image reads or showing image errors; images can also be selected with Paste As. [#6](https://github.com/vycdev/vscode-todo-plus-two/issues/6)
 
 #### Fixes
 
@@ -20,6 +21,7 @@
 - Kept backticks inside tag arguments literal so they cannot hide following task-style or timer tags. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Honored empty task-style color and background overrides for individual themes instead of falling back to the rule's base colors. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Refreshed task styles in every visible split view of the same file after tag edits, and cleared all splits when task support is disabled. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Preserved tag styles on untouched tasks during incremental edits, releasing obsolete decoration types only after all visible split caches stop using them. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Prevented the default embedded-todo regex from freezing the Extension Host on long runs of spaces in comments, affecting both JavaScript scanning and external-search result parsing. [#21](https://github.com/vycdev/vscode-todo-plus-two/issues/21)
 - Kept tag groups and other task views current when a previously indexed file is reopened and edited without saving. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
 - Kept Markdown task discovery and hierarchy correct around indented fence examples, HTML comments, headings inside list items, and custom bracketed symbols. Hidden comment metadata no longer changes task status, dependencies, due dates, estimates, or timers.
@@ -39,6 +41,8 @@
 - Restored archived Markdown children to their original parent after its timekeeping or completion-cleanup tags change, retaining IDs and other labels when matching parent paths.
 - Kept archived Markdown tasks in place when their parent path is ambiguous, while allowing unique deeper destinations below repeated ancestor headings.
 - Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
+- Kept selected Todo text intact when an image attachment cannot be written.
+- Preserved relative file and image attachment links in tasks, project titles, and attached notes when archiving into a workspace-root archive. Project titles containing attachment links keep their hierarchy across repeated archives; fenced code examples remain literal.
 
 ### Version 5.3.0
 
@@ -196,6 +200,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Views, decorations, and status bar
 
+- Cached unchanged Todo lines and their highlighting, reused unaffected project statistics, and kept tag, status, formatting, and line insertion/deletion edits incremental. Split editors, date-sensitive statistics, archive boundaries, and configuration changes remain synchronized. Fenced code notes retain full parsing so examples stay excluded from task state. [#94](https://github.com/vycdev/vscode-todo-plus-two/issues/94)
 - Refreshed timers, statistics, due state, decorations, and view filters after text and configuration changes, including edits that keep the same length, updates to background editors, and due-date rollover at midnight.
 - Fixed symbol parenting, indentation setting changes, decoration range subtraction, dependency completion boundaries, signed duration parsing, and elapsed-only statistics templates.
 - Fixed project and special-tag decorations so color and tag settings refresh without a restart. [#24](https://github.com/vycdev/vscode-todo-plus-two/issues/24), [#2](https://github.com/vycdev/vscode-todo-plus-two/issues/2)
