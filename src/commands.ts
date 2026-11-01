@@ -25,6 +25,7 @@ import { getTaskLevel, getMarkdownTaskNodes, isMarkdownTaskDocument } from './ut
 import { archiveMarkdownTasks } from './utils/markdown-archive-command';
 import { maskMarkdownTaskText } from './utils/markdown-task-text';
 import { ProjectCopyLine, renderProjectCopy } from './utils/project-copy';
+import { getNumberedListEnterEdits } from './utils/numbered-list';
 import {
   DependencyReference,
   DependencyTarget,
@@ -83,6 +84,55 @@ const getSelectedLines = (textEditor: vscode.TextEditor): number[] =>
       )
     )
   );
+
+async function numberedListEnter() {
+  const editor = vscode.window.activeTextEditor;
+  const insertNewline = () => vscode.commands.executeCommand('type', { text: '\n' });
+
+  if (
+    !editor ||
+    editor.document.languageId !== Consts.languageId ||
+    !Config.getKey('autoRenumber') ||
+    editor.selections.length !== 1 ||
+    !editor.selection.isEmpty
+  ) {
+    return insertNewline();
+  }
+
+  const document = editor.document;
+  const position = editor.selection.active;
+  if (position.character !== document.lineAt(position.line).text.length) return insertNewline();
+
+  const edits = getNumberedListEnterEdits(
+    position.line,
+    (line) => {
+      if (line >= document.lineCount) return;
+      const text = document.lineAt(line).text;
+      return Todo.is(text) || Project.is(text) ? undefined : text;
+    },
+    document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n'
+  );
+
+  if (
+    !edits ||
+    edits.some(({ line, start, end, text }) => {
+      const before = document.lineAt(line).text;
+      return Todo.is(before.slice(0, start) + text + before.slice(end));
+    })
+  ) {
+    return insertNewline();
+  }
+
+  return editor.edit((builder) => {
+    edits.forEach(({ line, start, end, text }) => {
+      if (start === end) {
+        builder.insert(new vscode.Position(line, start), text);
+      } else {
+        builder.replace(new vscode.Range(line, start, line, end), text);
+      }
+    });
+  });
+}
 
 const callTodosMethodOptions = {
   checkValidity: false,
@@ -1155,6 +1205,10 @@ function viewFilesShowFinished() {
 
 /* VIEW EMBEDDED */
 
+const viewEmbeddedMoveUp = (item: ItemFile): Promise<void> => ViewEmbedded.move(item, -1);
+const viewEmbeddedMoveDown = (item: ItemFile): Promise<void> => ViewEmbedded.move(item, 1);
+const viewEmbeddedResetOrder = (): Promise<void> => ViewEmbedded.resetOrder();
+
 function viewEmbeddedCollapse() {
   ViewEmbedded.expanded = false;
   vscode.commands.executeCommand('setContext', 'todo-embedded-expanded', false);
@@ -1204,6 +1258,7 @@ function viewEmbeddedShowActiveFile() {
 /* EXPORT */
 
 export {
+  numberedListEnter,
   open,
   openEmbedded,
   exportHtml,
@@ -1247,6 +1302,9 @@ export {
   viewEmbeddedToggleAllFiles,
   viewEmbeddedShowAllFiles,
   viewEmbeddedShowActiveFile,
+  viewEmbeddedMoveUp,
+  viewEmbeddedMoveDown,
+  viewEmbeddedResetOrder,
 };
 export {
   toggleBox as editorToggleBox,

@@ -7,12 +7,15 @@
 #### New features
 
 - Added configurable task-text styles selected by tags, with default Done, Cancelled, Started, and Paused rules. Rules support colors, backgrounds, bold, italic, strikethrough, theme overrides, and per-property priority with the last matching tag breaking ties. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Added opt-in tag grouping in the Files sidebar with `todo.file.view.groupByTags`, including Todo files and Markdown notes, per-group counts, original project and parent-task context, and an Other group for tasks without a selected tag. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
+- Added automatic continuation and renumbering of plain numbered lists on Enter in Todo files, enabled by default and configurable with `todo.autoRenumber`. [#19](https://github.com/vycdev/vscode-todo-plus-two/issues/19)
 - Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
 
 #### Fixes
 
 - Preserved literal tag text in IDs, dependencies, and other arguments during paused-marker cleanup, and ignored nested timer examples when synchronizing markers. Released obsolete tag-style decoration resources when tags are removed or documents close. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Kept backticks inside tag arguments literal so they cannot hide following task-style or timer tags. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Kept tag groups and other task views current when a previously indexed file is reopened and edited without saving. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
 - Kept Markdown task discovery and hierarchy correct around indented fence examples, HTML comments, headings inside list items, and custom bracketed symbols. Hidden comment metadata no longer changes task status, dependencies, due dates, estimates, or timers.
 - Refreshed the Files tree for unsaved task edits and cleared editor decorations when Markdown task support is disabled.
 - Preserved multiline comments and relative code indentation when archiving Markdown tasks, and recreated missing section headings when unarchiving in section-only mode.
@@ -93,6 +96,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Embedded todos
 
+- Added opt-in manual ordering of embedded todo groups, files, and tasks with `todo.embedded.view.sort: "manual"`, Move Up/Down actions, drag-and-drop on VS Code 1.66+, workspace-local persistence, and a Reset Manual Order command. [#40](https://github.com/vycdev/vscode-todo-plus-two/issues/40)
 - Added embedded todo detection for inline and multiline Liquid comments, including nested `comment` blocks inside `{% liquid %}` tags. Scans respect raw blocks, avoid duplicate matches, and batch file reads to keep the editor responsive. [#46](https://github.com/vycdev/vscode-todo-plus-two/issues/46)
 - Added opt-in Problems view diagnostics for embedded markers through `todo.embedded.problems`. [#60](https://github.com/vycdev/vscode-todo-plus-two/issues/60)
 - Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`. Embedded view filters also search visible context lines. [#79](https://github.com/vycdev/vscode-todo-plus-two/issues/79)

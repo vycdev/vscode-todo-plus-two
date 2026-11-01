@@ -1,4 +1,4 @@
-const scanTaskText = (text: string) => {
+const scanTaskText = (text: string, markdown = true) => {
   const masked = text.split('');
   const comments: Array<{ start: number; end: number; closed: boolean }> = [];
   const protectedRanges: Array<{ start: number; end: number }> = [];
@@ -11,13 +11,14 @@ const scanTaskText = (text: string) => {
   let cursor = 0;
   while (cursor < text.length) {
     if (
+      markdown &&
       text[cursor] === '\\' &&
       cursor + 1 < text.length &&
       /[!-/:-@[-`{-~]/.test(text[cursor + 1])
     ) {
       mask(cursor, cursor + 2);
       cursor += 2;
-    } else if (text.startsWith('<!--', cursor)) {
+    } else if (markdown && text.startsWith('<!--', cursor)) {
       const closing = text.indexOf('-->', cursor + 4);
       const end = closing < 0 ? text.length : closing + 3;
       comments.push({ start: cursor, end, closed: closing >= 0 });
@@ -64,9 +65,8 @@ export const getMarkdownTaskProtectedRanges = (text: string) => scanTaskText(tex
 /** Keep original UTF-16 offsets while hiding escaped text, code and comments. */
 export const maskMarkdownTaskText = (text: string): string => scanTaskText(text).masked;
 
-/** Read outer tags once, leaving their arguments as literal, portable text. */
-export const getMarkdownTaskTags = (text: string) => {
-  const masked = maskMarkdownTaskText(text);
+const getTaskTags = (text: string, markdown: boolean) => {
+  const masked = scanTaskText(text, markdown).masked;
   const pattern = /@[^\s*~(`]+(?:\([^\r\n)]*\))?/g;
   const tags: Array<{ start: number; end: number; text: string }> = [];
   let match: RegExpExecArray;
@@ -77,6 +77,12 @@ export const getMarkdownTaskTags = (text: string) => {
   }
   return tags;
 };
+
+/** Read outer tags once, leaving their arguments as literal, portable text. */
+export const getMarkdownTaskTags = (text: string) => getTaskTags(text, true);
+
+/** Todo text shares inline-code and argument rules, without Markdown escapes or comments. */
+export const getTodoTaskTags = (text: string) => getTaskTags(text, false);
 
 export const findMarkdownTaskTag = (text: string, pattern: RegExp) => {
   for (const tag of getMarkdownTaskTags(text)) {

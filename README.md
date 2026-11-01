@@ -66,6 +66,7 @@ It adds the following commonly used commands to the command palette:
 'Todo: Embedded View - Filter'; // Filter the embedded todos view
 'Todo: Embedded View - Clear Filter'; // Clear the filter in the embedded todos view
 'Todo: Embedded View - Toggle View All Files'; // Toggle between viewing all files or only the current one
+'Todo: Reset Manual Order'; // Reset all saved ordering in the embedded todos view
 ```
 
 It adds 8 shortcuts when editing a `Todo` file:
@@ -123,6 +124,14 @@ Set `todo.markdown.scope` to `"sections"` to limit discovery to the named headin
 
 Archiving moves finished task blocks with their indented notes and finished children, while keeping Markdown headings and unrelated prose in the source. A finished parent with unfinished children stays in place; eligible finished children can still be archived. `InSameFile` uses a Markdown Archive heading and supports Unarchive. Restoring a child still finds its original parent after the parent's timekeeping or completion-cleanup tags change. If its parent path matches multiple destinations, tasks stay in the Archive until the parent labels identify a single destination. `InMultiSeparateFile` writes `ARCHIVE.<original-filename>`; `InSeparateFile` uses a shared `ARCHIVE.<todo-file-base-name>.md` at the workspace root. Archive tag cleanup applies to task lines, preserving note text and code examples. Project labels are escaped when necessary, and merges retain source tasks if the archive cannot expose every transferred task. Existing dirty-buffer, write-failure, and concurrent-transfer protections also apply to Markdown archives.
 
+### Numbered lists
+
+Press Enter at the end of a plain numbered item such as `1. First item` to insert the next number and renumber the following items. For example, inserting after the first item in `1, 2, 3` produces `1, 2 (new), 3, 4`. This is enabled by default; set `todo.autoRenumber` to `false` to disable it.
+
+Numbering preserves the current item's number, indentation, and spacing after the dot. It updates only consecutive numbered lines with the same indentation, stopping at blank lines, headings, other text, or indentation changes. Enter on an empty item removes its marker. Use one cursor at the end of an item; other cursor positions, selections, and multiple cursors keep normal Enter behavior.
+
+These numbered entries remain notes rather than checkbox todos. Configured Todo symbols take precedence: numbering falls back to normal Enter if it would create a Todo using one of those symbols. Use the usual Todo symbols for status, statistics, dependencies, and archiving. Numbering is updated only by Enter, not on open, save, deletion, paste, or reordering. Markdown-language documents and nested list numbering are outside this feature's scope.
+
 ### Task priorities
 
 Use special tags as visual priority labels without changing the plain-text task format. The default `todo.tags.names` setting includes `critical`, `high`, and `low`, so these tags are highlighted automatically:
@@ -174,6 +183,22 @@ Compatibility: only actual tags select these task-text styles. Existing symbol-o
 
 Timer commands append a single `@paused` marker when pausing and remove it when resuming, unstarting, or finishing. Valid `@started(...)`/`@toggle(...)` history remains authoritative for time tracking; the styling renderer reads `@paused` without interpreting the history. Marker and timer changes are applied together, so undo/redo restores both. To repair markers after manual or external edits, or add markers to existing paused tasks, select task lines and run `Todo: Sync Paused Tags`. The command removes stale/duplicate markers, adds a trailing marker for a paused timer, and clears markers on finished or untimed tasks. Opening or editing a file alone does not rewrite its tags.
 
+### Group tasks by tag
+
+Set `todo.file.view.groupByTags` to collect tasks from every project and nesting level into tag groups within each file in the Files sidebar:
+
+```json
+{
+  "todo.file.view.groupByTags": ["low", "high", "tag-a"]
+}
+```
+
+The sidebar shows non-empty groups such as `@low (3)` in the configured order, with tasks in source order. A task with multiple selected tags appears once in each matching group. Tasks with none of the selected tags appear under `Other`. Names are case-sensitive; a leading `@` is optional, and tag arguments are ignored (`@low(review)` belongs to `@low`). Tags on project headers or parent tasks are not inherited. Inline code examples do not create groups; Markdown escapes and HTML comments are also ignored.
+
+Grouping works with Todo files and Markdown notes and updates as you edit. The grouped view shows task rows with their original source paths, including projects and parent tasks; notes and project headers remain in the source. Finished-task visibility, hidden tag labels, text/path filtering, navigation, and task context-menu actions remain available. Filtering also matches the original source path. Grouping changes only the sidebar: source text, task status, dependencies, and statistics stay unchanged. Set the array back to `[]` to restore the project hierarchy.
+
+For a temporary text search instead, use `Todo: Files View - Filter` and enter `@low`. Text filtering matches substrings, including longer tag names, rather than exact tags.
+
 ### Task dependencies
 
 Task identities are plain text, so they remain intact when you copy, move, or archive tasks. Add a non-empty `@id(...)` to a task and reference it with `@depends(...)` elsewhere in the workspace:
@@ -205,11 +230,13 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.followSymlinks": false, // Follow symbolic links when enumerating files (can cause cycles)
   "todo.file.batchSize": 50, // Number of Todo files to process in each discovery batch
   "todo.file.view.expanded": true, // Start the tree in an expanded state
+  "todo.file.view.groupByTags": [], // Group tasks within each file by selected tag names; empty preserves the hierarchy
   "todo.file.view.showFinished": true, // Show done and cancelled tasks in the Todo files view
   "todo.file.view.showComments": false, // Show comment-only lines in the Todo files view
   "todo.file.view.showTags": true, // Show tags in Todo files view labels
   "todo.file.view.icons": true, // Show icons next to groups in the Todo files view
   "todo.automaticSymbol": false, // Insert a new todo box after pressing Enter at the end of a non-empty todo
+  "todo.autoRenumber": true, // Continue plain numbered lists and renumber following items on Enter
   "todo.autoCompleteParents": false, // Mark parents done when Todo: Toggle Done completes all nested todos
   "todo.symbols.box": "☐", // Box symbol
   "todo.symbols.done": "✔", // Done symbol
@@ -297,7 +324,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.embedded.file.groupByFile": true, // Group embedded todos by file
   "todo.embedded.view.wholeLine": false, // Show the whole line
   "todo.embedded.view.showContext": false, // Show the following source line when it is non-blank and not another embedded todo
-  "todo.embedded.view.sort": "line", // Sort todos either by label or by source line
+  "todo.embedded.view.sort": "line", // Sort by source line, label, or a manual workspace-local order
   "todo.embedded.view.groupByRoot": true, // Group embedded todos by workspace root
   "todo.embedded.view.groupByType": true, // Group embedded todos by type
   "todo.embedded.view.groupByFile": true, // Group embedded todos by file
@@ -329,6 +356,20 @@ Dates are formatted using [moment](https://momentjs.com/docs/#/displaying/format
 `Todo: Toggle Timer` pauses and resumes a started task by appending `@toggle(...)` timestamps and maintaining an `@paused` styling marker. Paused time is excluded from the status bar timer and from the final `@lasted(...)` or `@wasted(...)` duration.
 
 To contribute embedded markers to VS Code's Problems view, map each marker to an `error`, `warning`, `info`, or `hint` severity with `todo.embedded.problems`. Only configured markers are reported. Diagnostics are populated when Todo+2 is active, for example after opening the Embedded Todos view.
+
+## Manual Embedded Ordering
+
+Set `"todo.embedded.view.sort": "manual"`, then right-click a group, file, or todo in the Embedded view and choose **Move Up** or **Move Down**. Moves reorder siblings within their current parent. To prioritize todos from different files directly under a marker group, also set `"todo.embedded.view.groupByFile": false`.
+
+On VS Code 1.66 or newer, you can also **drag a single group, file, or todo onto a sibling** to take its position. Dragging upward places the row before the target; dragging downward places it after the target. Drop onto another row in the same parent, rather than the empty area or a different group. Move Up/Down remains available on older supported VS Code versions.
+
+The order is saved locally for the current workspace and survives refreshes and window reloads. Groups and files without saved ranks start alphabetically; todos start by file path and source position. Newly discovered entries appear after ranked siblings. Switching to `line` or `label` keeps the saved manual order for later use. Reordering is unavailable while filtering or showing only the active file, so hidden siblings cannot be moved accidentally.
+
+Choose **Reset Manual Order** from the Embedded view's **...** menu, or run **Todo: Reset Manual Order**, to clear all saved ranks, including those for other grouping layouts. This restores the initial order without changing the sort setting.
+
+Ordering only affects the sidebar; it does not edit source files or change the generated **Open Embedded** snapshot. Groups still represent captured marker types, not arbitrary trailing `@tags`. Custom workflow markers must be included in the embedded regex and any external provider regex, as described above.
+
+Inserting source lines or changing label/context display settings preserves an unchanged comment's rank. Renaming its file or editing the matched comment treats it as a new entry. Identical comments are distinguished by occurrence within a file; deleting or rearranging identical occurrences can change which one receives a saved rank.
 
 ## Embedded Todos Providers
 

@@ -4,7 +4,9 @@ import * as vscode from 'vscode';
 import Consts from '../consts';
 import Config from '../config';
 import Views from '../views';
+import Embedded from '../views/embedded';
 import { getAutomaticSymbolRule } from './automatic_symbol';
+import { getEmbeddedDragAndDropOptions } from './embedded/drag-and-drop';
 import { registerViews } from './view-lifecycle';
 
 /* INIT */
@@ -64,7 +66,11 @@ const Init = {
     registerViews(
       context,
       Views,
-      (id, view) => vscode.window.createTreeView(id, { treeDataProvider: view }),
+      (id, view) =>
+        vscode.window.createTreeView(id, {
+          treeDataProvider: view,
+          ...(view === Embedded ? getEmbeddedDragAndDropOptions(vscode, Embedded) : {}),
+        }),
       (listener) => vscode.workspace.onDidChangeConfiguration(listener)
     );
   },

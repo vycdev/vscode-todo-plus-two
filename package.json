@@ -16,6 +16,7 @@
     "onView:todo.views.2embedded",
     "onView:todo.views.3due",
     "onCommand:todo.open",
+    "onCommand:todo.numberedListEnter",
     "onCommand:todo.openEmbedded",
     "onCommand:todo.toggleBox",
     "onCommand:todo.toggleDone",
@@ -50,6 +51,9 @@
     "onCommand:todo.viewEmbeddedClearFilter",
     "onCommand:todo.viewEmbeddedShowAllFiles",
     "onCommand:todo.viewEmbeddedShowActiveFile",
+    "onCommand:todo.viewEmbeddedMoveUp",
+    "onCommand:todo.viewEmbeddedMoveDown",
+    "onCommand:todo.viewEmbeddedResetOrder",
     "onCommand:todo.viewOpenFile",
     "onCommand:todo.viewRevealTodo",
     "onCommand:todo.viewToggleBox",
@@ -176,6 +180,14 @@
           "description": "Start the tree in an expanded state",
           "default": true
         },
+        "todo.file.view.groupByTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Group tasks within each file by these case-sensitive tag names, in this order. Tasks with none of these tags appear under Other. An empty array preserves the project hierarchy. Grouped mode shows task rows only",
+          "default": []
+        },
         "todo.file.view.showFinished": {
           "type": "boolean",
           "description": "Show done and cancelled tasks in the Todo files view",
@@ -200,6 +212,11 @@
           "type": "boolean",
           "description": "Automatically insert a new todo box when Enter is pressed at the end of a non-empty todo",
           "default": false
+        },
+        "todo.autoRenumber": {
+          "type": "boolean",
+          "description": "Continue plain numbered lists and renumber following items when pressing Enter at the end of an item in Todo files",
+          "default": true
         },
         "todo.autoCompleteParents": {
           "type": "boolean",
@@ -1026,9 +1043,10 @@
           "type": "string",
           "enum": [
             "line",
-            "label"
+            "label",
+            "manual"
           ],
-          "description": "Sort todos either by label or by source line number",
+          "description": "Sort todos by source line number, label, or a manual order saved in this workspace. In manual mode, drag a row onto a sibling (VS Code 1.66+) or use Move Up and Move Down to reorder groups, files, and todos",
           "default": "line"
         },
         "todo.embedded.view.groupByRoot": {
@@ -1102,6 +1120,10 @@
       }
     },
     "commands": [
+      {
+        "command": "todo.numberedListEnter",
+        "title": "Todo: Continue Numbered List"
+      },
       {
         "command": "todo.open",
         "title": "Todo: Open"
@@ -1303,6 +1325,19 @@
         }
       },
       {
+        "command": "todo.viewEmbeddedMoveUp",
+        "title": "Move Up"
+      },
+      {
+        "command": "todo.viewEmbeddedMoveDown",
+        "title": "Move Down"
+      },
+      {
+        "command": "todo.viewEmbeddedResetOrder",
+        "title": "Reset Manual Order",
+        "category": "Todo"
+      },
+      {
         "command": "todo.viewOpenFile",
         "title": "Open"
       },
@@ -1352,6 +1387,11 @@
       }
     ],
     "keybindings": [
+      {
+        "command": "todo.numberedListEnter",
+        "key": "Enter",
+        "when": "editorTextFocus && editorLangId == todo && !editorReadonly && !isComposing && config.todo.autoRenumber && !suggestWidgetVisible && !inSnippetMode && !editorHasSelection && !editorHasMultipleSelections"
+      },
       {
         "command": "todo.toggleBox",
         "key": "Ctrl+Enter",
@@ -1433,6 +1473,10 @@
     },
     "menus": {
       "commandPalette": [
+        {
+          "command": "todo.numberedListEnter",
+          "when": "false"
+        },
         {
           "command": "todo.toggleBox",
           "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
@@ -1527,6 +1571,14 @@
         },
         {
           "command": "todo.viewEmbeddedClearFilter",
+          "when": "false"
+        },
+        {
+          "command": "todo.viewEmbeddedMoveUp",
+          "when": "false"
+        },
+        {
+          "command": "todo.viewEmbeddedMoveDown",
           "when": "false"
         },
         {
@@ -1675,9 +1727,24 @@
           "command": "todo.viewEmbeddedShowActiveFile",
           "when": "view == todo.views.2embedded && todo-embedded-all == true",
           "group": "navigation@1"
+        },
+        {
+          "command": "todo.viewEmbeddedResetOrder",
+          "when": "view == todo.views.2embedded && config.todo.embedded.view.sort == manual",
+          "group": "2_sort"
         }
       ],
       "view/item/context": [
+        {
+          "command": "todo.viewEmbeddedMoveUp",
+          "when": "view == todo.views.2embedded && config.todo.embedded.view.sort == manual && todo-embedded-filtered == false && todo-embedded-all == true && viewItem =~ /^(group|file|todo)$/",
+          "group": "2_sort@1"
+        },
+        {
+          "command": "todo.viewEmbeddedMoveDown",
+          "when": "view == todo.views.2embedded && config.todo.embedded.view.sort == manual && todo-embedded-filtered == false && todo-embedded-all == true && viewItem =~ /^(group|file|todo)$/",
+          "group": "2_sort@2"
+        },
         {
           "command": "todo.viewOpenFile",
           "when": "view =~ /todo\\.views/ && viewItem == file"

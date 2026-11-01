@@ -136,7 +136,9 @@ const loadExtension = () => {
       isMarkdownTaskDocument: (document) => document && document.languageId === 'markdown',
       getMarkdownTaskNodes: () => [],
     },
-    './views/embedded': { default: { refreshFile: () => events.push('embedded-view') } },
+    './views/embedded': {
+      default: { initializeOrder() {}, refreshFile: () => events.push('embedded-view') },
+    },
     './views/files': {
       default: { refresh: () => events.push('files-view'), refreshActivityBarBadge() {} },
     },

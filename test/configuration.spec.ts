@@ -5,6 +5,14 @@ import * as path from 'path';
 const pkg = require('../package.json');
 
 describe('Todo configuration schema', () => {
+  it('leaves tag grouping opt-in and accepts tag name arrays', () => {
+    const grouping = pkg.contributes.configuration.properties['todo.file.view.groupByTags'];
+
+    expect(grouping.type).to.equal('array');
+    expect(grouping.items).to.deep.equal({ type: 'string' });
+    expect(grouping.default).to.deep.equal([]);
+  });
+
   it('accepts supported timer statusbar modes', () => {
     const enabled = pkg.contributes.configuration.properties['todo.timer.statusbar.enabled'];
 

@@ -67,6 +67,7 @@ const activate = function (context: vscode.ExtensionContext) {
   vscode.commands.executeCommand('setContext', 'todo-files-open-button', true);
 
   Utils.context = context;
+  ViewEmbedded.initializeOrder(context.workspaceState);
   Utils.folder.initRootsRe();
   DependencyIndex.initialize(context);
   new EmbeddedDiagnostics(Utils.embedded).initialize(context);
