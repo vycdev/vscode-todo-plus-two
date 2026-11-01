@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import { execFileSync } from 'child_process';
+import { resolve } from 'path';
 import { hasEmbeddedMatch, parseEmbeddedMatches } from '../src/utils/embedded/regex';
 
 const pkg = require('../package.json');
@@ -42,6 +44,66 @@ describe('Embedded todo regex defaults', () => {
 
   it('does not treat Liquid output tags as comments', () => {
     expect(match("{% assign note = 'TODO: update the product copy' %}")).to.equal(null);
+  });
+
+  it('preserves message spacing, URLs, tags, and adjacent todos', () => {
+    const result = match('// TODO:  visit https://example.com/path   @high');
+
+    expect(result).to.have.length(3);
+    expect(result && result[2]).to.equal('  visit https://example.com/path');
+    expect(match('// TODO: message   ')![2]).to.equal(' message   ');
+    expect(match('// TODO: ')![2]).to.equal('');
+    expect(match('// TODO:   @high')![2]).to.equal(undefined);
+    expect(match('// TODO: first   // FIXME: second')![2]).to.equal(' first');
+  });
+
+  it('finishes long whitespace messages and delimiters without blocking the test runner', function () {
+    this.timeout(10000);
+
+    // A Mocha timeout cannot interrupt a synchronous regex. Bound the child
+    // process so a regression fails instead of freezing the entire suite.
+    execFileSync(
+      process.execPath,
+      [
+        '-e',
+        `
+          require('ts-node/register/transpile-only');
+          const assert = require('assert');
+          const { hasEmbeddedMatch, parseEmbeddedMatches } = require('./src/utils/embedded/regex');
+          const properties = require('./package.json').contributes.configuration.properties;
+          const regex = new RegExp(
+            properties['todo.embedded.regex'].default,
+            properties['todo.embedded.regexFlags'].default
+          );
+          const spaces = ' '.repeat(5000);
+          const samples = [
+            ['// TODO: ' + spaces + 'message', ' ' + spaces + 'message'],
+            ['// TODO: message' + spaces, ' message' + spaces],
+            ['// TODO: first' + spaces + 'second' + spaces + 'third', ' first' + spaces + 'second' + spaces + 'third'],
+            ['<!-- TODO: message' + spaces + '-->', ' message'],
+            ['/* TODO: message' + spaces + '*/', ' message'],
+            ['{! TODO: message' + spaces + '!}', ' message'],
+            ['{{! TODO: message' + spaces + '}}', ' message'],
+            ['{{!-- TODO: message' + spaces + '--}}', ' message'],
+            ['{% comment %} TODO: message' + spaces + '{% endcomment %}', ' message'],
+            ['// TODO: message' + spaces + '@high', ' message'],
+            ['// TODO: message' + spaces + '// FIXME: later', ' message'],
+          ];
+
+          for (const [line, message] of samples) {
+            regex.lastIndex = 0;
+            const match = regex.exec(line);
+            assert(match);
+            assert.strictEqual(match.length, 3);
+            assert.strictEqual(match[1], 'TODO');
+            assert.strictEqual(match[2], message);
+            assert.strictEqual(hasEmbeddedMatch(line, regex), true);
+            assert.strictEqual(parseEmbeddedMatches(line, regex)[0].message, message);
+          }
+        `,
+      ],
+      { cwd: resolve(__dirname, '..'), timeout: 5000 }
+    );
   });
 
   ['ag', 'rg'].forEach((provider) => {

@@ -16,6 +16,8 @@
     "onView:todo.views.2embedded",
     "onView:todo.views.3due",
     "onCommand:todo.open",
+    "onCommand:todo.focusTag",
+    "onCommand:todo.clearFocus",
     "onCommand:todo.numberedListEnter",
     "onCommand:todo.openEmbedded",
     "onCommand:todo.toggleBox",
@@ -950,7 +952,7 @@
         "todo.embedded.regex": {
           "type": "string",
           "description": "Regex used for finding embedded todos, requires double escaping",
-          "default": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *\\{%-? *endcomment *-?%\\}| *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|((?: +[^\\n@]*?)(?= *(?:\\{%-? *endcomment *-?%\\}|-->|\\*/|!}|--}}|}}|[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))"
+          "default": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *\\{%-? *endcomment *-?%\\}| *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|((?: (?:[^ \\n@]| +(?! ))*?)(?= *(?:\\{%-? *endcomment *-?%\\}|-->|\\*/|!}|--}}|}}|[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))"
         },
         "todo.embedded.regexFlags": {
           "type": "string",
@@ -1179,6 +1181,14 @@
       }
     },
     "commands": [
+      {
+        "command": "todo.focusTag",
+        "title": "Todo: Focus on Tag…"
+      },
+      {
+        "command": "todo.clearFocus",
+        "title": "Todo: Clear Focus"
+      },
       {
         "command": "todo.numberedListEnter",
         "title": "Todo: Continue Numbered List"
@@ -1532,6 +1542,14 @@
     },
     "menus": {
       "commandPalette": [
+        {
+          "command": "todo.focusTag",
+          "when": "editorLangId == todo"
+        },
+        {
+          "command": "todo.clearFocus",
+          "when": "editorLangId == todo && todo-tag-focused == true"
+        },
         {
           "command": "todo.numberedListEnter",
           "when": "false"

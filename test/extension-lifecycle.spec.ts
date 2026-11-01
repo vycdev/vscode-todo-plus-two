@@ -107,6 +107,7 @@ const loadExtension = () => {
   const mocks = {
     vscode,
     './commands': { registerCommands: initialize('commands') },
+    './tag_focus': { tagFocus: { initialize: initialize('folding') } },
     './config': {
       default: {
         get: () => ({ embedded: { view: {} }, file: { view: {} } }),
