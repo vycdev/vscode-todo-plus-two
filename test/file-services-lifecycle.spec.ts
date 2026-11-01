@@ -1,4 +1,7 @@
 import { expect } from 'chai';
+import * as fs from 'fs';
+import * as path from 'path';
+import { findClosestRootPath } from '../src/utils/file-globs';
 
 const loadService = (moduleName: string, extraStubs = {}) => {
   const NodeModule = require('module');
@@ -48,6 +51,502 @@ const loadService = (moduleName: string, extraStubs = {}) => {
     else delete require.cache[modulePath];
   }
 };
+
+describe('Embedded workspace path aliases', () => {
+  let fixture: string;
+  let workspace: string;
+  let alias: string;
+  let provider;
+
+  beforeEach(() => {
+    fixture = fs.realpathSync(fs.mkdtempSync(path.join(process.cwd(), '.embedded-paths-')));
+    workspace = path.join(fixture, 'real', 'workspace');
+    fs.mkdirSync(workspace, { recursive: true });
+    fs.symlinkSync(
+      path.dirname(workspace),
+      path.join(fixture, 'alias'),
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+    alias = path.join(fixture, 'alias', 'workspace');
+    fs.writeFileSync(path.join(workspace, 'index.html'), '<html>No markers</html>');
+  });
+
+  afterEach(() => {
+    if (provider) provider.dispose();
+    provider = undefined;
+    const remove = (filePath: string) => {
+      if (fs.lstatSync(filePath).isDirectory() && !fs.lstatSync(filePath).isSymbolicLink()) {
+        fs.readdirSync(filePath).forEach((entry) => remove(path.join(filePath, entry)));
+        fs.rmdirSync(filePath);
+      } else {
+        fs.unlinkSync(filePath);
+      }
+    };
+    remove(fixture);
+  });
+
+  const setup = (name: string, rootPaths = [alias], existingDocument?) => {
+    const properties = require('../package.json').contributes.configuration.properties;
+    const config = {
+      followSymlinks: false,
+      embedded: { include: ['**/*.html'], exclude: ['**/ignored/**'], batchSize: 50 },
+    };
+    let content = '<html>No markers</html>';
+    const events: { [name: string]: (event: { fsPath: string }) => void } = {};
+    const dataChanges: (string | undefined)[] = [];
+    let refreshes = 0;
+    const polls = new Map<string, () => void>();
+    const watched: {
+      pattern: any;
+      disposed: boolean;
+      handlers: { [name: string]: (event) => void };
+    }[] = [];
+    const document = existingDocument || {
+      uri: { scheme: 'file', fsPath: path.join(workspace, 'index.html') },
+      isDirty: true,
+      getText: () => content,
+    };
+    const stubs = {
+      fs: {
+        ...fs,
+        watchFile: (filePath, _options, listener) => polls.set(filePath, listener),
+        unwatchFile: (filePath, listener) => {
+          expect(polls.get(filePath)).to.equal(listener);
+          polls.delete(filePath);
+        },
+      },
+      vscode: {
+        RelativePattern: class {
+          constructor(
+            public base: string,
+            public pattern: string
+          ) {}
+        },
+        EventEmitter: class {
+          event = () => ({ dispose() {} });
+          fire(filePath?: string) {
+            dataChanges.push(filePath);
+          }
+          dispose() {}
+        },
+        ProgressLocation: { Window: 1 },
+        workspace: {
+          textDocuments: [document],
+          createFileSystemWatcher: (pattern) => {
+            const record = { pattern, disposed: false, handlers: {} };
+            watched.push(record);
+            const listen = (name, listener) => {
+              events[name] = listener;
+              record.handlers[name] = listener;
+            };
+            return {
+              onDidCreate: (listener) => listen('create', listener),
+              onDidChange: (listener) => listen('change', listener),
+              onDidDelete: (listener) => listen('delete', listener),
+              dispose: () => {
+                record.disposed = true;
+              },
+            };
+          },
+        },
+        window: {
+          activeTextEditor: { document },
+          withProgress: (_options, callback) => callback({ report() {} }),
+        },
+      },
+      '../../../config': {
+        default: {
+          get: () => config,
+          getKey: (key) => (key === 'followSymlinks' ? config.followSymlinks : undefined),
+        },
+      },
+      '../../../consts': {
+        default: {
+          regexes: {
+            todoEmbedded: new RegExp(
+              properties['todo.embedded.regex'].default,
+              properties['todo.embedded.regexFlags'].default
+            ),
+          },
+        },
+      },
+      '../../../views/embedded': { default: { refresh: () => refreshes++, refreshFile() {} } },
+      '../../workspace-excludes': { getWorkspaceExcludeRules: () => ({}) },
+      '../../folder': {
+        default: {
+          getAllRootPaths: () => rootPaths,
+          getRootPath: (filePath) => findClosestRootPath(filePath, rootPaths),
+          parsePath: (filePath) => ({
+            root: 'workspace',
+            rootPath: alias,
+            relativePath: path.relative(alias, filePath),
+          }),
+        },
+      },
+    };
+    const Abstract = loadService('../src/utils/embedded/providers/abstract', stubs);
+    const Provider = loadService(`../src/utils/embedded/providers/${name}`, {
+      ...stubs,
+      './abstract': { default: Abstract },
+    });
+    provider = new Provider();
+    if (name === 'ag') {
+      provider.getAckmate = async (filePaths) =>
+        filePaths.flatMap((filePath) => {
+          if (!fs.existsSync(filePath)) return [];
+          return fs
+            .readFileSync(filePath, 'utf8')
+            .split(/\r?\n/)
+            .map((line, lineNr) => ({ filePath, line, lineNr }));
+        });
+    }
+
+    return {
+      document,
+      setContent: (value: string) => (content = value),
+      changeOnDisk: () => events.change({ fsPath: document.uri.fsPath }),
+      notify: (event: string, filePath: string) => events[event]({ fsPath: filePath }),
+      dataChanges,
+      refreshes: () => refreshes,
+      polls,
+      watched,
+    };
+  };
+
+  const getCachedTodos = (): { message: string }[] =>
+    Object.keys(provider.filesData).reduce(
+      (todos, filePath) => todos.concat(provider.filesData[filePath] || []),
+      []
+    );
+
+  ['js', 'ag'].forEach((name) => {
+    it(`keeps a dirty alias-URI buffer out of the new target in the ${name} provider`, async () => {
+      const { document, setContent } = setup(name);
+      document.uri.fsPath = path.join(alias, 'index.html');
+      setContent('<!--TODO Unsaved A buffer-->');
+      await provider.get();
+      retargetAlias();
+      setContent('<!--TODO Stale A edit-->');
+      provider.updateDocumentData(document);
+      await provider.get();
+      expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+      expect(provider.getTodos(false, false, false, false, true)).to.equal(undefined);
+
+      provider.dispose();
+      setup(name, [alias], document);
+      await provider.get();
+      expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+    });
+
+    it(`rescans the ${name} provider after a workspace alias changes targets`, async () => {
+      fs.writeFileSync(path.join(workspace, 'index.html'), '<!--TODO First root-->');
+      const { document, setContent, dataChanges, refreshes } = setup(name);
+      setContent('<!--TODO First root-->');
+      await provider.get();
+      retargetAlias();
+
+      setContent('<!--TODO Unsaved from the previous root-->');
+      expect(provider.updateDocumentData(document)).to.equal(undefined);
+      expect(Object.keys(provider.filesData)).to.deep.equal([]);
+      expect(provider.nonEmptyFiles.size).to.equal(0);
+      expect(dataChanges).to.include(undefined);
+      expect(refreshes()).to.equal(1);
+
+      await provider.get();
+      const data = getCachedTodos();
+      expect(data.map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+    });
+
+    it(`keeps the ${name} path index current across watcher additions and deletions`, async () => {
+      const { document, setContent, notify } = setup(name);
+      await provider.get();
+      provider.getCachedFilePath(document.uri.fsPath);
+
+      const filePath = path.join(workspace, 'created.html');
+      fs.writeFileSync(filePath, '<!--TODO Created-->');
+      document.uri.fsPath = filePath;
+      setContent('<!--TODO Created-->');
+      notify('create', filePath);
+      await provider.dataRefreshQueue;
+      expect(getCachedTodos()).to.have.length(1);
+      const cached = Object.keys(provider.filesData)[0];
+      expect(provider.getCachedFilePath(filePath)).to.equal(cached);
+
+      fs.unlinkSync(filePath);
+      notify('delete', filePath);
+      await provider.dataRefreshQueue;
+      expect(Object.keys(provider.filesData)).to.deep.equal([]);
+      expect(provider.nonEmptyFiles.size).to.equal(0);
+    });
+
+    it(`reads unsaved HTML before the initial ${name} scan through a workspace alias`, async () => {
+      const { setContent } = setup(name);
+      setContent('<!--TODO Use grid style-->');
+
+      await provider.get();
+
+      const filePath = Object.keys(provider.filesData)[0];
+      expect(Object.keys(provider.filesData).map(path.normalize)).to.deep.equal([
+        path.join(alias, 'index.html'),
+      ]);
+      expect(provider.filesData[filePath][0].message.trim()).to.equal('Use grid style');
+    });
+
+    it(`adds, edits, and removes the first unsaved HTML todo after a ${name} scan`, async () => {
+      const { document, setContent, changeOnDisk } = setup(name);
+      await provider.get();
+      expect(Object.keys(provider.filesData)).to.deep.equal([]);
+
+      const filePath = path.join(alias, 'index.html').replace(/\\/g, '/');
+      setContent('<!--TODO Use grid style-->');
+      expect(provider.updateDocumentData(document)).to.equal(filePath);
+      expect(Object.keys(provider.filesData)).to.deep.equal([filePath]);
+      expect(provider.getTodos(false, false, false, false, true)['']['']['']).to.have.length(1);
+
+      setContent('<!--TODO Updated without saving-->');
+      provider.updateDocumentData(document);
+      changeOnDisk();
+      await provider.dataRefreshQueue;
+      expect(Object.keys(provider.filesData)).to.deep.equal([filePath]);
+      expect(provider.filesData[filePath][0].message.trim()).to.equal('Updated without saving');
+
+      setContent('<html>No markers</html>');
+      provider.updateDocumentData(document);
+      expect(Object.keys(provider.filesData)).to.deep.equal([]);
+      expect(provider.nonEmptyFiles.size).to.equal(0);
+    });
+  });
+
+  const retargetAlias = () => {
+    const other = path.join(fixture, 'other', 'workspace');
+    fs.mkdirSync(other, { recursive: true });
+    fs.writeFileSync(path.join(other, 'index.html'), '<!--TODO Second root-->');
+    fs.unlinkSync(path.dirname(alias));
+    fs.symlinkSync(
+      path.dirname(other),
+      path.dirname(alias),
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+  };
+
+  it('rebinds an alias buffer only after a clean reload agrees with the new target', async () => {
+    const { document, setContent } = setup('js');
+    document.uri.fsPath = path.join(alias, 'index.html');
+    setContent('<!--TODO Old A buffer-->');
+    await provider.get();
+    retargetAlias();
+    document.isDirty = false;
+    await provider.get();
+    expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+
+    setContent('<!--TODO Second root-->');
+    provider.updateDocumentData(document);
+    document.isDirty = true;
+    setContent('<!--TODO New B edit-->');
+    provider.updateDocumentData(document);
+    expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['New B edit']);
+  });
+
+  it('polls alias identity and rebinds physical watches without an editor event', async () => {
+    const { document, setContent, notify, polls, watched } = setup('js');
+    await provider.get();
+    expect(polls.has(alias)).to.equal(true);
+    expect(watched.some((watch) => watch.pattern.base === workspace)).to.equal(true);
+    const staleDelete = watched[0].handlers.delete;
+    retargetAlias();
+    const previousWatches = watched.slice();
+    polls.get(alias)();
+    expect(previousWatches.every((watch) => watch.disposed)).to.equal(true);
+    expect(polls.size).to.equal(0);
+    await provider.get();
+    const other = path.join(fixture, 'other', 'workspace');
+    expect(watched.some((watch) => !watch.disposed && watch.pattern.base === other)).to.equal(true);
+
+    document.uri.fsPath = path.join(other, 'index.html');
+    setContent('<!--TODO Fresh B filesystem update-->');
+    notify('change', document.uri.fsPath);
+    staleDelete({ fsPath: path.join(alias, 'index.html') });
+    await provider.dataRefreshQueue;
+    expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal([
+      'Fresh B filesystem update',
+    ]);
+    provider.dispose();
+    expect(polls.size).to.equal(0);
+    expect(watched.every((watch) => watch.disposed)).to.equal(true);
+  });
+
+  it('keeps the newer edit when it arrives during an initial aliased scan', async () => {
+    const { document, setContent } = setup('js');
+    setContent('<!--TODO Before pending scan-->');
+    let started: () => void;
+    let release: () => void;
+    const reading = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const pendingRead = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const read = provider.getFileData.bind(provider);
+    provider.getFileData = async (filePath) => {
+      const data = await read(filePath);
+      started();
+      await pendingRead;
+      return data;
+    };
+    const pending = provider.get();
+    await reading;
+    setContent('<!--TODO Newer edit-->');
+    provider.updateDocumentData(document);
+    release();
+    await pending;
+    expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['Newer edit']);
+    expect(Object.keys(provider.filesData)).to.have.length(1);
+  });
+
+  it('detects a changed alias target when requesting cached results', async () => {
+    fs.writeFileSync(path.join(workspace, 'index.html'), '<!--TODO First root-->');
+    setup('js');
+    await provider.get();
+    retargetAlias();
+
+    await provider.get();
+    const data = getCachedTodos();
+    expect(data.map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+  });
+
+  it('rescans an initially empty workspace when its alias changes targets', async () => {
+    fs.unlinkSync(path.join(workspace, 'index.html'));
+    setup('js');
+    await provider.get();
+    expect(Object.keys(provider.filesData)).to.deep.equal([]);
+    retargetAlias();
+
+    await provider.get();
+    expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+  });
+
+  it('discards a pending JavaScript read from the previous alias target', async () => {
+    const { document, setContent } = setup('js');
+    let release: () => void;
+    let started: () => void;
+    const pendingRead = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const reading = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const read = provider.getFileData.bind(provider);
+    let first = true;
+    provider.getFileData = async (filePath) => {
+      const data = await read(filePath);
+      if (first) {
+        first = false;
+        started();
+        await pendingRead;
+      }
+      return data;
+    };
+    setContent('<!--TODO Previous target-->');
+    const pending = provider.get();
+    await reading;
+    retargetAlias();
+    setContent('<!--TODO Edited after retargeting-->');
+    provider.updateDocumentData(document);
+    release();
+    await pending;
+    expect(Object.keys(provider.filesData)).to.deep.equal([]);
+
+    await provider.get();
+    const data = getCachedTodos();
+    expect(data.map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+  });
+
+  it('discards pending external search results after a watcher detects a new alias target', async () => {
+    const { document, notify } = setup('ag');
+    await provider.get();
+    let release: () => void;
+    let started: () => void;
+    const pendingSearch = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const searching = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    provider.getAckmate = async (filePaths) => {
+      started();
+      await pendingSearch;
+      return [{ filePath: filePaths[0], line: '<!--TODO Previous target-->', lineNr: 0 }];
+    };
+    notify('change', document.uri.fsPath);
+    await searching;
+    retargetAlias();
+    notify('change', document.uri.fsPath);
+    release();
+    await provider.dataRefreshQueue;
+    expect(Object.keys(provider.filesData)).to.deep.equal([]);
+    expect(provider.nonEmptyFiles.size).to.equal(0);
+  });
+
+  it('does not enumerate the cache for every excluded watcher event', async () => {
+    const { document, changeOnDisk } = setup('js', [workspace]);
+    await provider.get();
+    fs.mkdirSync(path.join(workspace, 'ignored'));
+    document.uri.fsPath = path.join(workspace, 'ignored', 'generated.html');
+    fs.writeFileSync(document.uri.fsPath, '');
+    const data = {};
+    for (let index = 0; index < 5000; index++) {
+      data[path.join(workspace, `todo-${index}.html`)] = [];
+    }
+    let enumerations = 0;
+    provider.filesData = new Proxy(data, {
+      ownKeys: (target) => {
+        enumerations++;
+        return Reflect.ownKeys(target);
+      },
+    });
+
+    for (let index = 0; index < 100; index++) changeOnDisk();
+    await provider.dataRefreshQueue;
+
+    expect(enumerations).to.be.at.most(1);
+    expect(Object.keys(data)).to.have.length(5000);
+  });
+
+  it('keeps one cache entry when an aliased root overlaps a canonical nested root', async () => {
+    const nested = path.join(workspace, 'nested');
+    fs.mkdirSync(nested);
+    fs.writeFileSync(path.join(nested, 'index.html'), '<html>No markers</html>');
+    const { document, setContent } = setup('js', [alias, nested]);
+    document.uri.fsPath = path.join(nested, 'index.html');
+    setContent('<!--TODO Use grid style-->');
+    await provider.get();
+    provider.updateDocumentData(document);
+
+    expect(Object.keys(provider.filesData).map(path.normalize)).to.deep.equal([
+      path.join(alias, 'nested', 'index.html'),
+    ]);
+  });
+
+  it('still excludes filtered files and symlinks below the workspace root', async () => {
+    fs.mkdirSync(path.join(workspace, 'ignored'));
+    const ignored = path.join(workspace, 'ignored', 'hidden.html');
+    fs.writeFileSync(ignored, '<!--TODO Hidden-->');
+    fs.symlinkSync(
+      workspace,
+      path.join(workspace, 'linked'),
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+    const { document, setContent } = setup('js');
+    await provider.get();
+    setContent('<!--TODO Hidden-->');
+
+    document.uri.fsPath = ignored;
+    expect(provider.updateDocumentData(document)).to.equal(undefined);
+    document.uri.fsPath = path.join(alias, 'linked', 'index.html');
+    expect(provider.updateDocumentData(document)).to.equal(undefined);
+    expect(Object.keys(provider.filesData)).to.deep.equal([]);
+  });
+});
 
 describe('File service concurrency', () => {
   it('groups folders named after object properties without changing prototypes', () => {
