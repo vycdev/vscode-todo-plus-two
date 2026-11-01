@@ -6,6 +6,14 @@ import mergeHelper, {
 } from '../src/utils/archive-helpers';
 
 describe('Archive finished-date sorting helper', () => {
+  it('does not sort a task using a timestamp from an attached code example', () => {
+    const getDate = createArchiveFinishedDateGetter(
+      /^✔ /gm,
+      /@done\(([^)]*)\)/,
+      (value) => new Date(value)
+    );
+    expect(getDate('✔ Finished\n```\n@done(2026-01-01)\n```')).to.equal(-1);
+  });
   it('reads dates from consecutive finished todos', () => {
     const getFinishedDate = createArchiveFinishedDateGetter(
       /^\s*✔\s.*$/gm,
@@ -49,6 +57,55 @@ describe('Archive finished-date sorting helper', () => {
 
 describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
   const Archive: any = { mergeInsertItemsIntoArchiveContent: mergeHelper };
+
+  it('leaves outdented code untouched when moving a task with the same indentation', () => {
+    const text = '  ✔ Finished\n  ```python\nprint(1)\n  ```';
+    const merged = mergeHelper('Work:', [{ text, projects: ['Work'] }], { indentation: '  ' });
+    expect(merged).to.equal('Work:\n' + text);
+  });
+
+  it('rejects an unfinished destination fence before merging new tasks', () => {
+    expect(() => mergeHelper('Work:\n  ```ts\ncode', [{ text: '✔ Finished' }], {})).to.throw(
+      'Close fenced code blocks in the archive'
+    );
+  });
+
+  it('preserves code whitespace, literal project tags and fake project headers when merging', () => {
+    const block = [
+      '    ✔ Finished',
+      '    ```ts',
+      '     const value = 1;  ',
+      '    ',
+      '',
+      '    Work:',
+      '    @project(literal)',
+      '    ```',
+    ].join('\n');
+    const existing = 'Work:\n  ✔ Older\n  ```\n  @project(existing)\n  ```';
+    const result = mergeHelper(
+      existing,
+      [{ text: block, projects: ['Work'] }],
+      { indentation: '  ' },
+      (line) => /^\s*✔/.test(line)
+    );
+    expect(result).to.equal(
+      [
+        'Work:',
+        '  ✔ Finished',
+        '  ```ts',
+        '   const value = 1;  ',
+        '  ',
+        '',
+        '  Work:',
+        '  @project(literal)',
+        '  ```',
+        '  ✔ Older',
+        '  ```',
+        '  @project(existing)',
+        '  ```',
+      ].join('\n')
+    );
+  });
 
   it('merges into existing project block and creates chain if needed', () => {
     const existing = `Archive:\nPROJECT1:\n    PROJECT2:\n      - old line`;
@@ -679,6 +736,9 @@ describe('Archive.mergeInsertItemsIntoArchiveContent', () => {
 });
 
 describe('Archive empty-line pruning helpers', () => {
+  it('preserves empty lines inside standalone code', () => {
+    expect(getRemovableEmptyLineNumbers(['```', '', '', '```', '', ''], 0)).to.deep.equal([4, 5]);
+  });
   it('preserves blank separator lines immediately before the same-file Archive header', () => {
     const lines = ['Todo:', '', '', 'Archive:', '  ✔ Done'];
     const preserveFromLine = getTrailingEmptySeparatorStart(lines, 3);

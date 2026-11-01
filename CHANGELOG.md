@@ -7,6 +7,7 @@
 #### New features
 
 - Added configurable task-text styles selected by tags, with default Done, Cancelled, Started, and Paused rules. Rules support colors, backgrounds, bold, italic, strikethrough, theme overrides, and per-property priority with the last matching tag breaking ties. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Added a root favicon using the Todo+2 logo so T3 Code can discover the project's icon. [#284](https://github.com/vycdev/vscode-todo-plus-two/issues/284)
 - Added opt-in tag grouping in the Files sidebar with `todo.file.view.groupByTags`, including Todo files and Markdown notes, per-group counts, original project and parent-task context, and an Other group for tasks without a selected tag. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
 - Added automatic continuation and renumbering of plain numbered lists on Enter in Todo files, enabled by default and configurable with `todo.autoRenumber`. [#19](https://github.com/vycdev/vscode-todo-plus-two/issues/19)
 - Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
@@ -60,6 +61,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Colors and decorations
 
+- Added fenced code notes with GitHub Linguist language names and aliases, highlighted using VS Code's bundled and installed TextMate grammars. Fenced content stays literal to Todo features, and attached blocks are preserved when archiving or unarchiving tasks. [#66](https://github.com/vycdev/vscode-todo-plus-two/issues/66)
 - Added strikethrough styling for done todos, enabled by default and configurable with `todo.decorations.done.strikethrough`. [#54](https://github.com/vycdev/vscode-todo-plus-two/issues/54)
 - Added configurable coloring for started todos with `todo.colors.started`. [#59](https://github.com/vycdev/vscode-todo-plus-two/issues/59)
 - Added urgency coloring for `@due(...)` tags, configurable with `todo.colors.due.*` and `todo.due.soonDays`. [#95](https://github.com/vycdev/vscode-todo-plus-two/issues/95)
@@ -217,6 +219,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Files, workspace, and settings
 
+- Fixed absolute paths in `todo.file.include` so global Todo files stay in the Files sidebar across projects and with no folder open, and refresh on edits, deletion, and recreation. [#17](https://github.com/vycdev/vscode-todo-plus-two/issues/17)
 - Enforced `todo.followSymlinks` consistently across file discovery, literal glob prefixes, watchers, and document updates. Shared discovery now handles overlapping roots and inaccessible files consistently.
 - Sped up Todo file discovery by scanning each workspace once for all `todo.file.include` globs and skipping the contents of excluded folders. Fixed discovery finding no Todo files when the workspace itself is inside a folder that matches `todo.file.exclude`, such as `out` or `build`.
 - Fixed default Todo file discovery globs so valid Todo files are not hidden by an overly broad dot-directory exclude. [#3](https://github.com/vycdev/vscode-todo-plus-two/issues/3), [#11](https://github.com/vycdev/vscode-todo-plus-two/issues/11)

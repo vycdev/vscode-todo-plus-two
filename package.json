@@ -97,9 +97,68 @@
     ],
     "grammars": [
       {
+        "scopeName": "text.todo.fenced",
+        "path": "./syntax/fenced-code.tmLanguage.json"
+      },
+      {
         "language": "todo",
         "scopeName": "text.todo",
-        "path": "./syntax/grammar.tmLanguage.json"
+        "path": "./syntax/grammar.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block": "plaintext",
+          "markup.raw.block.todo": "plaintext",
+          "meta.embedded.block.shellscript": "shellscript",
+          "meta.embedded.block.ini": "ini",
+          "meta.embedded.block.c": "c",
+          "meta.embedded.block.bat": "bat",
+          "meta.embedded.block.csharp": "csharp",
+          "meta.embedded.block.bibtex": "bibtex",
+          "meta.embedded.block.yaml": "yaml",
+          "meta.embedded.block.cpp": "cpp",
+          "meta.embedded.block.xml": "xml",
+          "meta.embedded.block.coffeescript": "coffeescript",
+          "meta.embedded.block.css": "css",
+          "meta.embedded.block.java": "java",
+          "meta.embedded.block.clojure": "clojure",
+          "meta.embedded.block.javascript": "javascript",
+          "meta.embedded.block.dart": "dart",
+          "meta.embedded.block.diff": "diff",
+          "meta.embedded.block.dockerfile": "dockerfile",
+          "meta.embedded.block.python": "python",
+          "meta.embedded.block.json": "json",
+          "meta.embedded.block.fsharp": "fsharp",
+          "meta.embedded.block.go": "go",
+          "meta.embedded.block.groovy": "groovy",
+          "meta.embedded.block.hlsl": "hlsl",
+          "meta.embedded.block.html": "html",
+          "meta.embedded.block.php": "php",
+          "meta.embedded.block.handlebars": "handlebars",
+          "meta.embedded.block.jsonc": "jsonc",
+          "meta.embedded.block.julia": "julia",
+          "meta.embedded.block.less": "less",
+          "meta.embedded.block.lua": "lua",
+          "meta.embedded.block.makefile": "makefile",
+          "meta.embedded.block.markdown": "markdown",
+          "meta.embedded.block.ruby": "ruby",
+          "meta.embedded.block.objective-c": "objective-c",
+          "meta.embedded.block.objective-cpp": "objective-cpp",
+          "meta.embedded.block.sql": "sql",
+          "meta.embedded.block.perl": "perl",
+          "meta.embedded.block.powershell": "powershell",
+          "meta.embedded.block.jade": "jade",
+          "meta.embedded.block.r": "r",
+          "meta.embedded.block.raku": "raku",
+          "meta.embedded.block.rust": "rust",
+          "meta.embedded.block.scss": "scss",
+          "meta.embedded.block.swift": "swift",
+          "meta.embedded.block.typescriptreact": "typescriptreact",
+          "meta.embedded.block.latex": "latex",
+          "meta.embedded.block.typescript": "typescript",
+          "meta.embedded.block.vb": "vb",
+          "meta.embedded.block.wat": "wat",
+          "meta.embedded.block.xsl": "xsl",
+          "meta.embedded.block.javascriptreact": "javascriptreact"
+        }
       }
     ],
     "configurationDefaults": {
@@ -127,7 +186,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Globs to use for including files",
+          "description": "Workspace-relative globs or absolute paths to individual Todo files. Add absolute paths in User settings to show global files across projects. Absolute paths are literal, not globs.",
           "default": [
             "**/TODO",
             "**/TODOS",
@@ -1778,6 +1837,8 @@
     }
   },
   "scripts": {
+    "test:e2e": "npm run compile && node scripts/run-e2e.js",
+    "generate:code-grammar": "node scripts/generate-code-grammar.js",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test && npm run compile && npm run format:check",
     "vscode:prepublish": "npm run typecheck && rimraf out && webpack --mode production",
@@ -1787,7 +1848,7 @@
     "test": "mocha -r ts-node/register \"test/**/*.spec.ts\" --exit",
     "format": "prettier --write \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
     "format:check": "prettier --check \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
-    "test:e2e": "npm run compile && node test/e2e/run.js"
+    "test:e2e:tags": "npm run compile && node test/e2e/run.js"
   },
   "bugs": {
     "url": "https://github.com/vycdev/vscode-todo-plus-two/issues"
@@ -1840,8 +1901,9 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^13.13.4",
     "@types/vscode": "1.36.0",
-    "@vscode/test-electron": "^3.1.0",
+    "@vscode/test-electron": "3.1.0",
     "chai": "^6.2.1",
+    "js-yaml": "4.3.2",
     "markdown-it": "^14.1.0",
     "mocha": "^11.7.5",
     "prettier": "^3.6.2",
@@ -1849,6 +1911,8 @@
     "ts-loader": "^5.2.1",
     "ts-node": "^10.9.2",
     "typescript": "5.9.3",
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.3.2",
     "webpack": "^4.20.2",
     "webpack-cli": "^3.1.2"
   }

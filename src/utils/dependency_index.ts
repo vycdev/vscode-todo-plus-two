@@ -12,6 +12,7 @@ import { matchesTodoStatus } from './todo-status';
 import { getMarkdownTaskNodes, isMarkdownTaskDocument, isTaskDocument } from './task-source';
 import { maskMarkdownTaskText } from './markdown-task-text';
 import { findClosestRootPath, getFilePathKey } from './file-globs';
+import { getCodeBlocks } from './code-blocks';
 
 /* TYPES */
 
@@ -67,7 +68,9 @@ const DependencyIndex = {
       const markdownNodes = isMarkdownTaskDocument(candidate)
         ? getMarkdownTaskNodes(candidate)
         : undefined;
+      const code = markdownNodes ? undefined : getCodeBlocks(candidate);
       for (let lineNumber = 0; lineNumber < candidate.lineCount; lineNumber++) {
+        if (code && code.byLine.has(lineNumber)) continue;
         const text = candidate.lineAt(lineNumber).text;
         const markdownTask =
           markdownNodes &&

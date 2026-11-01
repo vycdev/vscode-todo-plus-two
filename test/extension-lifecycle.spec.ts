@@ -322,4 +322,40 @@ describe('Extension lifecycle wiring', () => {
       global.clearTimeout = originalClearTimeout;
     }
   });
+
+  it('refreshes the Files and Due views for unsaved edits to a loaded external document', () => {
+    const state = loadExtension();
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    const externalPath = '/personal/global.todo';
+    state.files.filesData[externalPath] = { saved: true };
+    const timers = new Map<object, () => void>();
+    const originalSetTimeout = global.setTimeout;
+    const originalClearTimeout = global.clearTimeout;
+    global.setTimeout = ((callback) => {
+      const handle = {};
+      timers.set(handle, callback);
+      return handle;
+    }) as any;
+    global.clearTimeout = ((handle) => timers.delete(handle)) as any;
+
+    try {
+      state.activate(context);
+      state.events.length = 0;
+      const event = {
+        document: { uri: { scheme: 'file', fsPath: externalPath }, languageId: 'plaintext' },
+      };
+      state.documents.fire(event);
+      state.documents.fire(event);
+      timers.forEach((callback) => callback());
+      expect(state.events.filter((event) => event.endsWith('-view'))).to.deep.equal([
+        'embedded-view',
+        'due-view',
+        'files-view',
+      ]);
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
+      global.setTimeout = originalSetTimeout;
+      global.clearTimeout = originalClearTimeout;
+    }
+  });
 });

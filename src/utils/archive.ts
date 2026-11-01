@@ -12,6 +12,7 @@ import Utils from './index';
 import Editor from './editor';
 import * as path from 'path';
 import Folder from './folder';
+import { getCodeBlocks } from './code-blocks';
 import { archiveToFile } from './archive-storage';
 import {
   createArchiveFinishedDateGetter,
@@ -42,6 +43,9 @@ const Archive = {
   },
 
   async run(doc: Document) {
+    if (getCodeBlocks(doc.textDocument).blocks.some((block) => !block.closed)) {
+      return vscode.window.showErrorMessage('Close fenced code blocks before archiving tasks');
+    }
     Utils.log.debug(`Archive.run invoked for ${doc.textDocument.fileName}`);
     const archive = await Archive.get(doc),
       archivableRange = new vscode.Range(
@@ -271,26 +275,29 @@ const Archive = {
     },
 
     addTodosComments(doc: Document, data) {
+      const document = doc.textDocument;
+      const code = getCodeBlocks(document);
       data.remove.forEach((thisLine) => {
-        AST.walkDown(
-          doc.textDocument,
-          thisLine.lineNumber,
-          true,
-          false,
-          function ({ startLevel, line, level }) {
-            // Include contiguous comments after the todo, at same or deeper indentation
-            if (Comment.is(line.text) && level >= startLevel) {
-              data.remove.push(line);
-              // Keep a task and its comments in one block so sorting
-              // and indentation normalization cannot separate them.
-              data.insert[thisLine.lineNumber].text += `\n${line.text}`;
-              return true; // Continue walking
-            }
-
-            // Stop if we reach any non-comment line (another todo, project, etc.)
-            return false;
+        const startLevel = AST.getLevel(document, thisLine.text);
+        let pending = [];
+        for (let index = thisLine.lineNumber + 1; index < document.lineCount; index++) {
+          const line = document.lineAt(index);
+          if (!line.text.trim()) {
+            pending.push(line);
+            continue;
           }
-        );
+          const block = code.byLine.get(index);
+          if (AST.getLevel(document, line.text) < startLevel || (!block && !Comment.is(line.text)))
+            break;
+          const end = block ? block.endLine : index;
+          for (; index <= end; index++) pending.push(document.lineAt(index));
+          index--;
+          pending.forEach((attached) => {
+            data.remove.push(attached);
+            data.insert[thisLine.lineNumber].text += `\n${attached.text}`;
+          });
+          pending = [];
+        }
       });
     },
 
@@ -326,27 +333,28 @@ const Archive = {
       if (!Config.getKey('archive.remove.emptyProjects')) return;
 
       const projects = doc.getProjects();
+      const document = doc.textDocument;
+      const code = getCodeBlocks(document);
       const archivedLineNumbers = new Set(data.remove.map((line) => line.lineNumber));
 
       projects.forEach((project) => {
         let isEmpty = true;
 
-        AST.walkDown(
-          doc.textDocument,
-          project.line.lineNumber,
-          true,
-          false,
-          function ({ startLevel, line, level }) {
-            if (startLevel === level) return false;
-
-            if (
-              TodoBox.is(line.text) ||
-              (!Project.is(line.text) && !archivedLineNumbers.has(line.lineNumber))
-            ) {
-              return (isEmpty = false);
-            }
+        const startLevel = AST.getLevel(document, project.line.text);
+        for (let index = project.line.lineNumber + 1; index < document.lineCount; index++) {
+          const line = document.lineAt(index);
+          if (!line.text.trim()) continue;
+          if (AST.getLevel(document, line.text) <= startLevel) break;
+          const block = code.byLine.get(index);
+          if (
+            (block || TodoBox.is(line.text) || !Project.is(line.text)) &&
+            !archivedLineNumbers.has(index)
+          ) {
+            isEmpty = false;
+            break;
           }
-        );
+          if (block) index = block.endLine;
+        }
 
         if (!isEmpty) return;
 

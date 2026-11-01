@@ -14,6 +14,7 @@ import {
 import Timestamps from '../utils/timestamps';
 import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
 import { maskMarkdownTaskText } from '../utils/markdown-task-text';
+import { getCodeBlocks } from '../utils/code-blocks';
 
 /* COMPLETION */
 
@@ -32,6 +33,8 @@ class Completion implements vscode.CompletionItemProvider {
         ))
     )
       return null;
+    if (textDocument.languageId !== 'markdown' && getCodeBlocks(textDocument).byLine.has(pos.line))
+      return [];
     const raw = textDocument.lineAt(pos.line).text;
     const line = isMarkdownTaskDocument(textDocument) ? maskMarkdownTaskText(raw) : raw;
     const character = line[pos.character - 1];
