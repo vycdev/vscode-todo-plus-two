@@ -26,6 +26,23 @@ exports.run = async () => {
       content: lines.join('\n'),
     });
     const editor = await vscode.window.showTextDocument(document);
+    const commandWithDocumentChange = async (command) => {
+      let subscription, timeout;
+      const changed = new Promise((resolve, reject) => {
+        subscription = vscode.workspace.onDidChangeTextDocument((event) => {
+          if (event.document === document && event.contentChanges.length) resolve();
+        });
+        timeout = setTimeout(() => reject(new Error(`No document change after ${command}`)), 5000);
+      });
+      try {
+        await vscode.window.showTextDocument(document);
+        await vscode.commands.executeCommand(command);
+        await changed;
+      } finally {
+        subscription.dispose();
+        clearTimeout(timeout);
+      }
+    };
     const replace = async (line, text) => {
       const start = performance.now();
       assert(await editor.edit((builder) => builder.replace(document.lineAt(line).range, text)));
@@ -44,9 +61,9 @@ exports.run = async () => {
     assert.strictEqual(document.lineCount, 7001);
     assert(await editor.edit((builder) => builder.delete(new vscode.Range(2, 0, 3, 0))));
     assert.strictEqual(document.lineCount, 7000);
-    await vscode.commands.executeCommand('undo');
+    await commandWithDocumentChange('undo');
     assert.strictEqual(document.lineCount, 7001);
-    await vscode.commands.executeCommand('redo');
+    await commandWithDocumentChange('redo');
     assert.strictEqual(document.lineCount, 7000);
     const secondEditor = await vscode.window.showTextDocument(document, vscode.ViewColumn.Beside);
     assert(secondEditor);
