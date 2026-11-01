@@ -22,6 +22,9 @@ const Due = {
       'YYYY-M-D H:mm:ssZ',
       'YYYY-M-DTH:mm:ssZ',
       'YYYY/M/D H:mm:ssZ',
+      'YYYY-M-D H:mmZ',
+      'YYYY-M-DTH:mmZ',
+      'YYYY/M/D H:mmZ',
       'YYYY-M-D H:mm:ss',
       'YYYY-M-DTH:mm:ss',
       'YYYY-MM-DD HH:mm',
@@ -51,7 +54,7 @@ const Due = {
     }
 
     const formattedDateRe =
-      /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]\d{1,2}:\d{2}(?::\d{2}(?:Z|[+-]\d{2}:\d{2})?)?)?|\d{2}-\d{2}-\d{2}(?: \d{2}:\d{2})?|\d{2}\/\d{2}\/(?:\d{2}|\d{4})(?: \d{2}:\d{2})?)$/;
+      /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]\d{1,2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)?|\d{2}-\d{2}-\d{2}(?: \d{2}:\d{2})?|\d{2}\/\d{2}\/(?:\d{2}|\d{4})(?: \d{2}:\d{2})?)$/;
 
     if (formattedDateRe.test(value)) return;
 

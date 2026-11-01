@@ -46,6 +46,18 @@ describe('Due utilities', () => {
     }
   });
 
+  it('rejects impossible zoned dates without seconds instead of rolling them forward', () => {
+    for (const value of [
+      '2026-02-30T09:00Z',
+      '2026-02-30 09:00Z',
+      '2026-02-30T09:00+02:00',
+      '2026-02-30T09:00+0200',
+      '2026/02/30 09:00-03:30',
+    ]) {
+      expect(Due.parse(value)).to.equal(undefined, value);
+    }
+  });
+
   it('rejects timezone offsets with invalid hours or minutes', () => {
     for (const offset of [
       '+24:00',
@@ -83,6 +95,9 @@ describe('Due utilities', () => {
       ['2026-07-02T09:00:00+0200', '2026-07-02T07:00:00.000Z'],
       ['2026-7-2 9:00:00+02:30', '2026-07-02T06:30:00.000Z'],
       ['2026/7/2 9:00:00-03:30', '2026-07-02T12:30:00.000Z'],
+      ['2026-07-02T09:00Z', '2026-07-02T09:00:00.000Z'],
+      ['2026-07-02T09:00+02:00', '2026-07-02T07:00:00.000Z'],
+      ['2026-07-02T09:00+0200', '2026-07-02T07:00:00.000Z'],
     ]) {
       expect(Due.parse(value)?.toISOString()).to.equal(expected, value);
     }
