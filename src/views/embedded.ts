@@ -2,7 +2,10 @@
 
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
+import type { CancellationToken, Memento } from 'vscode';
 import Utils from '../utils';
+import { getFilePathKey } from '../utils/file-globs';
+import { createEmbeddedOrder, getEmbeddedTodoKeys } from '../utils/embedded/order';
 import { enqueueEmbeddedRefresh } from '../utils/embedded/provider-lifecycle';
 import File from './items/file';
 import Item from './items/item';
@@ -15,6 +18,17 @@ import View from './view';
 
 //TODO: Collapse/Expand without rebuilding the tree https://github.com/Microsoft/vscode/issues/54192
 
+// Levels follow the provider's root -> type -> file -> todo hierarchy, including
+// empty-key groups that are hidden in the tree.
+interface NodeOrder {
+  scope: string;
+  key: string;
+  parent?: Item;
+  path: string[];
+  level: number;
+  generation: number;
+}
+
 class Embedded extends View {
   id = 'todo.views.2embedded';
   all = true;
@@ -24,6 +38,10 @@ class Embedded extends View {
   filePathRe = /^(?!~).*(?:\\|\/)/;
   private fileItems: Map<string, Item> = new Map();
   private refreshFileQueue = { current: Promise.resolve() };
+  private orderQueue = { current: Promise.resolve() };
+  private order: ReturnType<typeof createEmbeddedOrder>;
+  private nodeOrder = new WeakMap<Item, NodeOrder>();
+  private generation = 0;
 
   constructor() {
     super();
@@ -34,6 +52,10 @@ class Embedded extends View {
         this.refresh();
       })
     );
+  }
+
+  initializeOrder(storage: Memento) {
+    this.order = createEmbeddedOrder(storage);
   }
 
   getTreeItem(item: Item): vscode.TreeItem {
@@ -69,13 +91,29 @@ class Embedded extends View {
     // If we're rebuilding from root, clear the fileItems map; it will be repopulated as nodes are created
     if (!item) this.fileItems.clear();
 
-    let obj = item ? item.obj : await this.getEmbedded();
+    const parentOrder = item && this.nodeOrder.get(item);
+    let obj = item ? item.obj : await this.getEmbedded(),
+      level = parentOrder ? parentOrder.level + 1 : 0,
+      path = parentOrder ? parentOrder.path : [];
 
-    while (obj && '' in obj) obj = obj['']; // Collapsing unnecessary groups
+    while (obj && !_.isArray(obj) && '' in obj) {
+      path = this.getOrderPath(path, level++, '', obj['']);
+      obj = obj['']; // Collapsing unnecessary groups
+    }
 
     if (_.isEmpty(obj)) return [new Placeholder('No embedded todos found')];
 
     if (_.isArray(obj)) {
+      if (this.config.embedded.view.sort === 'manual') {
+        obj = obj
+          .slice()
+          .sort(
+            (a, b) =>
+              getFilePathKey(a.filePath).localeCompare(getFilePathKey(b.filePath)) ||
+              a.lineNr - b.lineNr ||
+              a.column - b.column
+          );
+      }
       const todos = obj.map((obj) => {
         const label = this.config.embedded.view.wholeLine ? obj.line : obj.message || obj.todo;
 
@@ -94,11 +132,13 @@ class Embedded extends View {
         });
       }
 
-      return todos;
+      return this.config.embedded.view.sort === 'manual'
+        ? this.orderItems(todos, getEmbeddedTodoKeys(obj), item, path, level)
+        : todos;
     } else if (_.isObject(obj)) {
       const keys = Object.keys(obj).sort();
 
-      return keys.map((key) => {
+      const items = keys.map((key) => {
         const val = obj[key];
 
         if (this.filePathRe.test(key)) {
@@ -112,11 +152,111 @@ class Embedded extends View {
           return new Group(val, key, this.config.embedded.view.icons);
         }
       });
+      return this.config.embedded.view.sort === 'manual'
+        ? this.orderItems(items, keys, item, path, level)
+        : items;
     }
+  }
+
+  private getOrderPath(path: string[], level: number, key: string, obj): string[] {
+    // The provider hides a single workspace-root group. Use its actual path so
+    // adding another root does not discard the existing root's child ordering.
+    if (level === 0 && this.config.embedded.view.groupByRoot) {
+      let data = obj;
+      while (data && !_.isArray(data)) data = data[Object.keys(data)[0]];
+      if (data && data[0] && data[0].rootPath) key = getFilePathKey(data[0].rootPath);
+    } else if (level === 2 && key) {
+      key = getFilePathKey(key);
+    }
+    return path.concat(JSON.stringify([level, key]));
+  }
+
+  private orderItems(
+    items: Item[],
+    keys: string[],
+    parent: Item | undefined,
+    path: string[],
+    level: number
+  ): Item[] {
+    const scope = JSON.stringify([level, path]),
+      byKey = new Map<string, Item>();
+
+    items.forEach((item, index) => {
+      const nodePath = this.getOrderPath(path, level, keys[index], item.obj),
+        key = nodePath[nodePath.length - 1];
+      byKey.set(key, item);
+      this.nodeOrder.set(item, {
+        scope,
+        key,
+        parent,
+        level,
+        generation: this.generation,
+        path: nodePath,
+      });
+      item.id = JSON.stringify([scope, key]);
+    });
+
+    if (!this.order) return items;
+    return this.order.apply(scope, Array.from(byKey.keys())).map((key) => byKey.get(key));
+  }
+
+  move(item: Item, direction: -1 | 1): Promise<void> {
+    return enqueueEmbeddedRefresh(this.orderQueue, async () => {
+      const info = item && this.nodeOrder.get(item);
+      if (!this.canMove() || !info || info.generation !== this.generation) return;
+
+      const siblings = await this.getChildren(info.parent);
+      if (!this.canMove() || info.generation !== this.generation) return;
+
+      const keys = siblings
+        .map((sibling) => this.nodeOrder.get(sibling))
+        .filter((sibling) => sibling && sibling.scope === info.scope)
+        .map((sibling) => sibling.key);
+      if (await this.order.move(info.scope, keys, info.key, direction)) this.refresh();
+    });
+  }
+
+  private canMove(): boolean {
+    return !!this.order && this.config.embedded.view.sort === 'manual' && !this.filter && this.all;
+  }
+
+  canDrag(item: Item): boolean {
+    const info = item && this.nodeOrder.get(item);
+    return this.canMove() && !!info && info.generation === this.generation;
+  }
+
+  drop(item: Item, target: Item, token: CancellationToken): Promise<void> {
+    return enqueueEmbeddedRefresh(this.orderQueue, async () => {
+      if (token.isCancellationRequested || !this.canDrag(item) || !this.canDrag(target)) return;
+
+      const sourceInfo = this.nodeOrder.get(item),
+        targetInfo = this.nodeOrder.get(target);
+      if (sourceInfo.scope !== targetInfo.scope || sourceInfo.key === targetInfo.key) return;
+
+      const siblings = await this.getChildren(sourceInfo.parent);
+      if (token.isCancellationRequested || !this.canDrag(item) || !this.canDrag(target)) return;
+
+      const keys = siblings
+        .map((sibling) => this.nodeOrder.get(sibling))
+        .filter((sibling) => sibling && sibling.scope === sourceInfo.scope)
+        .map((sibling) => sibling.key);
+      if (await this.order.moveTo(sourceInfo.scope, keys, sourceInfo.key, targetInfo.key)) {
+        this.refresh();
+      }
+    });
+  }
+
+  resetOrder(): Promise<void> {
+    return enqueueEmbeddedRefresh(this.orderQueue, async () => {
+      if (!this.order) return;
+      await this.order.reset();
+      this.refresh();
+    });
   }
 
   refresh(clear?) {
     this.clear = !!clear;
+    this.generation++;
 
     super.refresh();
   }

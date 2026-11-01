@@ -1196,6 +1196,10 @@ function viewFilesShowFinished() {
 
 /* VIEW EMBEDDED */
 
+const viewEmbeddedMoveUp = (item: ItemFile): Promise<void> => ViewEmbedded.move(item, -1);
+const viewEmbeddedMoveDown = (item: ItemFile): Promise<void> => ViewEmbedded.move(item, 1);
+const viewEmbeddedResetOrder = (): Promise<void> => ViewEmbedded.resetOrder();
+
 function viewEmbeddedCollapse() {
   ViewEmbedded.expanded = false;
   vscode.commands.executeCommand('setContext', 'todo-embedded-expanded', false);
@@ -1288,6 +1292,9 @@ export {
   viewEmbeddedToggleAllFiles,
   viewEmbeddedShowAllFiles,
   viewEmbeddedShowActiveFile,
+  viewEmbeddedMoveUp,
+  viewEmbeddedMoveDown,
+  viewEmbeddedResetOrder,
 };
 export {
   toggleBox as editorToggleBox,
