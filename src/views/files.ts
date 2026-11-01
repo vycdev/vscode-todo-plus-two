@@ -1,7 +1,8 @@
 /* IMPORT */
 
 import * as _ from 'lodash';
-import * as vscode from 'vscode';
+import { commands, TreeItemCollapsibleState } from 'vscode';
+import type { TextDocument, TextLine, TreeItem } from 'vscode';
 import Utils from '../utils';
 import Consts from '../consts';
 import { hasUnfinishedTodo, matchesFilesViewFilter } from '../utils/files-view-filter';
@@ -20,8 +21,18 @@ import Todo from './items/todo';
 import View from './view';
 import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
 import { transformMarkdownTaskText } from '../utils/markdown-task-text';
+import { getTaskTagNames, groupTasksByTags, normalizeTagGroupNames } from '../utils/tag-groups';
 
 /* FILES */
+
+interface GroupedTask {
+  line: TextLine;
+  lineNr: number;
+  title: string;
+  path: string[];
+  statusLabel: string;
+  tagNames: string[];
+}
 
 //TODO: Collapse/Expand without rebuilding the tree https://github.com/Microsoft/vscode/issues/54192
 
@@ -43,11 +54,11 @@ class Files extends View {
     this.showFinishedOverride = value;
   }
 
-  getTreeItem(item: Item): vscode.TreeItem {
-    if (item.collapsibleState !== vscode.TreeItemCollapsibleState.None) {
+  getTreeItem(item: Item): TreeItem {
+    if (item.collapsibleState !== TreeItemCollapsibleState.None) {
       item.collapsibleState = this.expanded
-        ? vscode.TreeItemCollapsibleState.Expanded
-        : vscode.TreeItemCollapsibleState.Collapsed;
+        ? TreeItemCollapsibleState.Expanded
+        : TreeItemCollapsibleState.Collapsed;
     }
 
     return item;
@@ -71,6 +82,8 @@ class Files extends View {
 
     while (obj && '' in obj) obj = obj['']; // Collapsing unnecessary groups
 
+    if (Array.isArray(obj)) return obj;
+
     if (_.isEmpty(obj)) {
       return [
         new Placeholder(this.filter ? 'No matching todo files found' : 'No todo files found'),
@@ -78,6 +91,9 @@ class Files extends View {
     }
 
     if (obj.textEditor) {
+      const groupNames = normalizeTagGroupNames(this.config.file.view.groupByTags);
+      if (groupNames.length && obj.lineNr === undefined)
+        return this.getTagGroupedChildren(obj, groupNames);
       if (isMarkdownTaskDocument(obj.textEditor)) return this.getMarkdownChildren(obj);
       const items = [],
         lineNr = obj.hasOwnProperty('lineNr') ? obj.lineNr : -1;
@@ -161,7 +177,99 @@ class Files extends View {
 
     this.refreshActivityBarBadge();
 
-    vscode.commands.executeCommand('setContext', 'todo-files-show-finished', this.showFinished);
+    commands.executeCommand('setContext', 'todo-files-show-finished', this.showFinished);
+  }
+
+  private getTagGroupedChildren(
+    obj: { textEditor: TextDocument; filePath: string; relativePath?: string },
+    groupNames: string[]
+  ): Item[] {
+    const document = obj.textEditor;
+    const markdown = isMarkdownTaskDocument(document);
+    const nodes = markdown ? getMarkdownTaskNodes(document) : [];
+    const byLine = new Map(nodes.map((node) => [node.lineNumber, node]));
+    const ancestors: Array<{ level: number; title: string }> = [];
+    const tasks: GroupedTask[] = [];
+
+    for (let lineNr = 0; lineNr < document.lineCount; lineNr++) {
+      const line = document.lineAt(lineNr);
+      let title = line.text.trimStart();
+      let path: string[];
+      let finished: boolean;
+      let statusLabel = '';
+      if (markdown) {
+        const node = byLine.get(lineNr);
+        if (!node || node.kind !== 'todo') continue;
+        title = node.title;
+        finished = node.status !== 'box';
+        statusLabel = node.status === 'done' ? '✓' : node.status === 'cancelled' ? 'Cancelled' : '';
+        path = [];
+        let parent = byLine.get(node.parent);
+        while (parent) {
+          path.unshift(parent.title);
+          parent = byLine.get(parent.parent);
+        }
+      } else {
+        if (!line.text.trim()) continue;
+        const level = Utils.ast.getLevel(document, line.text);
+        while (ancestors.length && ancestors[ancestors.length - 1].level >= level) ancestors.pop();
+        path = ancestors.map((parent) => parent.title);
+        const isTodo = matchesTodoStatus(line.text, Consts.regexes.todo);
+        if (isTodo || matchesTodoStatus(line.text, Consts.regexes.project))
+          ancestors.push({ level, title });
+        if (!isTodo) continue;
+        finished = this.isFinishedTodo(line.text);
+      }
+      if (!this.showFinished && finished) continue;
+      if (!matchesFilesViewFilter(this.filter, obj.filePath, [line.text, ...path])) continue;
+
+      tasks.push({
+        line,
+        lineNr,
+        title,
+        path,
+        statusLabel,
+        tagNames: getTaskTagNames(title, markdown),
+      });
+    }
+
+    const getLabel = (text: string) =>
+      this.config.file.view.showTags === false
+        ? markdown
+          ? transformMarkdownTaskText(text, Tags.removeAll)
+          : Tags.removeAll(text)
+        : text;
+    const groups = groupTasksByTags(tasks, groupNames).map((group) => {
+      const todos = group.tasks.map((task) => {
+        const todo = new Todo(
+          {
+            filePath: obj.filePath,
+            textEditor: document,
+            line: task.line,
+            lineNr: task.lineNr,
+            documentVersion: document.version,
+          },
+          getLabel(task.title)
+        );
+        const sourcePath = task.path.map(getLabel).join(' / ');
+        todo.description = [task.statusLabel, sourcePath].filter(Boolean).join(' · ');
+        todo.tooltip = [task.line.text, obj.relativePath || obj.filePath, ...task.path].join('\n');
+        return todo;
+      });
+      return new Group(todos, `${group.name ? `@${group.name}` : 'Other'} (${todos.length})`);
+    });
+
+    return groups.length
+      ? groups
+      : [
+          new Placeholder(
+            this.filter
+              ? 'No matching tasks found'
+              : this.showFinished
+                ? 'No tasks found'
+                : 'No unfinished tasks found'
+          ),
+        ];
   }
 
   private getMarkdownChildren(obj): Item[] {
@@ -266,7 +374,7 @@ class Files extends View {
     return matchesTodoStatus(text, Consts.regexes.todoFinished);
   }
 
-  hasUnfinishedDescendant(textDocument: vscode.TextDocument, lineNr: number) {
+  hasUnfinishedDescendant(textDocument: TextDocument, lineNr: number) {
     const descendantLines = [],
       startLevel = Utils.ast.getLevel(textDocument, textDocument.lineAt(lineNr).text);
 
@@ -279,7 +387,7 @@ class Files extends View {
     return hasUnfinishedTodo(descendantLines, Consts.regexes.todo, Consts.regexes.todoFinished);
   }
 
-  matchesFilter(textEditor: vscode.TextDocument, lineNr: number, filePath: string) {
+  matchesFilter(textEditor: TextDocument, lineNr: number, filePath: string) {
     if (!this.filter) return true;
 
     const branchLines = [textEditor.lineAt(lineNr).text],

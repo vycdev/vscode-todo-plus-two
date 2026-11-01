@@ -2,6 +2,7 @@
 
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
+import type { TextDocument } from 'vscode';
 import Config from '../config';
 import FilesView from '../views/files';
 import { Due } from '../views/due';
@@ -237,6 +238,19 @@ class Files {
 
   async updateFilesData() {
     if (_.isEmpty(this.filesData)) return;
+
+    // VS Code can close a document loaded for discovery and later reopen a new
+    // instance. Keep cached file metadata attached to the current live buffer.
+    const documents = new Map<string, TextDocument>();
+    (vscode.workspace.textDocuments || []).forEach((document) => {
+      if (document.uri.scheme === 'file' && !document.isClosed)
+        documents.set(document.uri.fsPath.replace(/\\/g, '/'), document);
+    });
+    Object.keys(this.filesData).forEach((filePath) => {
+      const data = this.filesData[filePath],
+        document = documents.get(filePath);
+      if (data && document) data.textEditor = document;
+    });
 
     const pending = Object.keys(this.filesData).filter((filePath) => !this.filesData[filePath]);
     if (!pending.length) return;

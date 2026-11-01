@@ -176,6 +176,14 @@
           "description": "Start the tree in an expanded state",
           "default": true
         },
+        "todo.file.view.groupByTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Group tasks within each file by these case-sensitive tag names, in this order. Tasks with none of these tags appear under Other. An empty array preserves the project hierarchy. Grouped mode shows task rows only",
+          "default": []
+        },
         "todo.file.view.showFinished": {
           "type": "boolean",
           "description": "Show done and cancelled tasks in the Todo files view",
