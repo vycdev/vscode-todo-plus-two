@@ -118,7 +118,13 @@ export const insertMarkdownArchiveBlocks = (
   if (intoArchive && !parse().some((node) => node.archiveRoot)) {
     while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
     if (lines.length) lines.push('');
+    const archiveLine = lines.length;
     lines.push(`# ${options.archiveName || 'Archive'}`, '');
+    if (!parse().some((node) => node.archiveRoot)) {
+      lines[archiveLine] = `# ${quoteMarkdownProjectTitle(options.archiveName || 'Archive')}`;
+    }
+    if (!parse().some((node) => node.archiveRoot))
+      throw new Error('Unable to create the Markdown archive heading. Source tasks were kept');
   }
   blocks.forEach((block) => {
     let nodes = parse();
@@ -146,8 +152,11 @@ export const insertMarkdownArchiveBlocks = (
       while (insertAt > 0 && !lines[insertAt - 1].trim()) insertAt--;
       const prefix = childPrefix(target, lines);
       const recreateHeading = !intoArchive && (!target || (target.heading && target.heading < 6));
+      const headingPrefix = recreateHeading
+        ? `${prefix}${'#'.repeat(target ? target.heading + 1 : 1)} `
+        : '';
       const header = recreateHeading
-        ? `${prefix}${'#'.repeat(target ? target.heading + 1 : 1)} ${block.path[depth]}`
+        ? `${headingPrefix}${block.path[depth]}`
         : `${prefix}${block.path[depth]}:`;
       lines.splice(insertAt, 0, header);
       nodes = parse();
@@ -157,8 +166,9 @@ export const insertMarkdownArchiveBlocks = (
         target.kind === 'project' &&
         target.inArchive === intoArchive &&
         samePath(pathOf(target, nodes).concat(target.title), names);
-      if (!validTarget() && !recreateHeading) {
-        lines[insertAt] = `${prefix}${quoteMarkdownProjectTitle(block.path[depth])}:`;
+      if (!validTarget()) {
+        const title = quoteMarkdownProjectTitle(block.path[depth]);
+        lines[insertAt] = recreateHeading ? `${headingPrefix}${title}` : `${prefix}${title}:`;
         nodes = parse();
         target = nodes.find((node) => node.lineNumber === insertAt);
       }

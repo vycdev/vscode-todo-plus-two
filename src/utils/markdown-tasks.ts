@@ -31,9 +31,13 @@ export interface MarkdownTaskNode {
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const indentWidth = (line: string) =>
   (line.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '    ').length;
-const headingTitle = (text: string) => text.replace(/[ \t]+#+[ \t]*$/, '').trim();
 const projectTitle = (text: string) =>
   /^\*\*[\s\S]*\*\*$/.test(text) ? text.slice(2, -2).replace(/\\([!-/:-@[-`{-~])/g, '$1') : text;
+const headingTitle = (text: string) => {
+  const title = text.replace(/[ \t]+#+[ \t]*$/, '').trim();
+  // Decode the escaped literal labels emitted by the archive serializer.
+  return /\\[!-/:-@[-`{-~]/.test(title) ? projectTitle(title) : title;
+};
 
 /** Literal project labels remain readable even when their text resembles syntax. */
 export const quoteMarkdownProjectTitle = (title: string): string =>
@@ -139,6 +143,7 @@ export const parseMarkdownTasks = (
       };
       continue;
     }
+    if (!wasComment && /^[ \t]*>/.test(raw)) continue;
     const comments = getMarkdownCommentRanges(raw.slice(cursor));
     comments.forEach((range) => {
       if (!range.closed) {
@@ -148,7 +153,7 @@ export const parseMarkdownTasks = (
     });
     if (wasComment || (comments.length && !raw.slice(0, cursor + comments[0].start).trim()))
       continue;
-    if (!raw.trim() || /^[ \t]*>/.test(raw)) continue;
+    if (!raw.trim()) continue;
 
     const setext =
       indent <= fenceBase + 3 &&

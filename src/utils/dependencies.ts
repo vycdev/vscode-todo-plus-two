@@ -50,19 +50,32 @@ function getInlineCodeRanges(text: string): Array<{ start: number; end: number }
 }
 
 function getReferences(text: string, tag: string): DependencyReference[] {
-  const regex = /@([^\s*~(`]+)\(([^\r\n)]*)\)/g;
+  const regex = new RegExp(`@${tag}\\(([^\\r\\n)]*)\\)`, 'g');
   const inlineCodeRanges = getInlineCodeRanges(text);
+  const argumentRanges: Array<{ start: number; end: number }> = [];
+  const anyTag = /@[^\s*~(`]+\([^\r\n)]*\)/g;
   const references: DependencyReference[] = [];
   let match: RegExpExecArray;
 
+  while ((match = anyTag.exec(text))) {
+    if (match.index > 0 && /[a-zA-Z0-9`]/.test(text[match.index - 1])) continue;
+    if (inlineCodeRanges.some((range) => match.index > range.start && match.index < range.end))
+      continue;
+    argumentRanges.push({
+      start: text.indexOf('(', match.index) + 1,
+      end: match.index + match[0].length,
+    });
+  }
+
   while ((match = regex.exec(text))) {
-    if (match[1] !== tag) continue;
     if (match.index > 0 && /[a-zA-Z0-9`]/.test(text[match.index - 1])) continue;
     if (inlineCodeRanges.some((range) => match.index > range.start && match.index < range.end)) {
       continue;
     }
+    if (argumentRanges.some((range) => match.index >= range.start && match.index < range.end))
+      continue;
 
-    const rawId = match[2];
+    const rawId = match[1];
     const id = normalizeId(rawId);
 
     // Empty tags are harmless text, but cannot identify or reference a task.

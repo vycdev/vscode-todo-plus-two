@@ -255,6 +255,22 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('archives and unarchives tasks with a custom name ending in a heading marker', async () => {
+    const state = loadMarkdown('[x] Done', {
+      'archive.type': 'InSameFile',
+      'archive.name': 'History #',
+    });
+    await state.commands.archive();
+    expect(state.messages).to.deep.equal([]);
+    const archived = new state.Document(state.editor).getTodosDone()[0];
+    expect(archived.markdownNode.inArchive).to.equal(true);
+    state.select(archived.lineNumber);
+    await state.commands.unarchive();
+    expect(new state.Document(state.editor).getTodosDone()[0].markdownNode.inArchive).to.equal(
+      false
+    );
+  });
+
   it('preserves literal tag arguments during completion and archive cleanup', async () => {
     const literal = '@id(@today) @note(@today)';
     const state = loadMarkdown(`[ ] Work ${literal} @today`, {

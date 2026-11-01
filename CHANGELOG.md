@@ -17,6 +17,8 @@
 - Preserved escaped punctuation in partially typed dependency completions and refreshed visible Markdown editors when parser settings change.
 - Rejected stale Markdown tree actions after a note is closed and reopened, and preserved CRLF line endings when archiving its entire contents.
 - Treated tag arguments as literal text so nested tag examples cannot finish tasks, create dependencies or due dates, control timers, or get removed by status changes.
+- Prevented HTML comments in block quotes from hiding later Markdown tasks, and preserved archive and restored-parent names that contain heading syntax.
+- Preserved ID and dependency tags separated from another tag by punctuation while keeping reference examples inside tag arguments literal.
 - Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
 
 ### Version 5.3.0

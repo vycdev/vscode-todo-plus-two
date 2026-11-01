@@ -7,6 +7,15 @@ import {
 } from '../src/utils/markdown-archive';
 
 describe('Markdown task sources', () => {
+  it('does not let an HTML comment inside a block quote hide later tasks', () => {
+    const content = '> <!-- Unfinished quoted example\n> [ ] Quoted\n\n[ ] Real';
+    expect(
+      parseMarkdownTasks(content)
+        .filter((node) => node.kind === 'todo')
+        .map((node) => node.title)
+    ).to.deep.equal(['Real']);
+  });
+
   it('ignores fences opened directly after a list marker without hiding later tasks', () => {
     for (const content of [
       '- ```markdown\n  [ ] Example\n  ```\n- [ ] Real',
@@ -254,6 +263,48 @@ describe('Markdown task sources', () => {
 });
 
 describe('Markdown archive round trips', () => {
+  it('recognizes custom archive names containing trailing heading markers', () => {
+    for (const archiveName of ['History #', 'History ###', '**History**']) {
+      const options = { archiveName };
+      const blocks = collectMarkdownArchiveBlocks('[x] Done', options);
+      const archive = insertMarkdownArchiveBlocks('', blocks, options);
+      const tasks = parseMarkdownTasks(archive, options).filter((node) => node.kind === 'todo');
+      expect(
+        tasks.map((node) => node.inArchive),
+        archiveName
+      ).to.deep.equal([true]);
+      const restoring = collectMarkdownArchiveBlocks(archive, options, [tasks[0].lineNumber], true);
+      expect(restoring, archiveName).to.have.length(1);
+    }
+    expect(
+      parseMarkdownTasks('# **History**\n[ ] Task', {
+        scope: 'sections',
+        sections: ['**History**'],
+      }).filter((node) => node.kind === 'todo')
+    ).to.have.length(1);
+  });
+
+  it('recreates missing parent headings whose names end with heading markers', () => {
+    for (const prefix of ['', '# Group\n', '##### Group\n']) {
+      const blocks = collectMarkdownArchiveBlocks(`${prefix}- [ ] Parent #\n  - [x] Child`, {});
+      const archive = insertMarkdownArchiveBlocks(prefix, blocks, {});
+      const task = parseMarkdownTasks(archive).find((node) => node.kind === 'todo');
+      const restoring = collectMarkdownArchiveBlocks(archive, {}, [task.lineNumber], true);
+      const restored = insertMarkdownArchiveBlocks(
+        removeMarkdownArchiveBlocks(archive, restoring),
+        restoring,
+        {},
+        false
+      );
+      const nodes = parseMarkdownTasks(restored);
+      const child = nodes.find((node) => node.kind === 'todo');
+      const parent = nodes.find((node) => node.lineNumber === child.parent);
+      expect(child.inArchive).to.equal(false);
+      expect(parent.title).to.equal('Parent #');
+      expect(parent.heading).to.equal(prefix ? prefix.indexOf(' ') + 1 : 1);
+    }
+  });
+
   it('safely serializes project titles that resemble tasks, headings, fences, or comments', () => {
     for (const title of [
       '[ ] Milestone',
