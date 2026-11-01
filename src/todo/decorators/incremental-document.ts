@@ -189,6 +189,23 @@ export class IncrementalDocument {
     );
   }
 
+  // Keep clock-driven overlays in sync with ranges retained for future edits.
+  replaceDecorations(decorations: Decoration[]) {
+    const types = new Set(decorations.map(({ type }) => type));
+    for (const line of this.lines.lines) types.forEach((type) => line.decorations.delete(type));
+    for (const { type, ranges } of decorations) {
+      if (ranges.length) this.types.add(type);
+      else this.types.delete(type);
+      for (const value of ranges) {
+        const range = value.range || value;
+        const line = this.lines.lines[range.start.line];
+        if (!line) continue;
+        if (!line.decorations.has(type)) line.decorations.set(type, []);
+        line.decorations.get(type).push(shiftRange(value, -line.lineNumber));
+      }
+    }
+  }
+
   private makeLine(text: string, lineNumber: number, items: Items): Line {
     return {
       text,

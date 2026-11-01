@@ -58,6 +58,7 @@ const withDecorator = (run) => {
       return { default: { update: (doc) => timerDocuments.push(doc && doc.textDocument) } };
     if (request === '../../statusbars/statistics')
       return { default: { update: () => statisticsUpdates.push(tokens.global) } };
+    if (request === './todo_planned') return { getPlannedDecorations: () => [] };
     if (/^\.\/(comment|formatted|project|tag|todo_due)$/.test(request)) {
       return { default: class Decorator {} };
     }

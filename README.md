@@ -12,6 +12,7 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Files, Due, and Embedded views**: browse tasks, edit titles and tags, change status, filter, group by tag, and arrange embedded comments.
 - **Tags and focus**: priority labels, configurable task styles, region folding, and focus on a selected tag.
 - **Time and progress**: start/pause/resume timers, estimate work, track elapsed time, and show project and status bar statistics.
+- **Planned work**: opt in to local-time work windows with `@planned(...)`, including daily sessions and dated ranges.
 - **Dependencies**: portable task IDs, cross-file links, reference completion and renaming, and checks before completion.
 - **Notes and attachments**: fenced code highlighted by installed language grammars, relative file links, and PNG/JPEG paste.
 - **Archive and export**: move completed work to same-file or separate archives; export Todo files to HTML or Markdown.
@@ -290,6 +291,26 @@ Relative entries remain workspace globs. Absolute entries name individual files,
 
 `todo.file.exclude`, enabled `files.exclude` rules, and `todo.followSymlinks` still apply. Exclusions match workspace-relative paths inside a workspace and full paths outside it. Missing or unreadable files are skipped without hiding other Todo files.
 
+### Planned work windows
+
+Enable `todo.planned.enabled` to highlight `@planned(...)` tags while it is time to work on an unfinished task in a Todo file or an enabled Markdown task section:
+
+```todo
+☐ Daily focus @planned(10am-1pm)
+☐ Split session @planned(1pm-3pm, 4pm-5pm)
+☐ Release preparation @planned(2026-11-02 15:00-17:00, 18:00-19:00)
+```
+
+Undated windows repeat daily. An optional `YYYY-MM-DD` date applies to every comma-separated window in that tag. You can use multiple `@planned(...)` tags on one task. Times accept `am`/`pm` (including minutes, such as `10:30am`) or 24-hour `HH:mm`, independently of your timekeeping formats. All windows use your computer's local date and time, include their start, and exclude their end.
+
+The active tag is bold and uses `todo.colors.planned`, with optional `todo.colors.dark.planned` and `todo.colors.light.planned` overrides. It refreshes every minute, after edits, and when returning to the window. Disabling `todo.colors.enabled` also disables this highlighting. Done/cancelled tasks, tags inside inline code, and invalid tags are ignored. A bare `@planned` remains an ordinary label.
+
+Windows must start and end on the same day; overnight windows, weekday recurrence, date-only tags, natural-language dates, and dates inherited from project headings are not supported. Scheduling leaves task status and timers unchanged. Use `@due(...)` for deadlines and the Due sidebar; planned windows do not appear there.
+
+![Active planned tags in blue, future work with normal tag styling, and a completed task excluded from highlighting](resources/demo/planned-work.png)
+
+The [planned-work sample](resources/readme-planned.todo) shows daily, split, and dated sessions. In this capture, scheduling is enabled with its default blue color; the future dated task also has an independent due date.
+
 ## Settings
 
 Open Settings and search for `@ext:vycdev.vscode-todo-plus-two` to see every option and its current default. Use User settings for all projects or Workspace settings for one workspace. The following is an optional configuration example, not a list of defaults:
@@ -305,6 +326,7 @@ Open Settings and search for `@ext:vycdev.vscode-todo-plus-two` to see every opt
   },
   "todo.archive.type": "InSameFile",
   "todo.timekeeping.autoToggle": true,
+  "todo.planned.enabled": true,
   "todo.embedded.view.sort": "manual",
   "todo.embedded.view.showContext": true,
   "todo.embedded.problems": { "TODO": "warning", "FIXME": "error" }
