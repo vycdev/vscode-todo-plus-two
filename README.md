@@ -134,6 +134,22 @@ Release:
 
 Customize the special-tag names and their matching colors with `todo.tags.names`, `todo.colors.tags.background`, and `todo.colors.tags.foreground`. To highlight the entire task line, set corresponding entries in `todo.colors.tags.lineBackground`. Palette entries match tag names by array position. These labels do not sort tasks or otherwise change task behavior.
 
+### Group tasks by tag
+
+Set `todo.file.view.groupByTags` to collect tasks from every project and nesting level into tag groups within each file in the Files sidebar:
+
+```json
+{
+  "todo.file.view.groupByTags": ["low", "high", "tag-a"]
+}
+```
+
+The sidebar shows non-empty groups such as `@low (3)` in the configured order, with tasks in source order. A task with multiple selected tags appears once in each matching group. Tasks with none of the selected tags appear under `Other`. Names are case-sensitive; a leading `@` is optional, and tag arguments are ignored (`@low(review)` belongs to `@low`). Tags on project headers or parent tasks are not inherited. Inline code examples do not create groups; Markdown escapes and HTML comments are also ignored.
+
+Grouping works with Todo files and Markdown notes and updates as you edit. The grouped view shows task rows with their original project paths; notes and project headers remain in the source. Finished-task visibility, hidden tag labels, text/path filtering, navigation, and task context-menu actions remain available. Filtering also matches the original project path. Grouping changes only the sidebar: source text, task status, dependencies, and statistics stay unchanged. Set the array back to `[]` to restore the project hierarchy.
+
+For a temporary text search instead, use `Todo: Files View - Filter` and enter `@low`. Text filtering matches substrings, including longer tag names, rather than exact tags.
+
 ### Task dependencies
 
 Task identities are plain text, so they remain intact when you copy, move, or archive tasks. Add a non-empty `@id(...)` to a task and reference it with `@depends(...)` elsewhere in the workspace:
@@ -165,6 +181,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.followSymlinks": false, // Follow symbolic links when enumerating files (can cause cycles)
   "todo.file.batchSize": 50, // Number of Todo files to process in each discovery batch
   "todo.file.view.expanded": true, // Start the tree in an expanded state
+  "todo.file.view.groupByTags": [], // Group tasks within each file by selected tag names; empty preserves the hierarchy
   "todo.file.view.showFinished": true, // Show done and cancelled tasks in the Todo files view
   "todo.file.view.showComments": false, // Show comment-only lines in the Todo files view
   "todo.file.view.showTags": true, // Show tags in Todo files view labels

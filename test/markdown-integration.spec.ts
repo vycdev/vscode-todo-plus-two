@@ -98,6 +98,7 @@ const loadMarkdown = (initial: string, settings = {}) => {
     }
   }
   const vscode = {
+    commands: { executeCommand: async () => undefined },
     Position,
     Range,
     WorkspaceEdit,
@@ -879,6 +880,229 @@ describe('Markdown task integration', () => {
     } finally {
       [note, todo, excluded].forEach((file) => fs.unlinkSync(file));
       fs.rmdirSync(fixture);
+    }
+  });
+});
+
+describe('Files view tag grouping', () => {
+  const root = (state) => ({
+    obj: { filePath: state.document.uri.fsPath, textEditor: state.document },
+  });
+
+  it('preserves the original hierarchy when tag grouping is disabled', async () => {
+    for (const language of ['todo', 'markdown']) {
+      const state = loadMarkdown(
+        language === 'todo' ? 'Project:\n  ☐ Work @low' : '# Project\n[ ] Work @low'
+      );
+      state.document.languageId = language;
+      const items = await state.filesView.getChildren(root(state));
+      expect(items.map((item) => item.label)).to.deep.equal([
+        language === 'todo' ? 'Project:' : 'Project',
+      ]);
+      const children = await state.filesView.getChildren(items[0]);
+      expect(children[0].label).to.include('Work @low');
+    }
+  });
+
+  it('groups Todo tasks across nested projects, retaining source coordinates and context', async () => {
+    const original = [
+      'Work:',
+      '  Doing:',
+      '    ☐ First @low @id(first)',
+      '    ☐ Both @low @tag-a',
+      '  Todo:',
+      '    - [ ] Third @high',
+      '  Done:',
+      '    ✔ Fourth @high @tag-a',
+      '    ✘ Fifth @low',
+      '  A note @low',
+      '  ☐ Parent',
+      '    ☐ Child @lowish',
+    ].join('\n');
+    const state = loadMarkdown(original, { 'file.view.groupByTags': ['low', 'high', 'tag-a'] });
+    state.document.languageId = 'todo';
+    const groups = await state.filesView.getChildren(root(state));
+    expect(groups.map((group) => group.label)).to.deep.equal([
+      '@low (3)',
+      '@high (2)',
+      '@tag-a (2)',
+      'Other (2)',
+    ]);
+    const low = await state.filesView.getChildren(groups[0]);
+    expect(low.map((item) => item.obj.lineNr)).to.deep.equal([2, 3, 8]);
+    expect(low[0].description).to.equal('Work: / Doing:');
+    expect(low[0].obj.filePath).to.equal(state.document.uri.fsPath);
+    expect(low[0].obj.textEditor).to.equal(state.document);
+    expect(low[0].obj.documentVersion).to.equal(state.document.version);
+    expect(low[0].contextValue).to.equal('todo');
+    expect(low[0].command).to.deep.equal({
+      title: 'Reveal',
+      command: 'todo.viewRevealTodo',
+      arguments: [low[0]],
+    });
+    expect(low[0].tooltip).to.include('Doing:');
+    expect(state.document.getText()).to.equal(original);
+  });
+
+  it('uses scoped Markdown tasks and ignores code, comments, inherited tags, and tag arguments', async () => {
+    const state = loadMarkdown(
+      [
+        '# Todos @low',
+        '- [ ] Parent @high',
+        '  - [ ] Child @note(@low) \\@low `@low` <!-- @low -->',
+        '  - [x] Finished @low(review)',
+        '```',
+        '- [ ] Example @low',
+        '```',
+        '# Notes',
+        '- [ ] Outside @low',
+      ].join('\n'),
+      {
+        'file.view.groupByTags': ['@low', 'high'],
+        'markdown.scope': 'sections',
+        'markdown.sections': ['Todos @low'],
+      }
+    );
+    const groups = await state.filesView.getChildren(root(state));
+    expect(groups.map((group) => group.label)).to.deep.equal([
+      '@low (1)',
+      '@high (1)',
+      'Other (1)',
+    ]);
+    const low = await state.filesView.getChildren(groups[0]);
+    expect(low[0].label).to.equal('Finished @low(review)');
+    expect(low[0].description).to.equal('✓ · Todos @low');
+    const other = await state.filesView.getChildren(groups[2]);
+    expect(other[0].obj.lineNr).to.equal(2);
+  });
+
+  it('applies visibility and project/path filters before calculating groups and counts', async () => {
+    for (const language of ['todo', 'markdown']) {
+      const state = loadMarkdown(
+        [
+          language === 'todo' ? 'Sprint:' : '# Sprint',
+          '  ☐ Pending @low',
+          '  ✔ Done @low',
+          '  ✘ Cancelled @low',
+          language === 'todo' ? 'Other:' : '# Other',
+          '  ☐ Unrelated @low',
+        ].join('\n'),
+        { 'file.view.groupByTags': ['low'], 'file.view.showTags': false }
+      );
+      state.document.languageId = language;
+      state.filesView.filter = 'Sprint';
+      state.filesView.showFinished = false;
+      const groups = await state.filesView.getChildren(root(state));
+      expect(groups.map((group) => group.label)).to.deep.equal(['@low (1)']);
+      const tasks = await state.filesView.getChildren(groups[0]);
+      expect(tasks[0].label).to.equal(language === 'todo' ? '☐ Pending' : 'Pending');
+      state.filesView.filter = state.document.uri.fsPath;
+      expect((await state.filesView.getChildren(root(state)))[0].label).to.equal('@low (2)');
+      state.filesView.filter = 'missing';
+      expect((await state.filesView.getChildren(root(state)))[0].label).to.equal(
+        'No matching tasks found'
+      );
+    }
+  });
+
+  it('regroups same-length unsaved edits and keeps archive tasks governed by finished visibility', async () => {
+    const state = loadMarkdown('☐ Work @low\nArchive:\n  ✔ Saved @low', {
+      'file.view.groupByTags': ['low', 'now'],
+    });
+    state.document.languageId = 'todo';
+    expect((await state.filesView.getChildren(root(state)))[0].label).to.equal('@low (2)');
+    state.setText('☐ Work @now\nArchive:\n  ✔ Saved @low');
+    expect(
+      (await state.filesView.getChildren(root(state))).map((group) => group.label)
+    ).to.deep.equal(['@low (1)', '@now (1)']);
+    state.filesView.showFinished = false;
+    expect((await state.filesView.getChildren(root(state)))[0].label).to.equal('@now (1)');
+    state.setText('✔ Work @now');
+    expect((await state.filesView.getChildren(root(state)))[0].label).to.equal(
+      'No unfinished tasks found'
+    );
+  });
+
+  it('preserves file and workspace boundaries', async () => {
+    const state = loadMarkdown('[ ] Task @low', { 'file.view.groupByTags': ['low'] });
+    state.utils.view.getURI = ({ filePath, relativePath }) => ({
+      fsPath: filePath,
+      label: relativePath,
+    });
+    state.utils.files.get = async () => ({
+      Alpha: {
+        '/alpha/tasks.md': {
+          filePath: '/alpha/tasks.md',
+          relativePath: 'tasks.md',
+          textEditor: state.document,
+        },
+      },
+      Beta: {
+        '/beta/tasks.md': {
+          filePath: '/beta/tasks.md',
+          relativePath: 'tasks.md',
+          textEditor: state.document,
+        },
+      },
+    });
+    const roots = await state.filesView.getChildren();
+    expect(roots.map((item) => item.label)).to.deep.equal(['Alpha', 'Beta']);
+    for (const [index, workspace] of roots.entries()) {
+      const files = await state.filesView.getChildren(workspace);
+      const groups = await state.filesView.getChildren(files[0]);
+      expect(groups[0].label).to.equal('@low (1)');
+      const tasks = await state.filesView.getChildren(groups[0]);
+      expect(tasks[0].obj.filePath).to.equal(index ? '/beta/tasks.md' : '/alpha/tasks.md');
+    }
+  });
+
+  it('uses configured Todo symbols and restores the hierarchy after a settings refresh', async () => {
+    const state = loadMarkdown('Project:\n  > Work @low', {
+      'file.view.groupByTags': ['low'],
+      'symbols.box': '>',
+    });
+    state.document.languageId = 'todo';
+    expect((await state.filesView.getChildren(root(state)))[0].label).to.equal('@low (1)');
+    _.set(state.config, 'file.view.groupByTags', []);
+    state.filesView.refresh();
+    expect((await state.filesView.getChildren(root(state)))[0].label).to.equal('Project:');
+  });
+
+  it('keeps dependency validation on grouped task actions', async () => {
+    const state = loadMarkdown('☐ Prerequisite @id(dep)\n☐ Ship @low @depends(dep)', {
+      'file.view.groupByTags': ['low'],
+    });
+    state.utils.file.open = async (_path, _preview, lineNr) => {
+      state.select(lineNr);
+      return state.editor;
+    };
+    const groups = await state.filesView.getChildren(root(state));
+    const tasks = await state.filesView.getChildren(groups[0]);
+    await state.commands.viewToggleDone(tasks[0]);
+    expect(state.document.lineAt(1).text).to.equal('☐ Ship @low @depends(dep)');
+    expect(state.messages[0]).to.include('unresolved dependencies');
+  });
+
+  it('keeps grouped actions on the source task and refuses stale rows', async () => {
+    for (const language of ['todo', 'markdown']) {
+      const state = loadMarkdown('☐ First\n☐ Target @low @id(target)', {
+        'file.view.groupByTags': ['low'],
+        'timekeeping.finished.enabled': false,
+      });
+      state.document.languageId = language;
+      state.utils.file.open = async (_path, _preview, lineNr) => {
+        state.select(lineNr);
+        return state.editor;
+      };
+      const groups = await state.filesView.getChildren(root(state));
+      const tasks = await state.filesView.getChildren(groups[0]);
+      await state.commands.viewToggleDone(tasks[0]);
+      expect(state.document.lineAt(0).text).to.equal('☐ First');
+      expect(state.document.lineAt(1).text).to.equal('✔ Target @low @id(target)');
+      state.setText('☐ First\n☐ Replacement @low');
+      await state.commands.viewToggleDone(tasks[0]);
+      expect(state.document.lineAt(1).text).to.equal('☐ Replacement @low');
+      expect(state.messages[state.messages.length - 1]).to.include('file changed');
     }
   });
 });
