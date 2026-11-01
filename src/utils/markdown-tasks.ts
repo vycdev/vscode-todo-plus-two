@@ -1,5 +1,5 @@
 import { splitLines } from './line-splitting';
-import { getMarkdownCommentRanges, maskMarkdownTaskText } from './markdown-task-text';
+import { findMarkdownTaskTag, getMarkdownCommentRanges } from './markdown-task-text';
 
 export interface MarkdownTaskOptions {
   scope?: 'all' | 'sections';
@@ -215,9 +215,8 @@ export const parseMarkdownTasks = (
     if (task) {
       const markerStart = raw.indexOf(task[2], task[1].length);
       const marker = task[2];
-      const masked = maskMarkdownTaskText(task[4]);
       const tagged = (name: string) =>
-        new RegExp(`(?:^|[^a-zA-Z0-9])@${name}(?:\\([^)]*\\)|(?![a-zA-Z0-9]))`).test(masked);
+        !!findMarkdownTaskTag(task[4], new RegExp(`@${name}(?:\\([^)]*\\)|(?![a-zA-Z0-9]))`));
       const status =
         tagged('cancelled') ||
         marker === '✘' ||

@@ -15,9 +15,10 @@ import {
   getMarkdownTaskCreation,
   replaceMarkdownTaskMarker,
 } from '../utils/markdown-tasks';
-import { removeTodoStatusTag } from '../utils/todo-status';
 import {
+  findMarkdownTaskTag,
   getMarkdownCommentRanges,
+  getMarkdownTaskTags,
   maskMarkdownTaskText,
   transformMarkdownTaskText,
 } from '../utils/markdown-task-text';
@@ -248,9 +249,11 @@ class Document {
       const line = this.textDocument.lineAt(node.lineNumber);
       if (Item === Tag) {
         if (node.kind !== 'todo') return;
+        const tagStarts = new Set(getMarkdownTaskTags(line.text).map((tag) => tag.start));
         stringMatches(maskMarkdownTaskText(line.text), regex).forEach((match) => {
-          const tag = new Item(this.textEditor, line, match);
           const range = Utils.regex.match2range(match);
+          if (!tagStarts.has(range.start)) return;
+          const tag = new Item(this.textEditor, line, match);
           tag._range = new vscode.Range(node.lineNumber, range.start, node.lineNumber, range.end);
           tag._pos = tag._range.start;
           tag.textDocument = this.textDocument;
@@ -264,18 +267,23 @@ class Document {
       item.markdownNode = node;
       item.level = node.level;
       if (todoType) {
-        item.getTimekeepingText = () => maskMarkdownTaskText(item.lineNextText);
+        item.getTimekeepingText = () =>
+          getMarkdownTaskTags(item.lineNextText)
+            .filter((tag) => /^@(?:started|toggle)\(/.test(tag.text))
+            .map((tag) => tag.text)
+            .join(' ');
         item.getTag = (pattern: RegExp) => {
-          pattern.lastIndex = 0;
-          const match = pattern.exec(maskMarkdownTaskText(item.lineNextText));
-          return match && item.lineNextText.slice(match.index, match.index + match[0].length);
+          const tag = findMarkdownTaskTag(item.lineNextText, pattern);
+          return tag && tag.text;
         };
         item.hasTag = (pattern: RegExp) => !!item.getTag(pattern);
         item.removeTag = (pattern: RegExp) => {
-          item.lineNextText = removeTodoStatusTag(
-            item.lineNextText,
-            pattern,
-            maskMarkdownTaskText
+          const tag = findMarkdownTaskTag(item.lineNextText, pattern);
+          if (!tag) return;
+          const start =
+            tag.start && /\s/.test(item.lineNextText[tag.start - 1]) ? tag.start - 1 : tag.start;
+          item.lineNextText = (
+            item.lineNextText.slice(0, start) + item.lineNextText.slice(tag.end)
           ).trimEnd();
         };
         item.unfinish = () => {
@@ -308,7 +316,7 @@ class Document {
           if (
             state === 'cancelled' &&
             node.style === 'checkbox' &&
-            !/@cancelled(?:\(|\b)/.test(maskMarkdownTaskText(item.lineNextText))
+            !findMarkdownTaskTag(item.lineNextText, /@cancelled(?:\(|\b)/)
           ) {
             item.addTag('@cancelled');
           }

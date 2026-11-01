@@ -61,22 +61,48 @@ export const getMarkdownCommentRanges = (text: string) => scanTaskText(text).com
 /** Keep original UTF-16 offsets while hiding escaped text, code and comments. */
 export const maskMarkdownTaskText = (text: string): string => scanTaskText(text).masked;
 
+/** Read outer tags once, leaving their arguments as literal, portable text. */
+export const getMarkdownTaskTags = (text: string) => {
+  const masked = maskMarkdownTaskText(text);
+  const pattern = /@[^\s*~(`]+(?:\([^\r\n)]*\))?/g;
+  const tags: Array<{ start: number; end: number; text: string }> = [];
+  let match: RegExpExecArray;
+  while ((match = pattern.exec(masked))) {
+    if (match.index && /[a-zA-Z0-9`]/.test(masked[match.index - 1])) continue;
+    const end = match.index + match[0].length;
+    tags.push({ start: match.index, end, text: text.slice(match.index, end) });
+  }
+  return tags;
+};
+
+export const findMarkdownTaskTag = (text: string, pattern: RegExp) => {
+  for (const tag of getMarkdownTaskTags(text)) {
+    pattern.lastIndex = 0;
+    const match = pattern.exec(` ${tag.text}`);
+    if (!match || match.index + match[0].indexOf('@') !== 1) continue;
+    const end = tag.start + match.index + match[0].length - 1;
+    return { start: tag.start, end, text: text.slice(tag.start, end) };
+  }
+};
+
 /** Transform task metadata without rewriting protected literal content. */
 export const transformMarkdownTaskText = (
   text: string,
   transform: (visible: string) => string
 ): string => {
-  let result = '';
-  let cursor = 0;
-  scanTaskText(text).protectedRanges.forEach(({ start, end }) => {
-    const original = text.slice(cursor, start);
-    const transformed = transform(original);
-    const whitespace = (original.match(/[ \t]+$/) || [''])[0];
-    result +=
-      transformed +
-      (transformed && !/[ \t]$/.test(transformed) ? whitespace : '') +
-      text.slice(start, end);
-    cursor = end;
-  });
-  return result + transform(text.slice(cursor));
+  let result = text;
+  getMarkdownTaskTags(text)
+    .reverse()
+    .forEach((tag) => {
+      const transformed = transform(` ${tag.text}`).trimStart();
+      const name = tag.text.match(/^@[^\s*~(`]+/)[0];
+      // A cleanup may match text inside an argument. Retain the entire original
+      // tag whenever its outer name survives the requested transformation.
+      if (transformed.startsWith(name)) return;
+      const start = tag.start && /[ \t]/.test(text[tag.start - 1]) ? tag.start - 1 : tag.start;
+      result = result.slice(0, start) + transformed + result.slice(tag.end);
+    });
+  const protectedRanges = scanTaskText(text).protectedRanges;
+  const last = protectedRanges[protectedRanges.length - 1];
+  return last && last.end === text.length ? result : result.trimEnd();
 };

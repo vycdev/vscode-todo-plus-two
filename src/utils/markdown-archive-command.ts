@@ -6,7 +6,7 @@ import Config from '../config';
 import Folder from './folder';
 import Editor from './editor';
 import Tags from './tags';
-import { maskMarkdownTaskText, transformMarkdownTaskText } from './markdown-task-text';
+import { findMarkdownTaskTag, transformMarkdownTaskText } from './markdown-task-text';
 import { archiveToFile } from './archive-storage';
 import { getMarkdownTaskOptions, getMarkdownTaskNodes } from './task-source';
 import {
@@ -43,7 +43,9 @@ export const archiveMarkdownTasks = async (
     });
     if (Config.getKey('archive.sortByDate')) {
       const date = (block) => {
-        const match = maskMarkdownTaskText(block.lines[0]).match(/@(?:done|cancelled)\(([^)]*)\)/);
+        const pattern = /@(?:done|cancelled)\(([^)]*)\)/;
+        const tag = findMarkdownTaskTag(block.lines[0], pattern);
+        const match = tag && tag.text.match(pattern);
         return match ? moment(match[1], Config.getKey('timekeeping.finished.format')).valueOf() : 0;
       };
       blocks.sort((left, right) => date(right) - date(left));
@@ -52,7 +54,13 @@ export const archiveMarkdownTasks = async (
   const fullRange = new Range(document.positionAt(0), document.positionAt(content.length));
   const type = Config.getKey('archive.type');
   if (restoring || type === 'InSameFile') {
-    const merged = insertMarkdownArchiveBlocks(source, blocks, options, !restoring);
+    const merged = insertMarkdownArchiveBlocks(
+      source,
+      blocks,
+      options,
+      !restoring,
+      content.includes('\r\n') ? '\r\n' : '\n'
+    );
     if (!(await Editor.edits.apply(editor, [TextEdit.replace(fullRange, merged)])))
       throw new Error('Unable to apply the Markdown archive edits');
   } else {

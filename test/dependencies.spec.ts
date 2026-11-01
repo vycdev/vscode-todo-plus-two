@@ -23,6 +23,12 @@ function target(id: string, text: string): DependencyTarget {
 }
 
 describe('Task dependencies', () => {
+  it('treats tag arguments as plaintext rather than additional reference tags', () => {
+    const text = '@note(@id(fake)) @note(@depends(missing)) @id(@done) @depends(@done)';
+    expect(getIds(text).map((reference) => reference.id)).to.deep.equal(['@done']);
+    expect(getDependencies(text).map((reference) => reference.id)).to.deep.equal(['@done']);
+  });
+
   function todoStatus(status: 'open' | 'done' | 'cancelled') {
     return {
       isDone: () => status === 'done',

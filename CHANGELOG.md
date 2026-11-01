@@ -15,6 +15,8 @@
 - Kept escaped Markdown tags literal during task actions and archive cleanup while preserving plain-text dependency IDs.
 - Ignored code fences opened directly after Markdown list markers and protected Setext heading titles and underlines from Toggle Box edits.
 - Preserved escaped punctuation in partially typed dependency completions and refreshed visible Markdown editors when parser settings change.
+- Rejected stale Markdown tree actions after a note is closed and reopened, and preserved CRLF line endings when archiving its entire contents.
+- Treated tag arguments as literal text so nested tag examples cannot finish tasks, create dependencies or due dates, control timers, or get removed by status changes.
 - Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
 
 ### Version 5.3.0

@@ -38,8 +38,17 @@ import {
 
 /* CALL TODOS METHOD */
 
-const isCurrentDocument = (document: vscode.TextDocument, version: number): boolean => {
-  if (!document.isClosed && document.version === version) return true;
+const isCurrentDocument = (
+  document: vscode.TextDocument,
+  version: number,
+  expectedDocument?: vscode.TextDocument
+): boolean => {
+  if (
+    !document.isClosed &&
+    document.version === version &&
+    (!expectedDocument || document === expectedDocument)
+  )
+    return true;
 
   vscode.window.showInformationMessage('The Todo file changed. Please run the command again.');
   return false;
@@ -834,7 +843,7 @@ async function viewCallTodosMethod(todo: ItemTodo, options?) {
   if (!textEditor) return;
   if (
     todo.obj.documentVersion !== undefined &&
-    !isCurrentDocument(textEditor.document, todo.obj.documentVersion)
+    !isCurrentDocument(textEditor.document, todo.obj.documentVersion, todo.obj.textEditor)
   )
     return;
 
@@ -867,7 +876,7 @@ async function viewToggleStart(todo: ItemTodo) {
   if (!textEditor) return;
   if (
     todo.obj.documentVersion !== undefined &&
-    !isCurrentDocument(textEditor.document, todo.obj.documentVersion)
+    !isCurrentDocument(textEditor.document, todo.obj.documentVersion, todo.obj.textEditor)
   )
     return;
 

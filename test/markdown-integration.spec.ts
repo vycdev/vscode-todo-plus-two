@@ -255,6 +255,101 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('preserves literal tag arguments during completion and archive cleanup', async () => {
+    const literal = '@id(@today) @note(@today)';
+    const state = loadMarkdown(`[ ] Work ${literal} @today`, {
+      'timekeeping.finished.enabled': false,
+      'archive.type': 'InSameFile',
+    });
+    state.select(0);
+    await state.commands.toggleDone();
+    expect(state.document.getText()).to.equal(`[x] Work ${literal}`);
+    state.setText(`[x] Work ${literal} @today`);
+    await state.commands.archive();
+    expect(state.document.getText()).to.include(`[x] Work ${literal}`);
+    expect(Object.keys((await state.dependencyIndex.get()).targets)).to.deep.equal(['@today']);
+  });
+
+  it('keeps tag-like text in arguments literal across status, dependencies, due dates and timers', async () => {
+    const original =
+      '[ ] Setup @id(@done) @note(@depends(missing)) @note(@due(2026-11-01)) @note(@started(2026-01-01 00:00))\n[ ] Ship @depends(@done)';
+    const state = loadMarkdown(original, { 'timekeeping.finished.enabled': false });
+    const doc = new state.Document(state.editor);
+    expect(doc.getTodosBox()).to.have.length(2);
+    expect(doc.getTodosDone()).to.have.length(0);
+    expect(doc.getTagsDue()).to.have.length(0);
+    expect(doc.getTodosBoxStarted()).to.have.length(0);
+    const index = await state.dependencyIndex.get();
+    expect(Object.keys(index.targets)).to.deep.equal(['@done']);
+    expect(Object.keys(index.dependencies)).to.deep.equal(['@done']);
+    state.utils.files.filesData = {
+      'notes.md': { textEditor: state.document, relativePath: 'notes.md' },
+    };
+    const due = await state.dueView.getChildren();
+    expect(due[0].label).to.include('No unfinished tasks');
+    state.select(1);
+    await state.commands.toggleDone();
+    expect(state.document.getText()).to.equal(original);
+    state.select(0);
+    await state.commands.toggleDone();
+    expect(state.document.lineAt(0).text).to.equal(original.split('\n')[0].replace('[ ]', '[x]'));
+    state.select(1);
+    await state.commands.toggleDone();
+    expect(state.document.lineAt(1).text).to.equal('[x] Ship @depends(@done)');
+    state.select(0);
+    await state.commands.toggleDone();
+    expect(state.document.lineAt(0).text).to.equal(original.split('\n')[0]);
+  });
+
+  it('ignores timer controls written inside another tag argument', () => {
+    const state = loadMarkdown(
+      '[ ] Work @started(2026-01-01 00:00) @note(@toggle(2026-01-01 01:00))'
+    );
+    const todo = new state.Document(state.editor).getTodosBoxStarted()[0];
+    const timer = getTimerState(
+      todo.getTimekeepingText(),
+      'YYYY-MM-DD HH:mm',
+      new Date(2026, 0, 1, 2, 0)
+    );
+    expect(timer.active).to.equal(true);
+    expect(timer.elapsedMilliseconds).to.equal(2 * 60 * 60 * 1000);
+  });
+
+  it('keeps CRLF line endings when every source line is archived in place', async () => {
+    const state = loadMarkdown('[x] Done\r\n', { 'archive.type': 'InSameFile' });
+    await state.commands.archive();
+    const archived = state.document.getText();
+    expect(archived).to.include('# Archive\r\n');
+    expect(archived.replace(/\r\n/g, '')).not.to.include('\n');
+    const todo = new state.Document(state.editor).getTodosDone()[0];
+    state.select(todo.lineNumber);
+    await state.commands.unarchive();
+    expect(state.document.getText().replace(/\r\n/g, '')).not.to.include('\n');
+    expect(new state.Document(state.editor).getTodosDone()[0].markdownNode.inArchive).to.equal(
+      false
+    );
+  });
+
+  it('refuses old tree rows when a note is reopened at the same document version', async () => {
+    for (const action of ['viewToggleDone', 'viewToggleStart']) {
+      const state = loadMarkdown('[ ] Original', { 'timekeeping.autoToggle': false });
+      const items = await state.filesView.getChildren({
+        obj: { filePath: state.document.uri.fsPath, textEditor: state.document },
+      });
+      const originalVersion = state.document.version;
+      state.setText('[ ] Replacement');
+      state.document.isClosed = true;
+      state.editor.document = {
+        ...state.document,
+        isClosed: false,
+        version: originalVersion,
+      };
+      await state.commands[action](items[0]);
+      expect(state.editor.document.getText(), action).to.equal('[ ] Replacement');
+      expect(state.messages[0], action).to.include('file changed');
+    }
+  });
+
   it('completes partially typed dependency IDs without changing escaped punctuation', async () => {
     const id = String.raw`path\*glob`;
     for (const prefix of [String.raw`path\*`, String.raw`path\*g`]) {

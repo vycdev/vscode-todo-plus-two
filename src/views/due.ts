@@ -10,7 +10,7 @@ import Placeholder from './items/placeholder';
 import Todo from './items/todo';
 import View from './view';
 import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
-import { maskMarkdownTaskText } from '../utils/markdown-task-text';
+import { getMarkdownTaskTags } from '../utils/markdown-task-text';
 
 class DueView extends View {
   id = 'todo.views.3due';
@@ -77,7 +77,12 @@ class DueView extends View {
                 candidate.status === 'box' &&
                 !candidate.inArchive
             );
-            return node ? `☐ ${maskMarkdownTaskText(node.title)}` : '';
+            return node
+              ? `☐ ${getMarkdownTaskTags(node.title)
+                  .filter((tag) => /^@due\(/i.test(tag.text))
+                  .map((tag) => tag.text)
+                  .join(' ')}`
+              : '';
           })
         : lines;
       getDueTaskLines(
@@ -96,9 +101,9 @@ class DueView extends View {
             textEditor: data.textEditor,
             documentVersion: markdownNodes ? data.textEditor.version : undefined,
           },
-          todo = new Todo(obj, _.trimStart(task.text));
+          todo = new Todo(obj, _.trimStart(markdownNodes ? line.text : task.text));
 
-        todo.tooltip = `${task.text}\n${data.relativePath}`;
+        todo.tooltip = `${markdownNodes ? line.text : task.text}\n${data.relativePath}`;
 
         if (!groups[task.dateKey]) groups[task.dateKey] = { date: task.date, todos: [] };
         groups[task.dateKey].todos.push(todo);
