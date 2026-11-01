@@ -31,6 +31,7 @@ const withDecorator = (run) => {
   }
   NodeModule._load = (request, parent, isMain) => {
     if (request === 'vscode') return { window };
+    if (request === './incremental-document') return { hasMultilineTag: () => false };
     if (request === '../../config')
       return {
         default: {
@@ -101,9 +102,9 @@ describe('Document decoration refresh', () => {
     withDecorator(({ decorator, editor, setText, timerDocuments }) => {
       decorator.update(editor);
       setText('task @est(20m)');
-      decorator.updateLines(editor, [0]);
+      decorator.updateLines(editor, []);
       expect(timerDocuments).to.have.length(2);
-      decorator.updateLines(editor, [0]);
+      decorator.updateLines(editor, []);
       expect(timerDocuments).to.have.length(2);
     });
   });

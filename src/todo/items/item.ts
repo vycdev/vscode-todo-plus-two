@@ -81,6 +81,15 @@ class Item {
     this.match = match;
   }
 
+  /* POSITION */
+
+  // Cached matches keep their captured text; editor coordinates follow line edits.
+  rebase(lineNumber: number, character = this.range.start.character, line?: vscode.TextLine) {
+    this._pos = new vscode.Position(lineNumber, character);
+    this._range = undefined;
+    this._line = line;
+  }
+
   /* IS */
 
   static is(str: string, regex: RegExp) {
