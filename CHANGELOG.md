@@ -183,6 +183,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 - Kept scanning accessible workspace roots for Todo files and embedded todos when another path cannot be read. [#9](https://github.com/vycdev/vscode-todo-plus-two/issues/9)
 - Fixed Todo wrapper lookup and file grouping so similarly prefixed sibling folders are not treated as part of a workspace root.
 - Fixed workspace root matching when Windows or macOS path casing differs.
+- Fixed root grouping for workspace folder paths with a trailing separator, including the workspace folder itself.
 - Fixed Todo file grouping so same-named roots in multi-root workspaces remain separate in the files view.
 - Guarded embedded and Todo-file batch settings against zero, negative, fractional, and non-finite values that could stall scanning or produce invalid batches.
 - Fixed fulfilled promise batches so errors in optional rejection observers do not discard successful results.

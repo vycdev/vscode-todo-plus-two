@@ -82,6 +82,19 @@ describe('Workspace file excludes', () => {
     expect(rootsRe!.exec('/workspace/TODO')![1]).to.equal('/workspace');
   });
 
+  it('normalizes trailing separators when matching workspace roots', () => {
+    const matcher = getRootPathsRegExp(['/workspace/', '/workspace/packages/']);
+
+    expect(matcher!.exec('/workspace')![1]).to.equal('/workspace');
+    expect(matcher!.exec('/workspace/packages/TODO')![1]).to.equal('/workspace/packages');
+    expect(matcher!.exec('/workspace-other/TODO')).to.equal(null);
+    expect(getRootPathsRegExp(['/'], 'linux')!.exec('/TODO')![1]).to.equal('/');
+    expect(getRootPathsRegExp(['C:\\workspace\\'], 'win32')!.exec('C:/workspace')![1]).to.equal(
+      'C:/workspace'
+    );
+    expect(getRootPathsRegExp(['C:\\'], 'win32')!.exec('C:/TODO')![1]).to.equal('C:/');
+  });
+
   it('matches Windows workspace roots across path separators', () => {
     const backslashRootRe = getRootPathsRegExp(['C:\\workspace']);
     const slashRootRe = getRootPathsRegExp(['C:/workspace']);

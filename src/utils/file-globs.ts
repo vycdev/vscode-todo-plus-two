@@ -38,7 +38,12 @@ export const getRootPathsRegExp = (
     .slice()
     .sort((a, b) => b.length - a.length)
     .map((rootPath) => {
-      const normalizedRootPath = rootPath.replace(/\\/g, '/');
+      const slashedRoot = rootPath.replace(/\\/g, '/');
+      const withoutTrailingSlash = slashedRoot.replace(/\/+$/, '');
+      const normalizedRootPath =
+        !withoutTrailingSlash || /^[A-Za-z]:$/.test(withoutTrailingSlash)
+          ? `${withoutTrailingSlash}/`
+          : withoutTrailingSlash;
       const pattern = escapeRegExp(normalizedRootPath).replace(/\//g, '(?:\\\\|/)');
 
       return /\/$/.test(normalizedRootPath) ? pattern : `${pattern}(?=$|[\\\\/])`;
