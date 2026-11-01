@@ -546,6 +546,7 @@ describe('Markdown task integration', () => {
     }
   });
 
+  // Five isolated editor/module fixtures include cold TypeScript compilation.
   it('completes partially typed dependency IDs without changing escaped punctuation', async () => {
     const id = String.raw`path\*glob`;
     for (const prefix of [String.raw`path\*`, String.raw`path\*g`]) {
@@ -579,7 +580,7 @@ describe('Markdown task integration', () => {
         })
       ).to.equal(null);
     }
-  });
+  }).timeout(10000);
 
   it('leaves list-fenced examples unchanged through task commands', async () => {
     const original = '- ```markdown\n  [ ] Example\n  ```\n- [ ] Real';

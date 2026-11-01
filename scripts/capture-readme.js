@@ -1,4 +1,4 @@
-// Run on a desktop: npm run compile && node scripts/capture-readme.js
+// Run on a desktop: pnpm run compile && node scripts/capture-readme.js
 const fs = require('fs');
 const os = require('os');
 const path = require('path');

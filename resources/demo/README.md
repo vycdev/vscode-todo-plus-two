@@ -12,11 +12,13 @@ unnecessary empty space. No task labels, decorations, or controls were composite
 
 ## Reproduce
 
-On a Mac desktop with Node.js 22+ and Swift available:
+On a Mac desktop with Node.js 22.12+ on 22.x or Node.js 24, pnpm 10.33.4,
+and Swift available:
 
 ```sh
-npm ci
-npm run compile
+corepack enable pnpm
+pnpm install --frozen-lockfile
+pnpm run compile
 # Optional: reuse an installed, current VS Code instead of downloading stable.
 export VSCODE_EXECUTABLE_PATH='/Applications/Visual Studio Code.app/Contents/MacOS/Code'
 export TODO_SCREENSHOT_DIR='/absolute/path/to/captures'
