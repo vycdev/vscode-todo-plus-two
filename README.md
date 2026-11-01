@@ -18,6 +18,7 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Custom special tags**: special tags' names and their colors can be customized
 - **Archive**: you can move finished todos to a special "Archive" section with a shortcut
 - **Formatting**: you can format text in a markdown-like fashion, we support: **bold**, _italic_, ~~strikethrough~~ and `code`
+- **Image attachments**: paste PNG/JPEG images into saved Todo files on VS Code 1.97 or newer. Images are saved beside the Todo file and inserted as clickable relative file links.
 - **Go To Symbol**: you can easily move between projects by using the `Go to Symbol in File...` command
 - **Timekeeping**: you can mark todos as started and track elapsed time until completion
 - **Timer**: a timer can be displayed in the statusbar for started todos
@@ -45,6 +46,8 @@ It adds the following commonly used commands to the command palette:
 ```js
 'Todo: Open'; // Open or create your project's todo file
 'Todo: Open Embedded'; // Open embedded todos
+'Todo: Focus on Tag…'; // Keep matching tasks and their parent context visible in the editor
+'Todo: Clear Focus'; // Unfold the active file and restore normal project/region folding
 'Todo: Toggle Box'; // Toggle todo's box symbol
 'Todo: Toggle Done'; // Toggle todo's done symbol
 'Todo: Toggle Cancelled'; // Toggle todo's cancelled symbol
@@ -129,6 +132,33 @@ Press Enter at the end of a plain numbered item such as `1. First item` to inser
 Numbering preserves the current item's number, indentation, and spacing after the dot. It updates only consecutive numbered lines with the same indentation, stopping at blank lines, headings, other text, or indentation changes. Enter on an empty item removes its marker. Use one cursor at the end of an item; other cursor positions, selections, and multiple cursors keep normal Enter behavior.
 
 These numbered entries remain notes rather than checkbox todos. Configured Todo symbols take precedence: numbering falls back to normal Enter if it would create a Todo using one of those symbols. Use the usual Todo symbols for status, statistics, dependencies, and archiving. Numbering is updated only by Enter, not on open, save, deletion, paste, or reordering. Markdown-language documents and nested list numbering are outside this feature's scope.
+
+### Folding regions
+
+Use standalone `@region` and `@endregion` lines to make a section foldable, even when its contents are not indented:
+
+```todo
+@region
+Release:
+  ☐ Prepare the release
+  @region
+  ☐ Check the changelog
+  ☐ Review the documentation
+  @endregion
+@endregion
+```
+
+Regions can be nested. The opening `@region` line stays visible when folded; the contents and closing `@endregion` line are hidden. Use the editor's folding controls or **Fold All Regions** / **Unfold All Regions** commands. Regions are available with both `auto` and `indentation` editor folding strategies.
+
+Markers must appear alone on their lines, with optional surrounding whitespace. Unmatched markers are ignored by the Todo folding provider. Project folds remain available inside and around regions; if their ranges cross, the explicit region takes precedence. Adding a region does not automatically collapse it on open.
+
+### Focus on a tag
+
+Run **Todo: Focus on Tag…** to pick a tag used on tasks in the active Todo file. The editor keeps matching tasks and their project/parent-task context visible, folding all other lines. Tag names match exactly and case-insensitively: `@critical` includes `@CRITICAL` and `@critical(reason)`, but not `@criticality`. Inline and fenced code examples are ignored. Tags on projects or parent tasks are not inherited by their children.
+
+On first use, the command inserts a single `(folded)` line at the top of the document to anchor the leading fold. This is a normal, undoable text edit and the header remains when you save or clear focus. An existing standalone `@region` on the first line can serve as the header instead. Further uses reuse the header.
+
+Focus refreshes after edits, changes to the editor's indentation settings, and when you return to the file. Undoing or removing the header disables focus. If edits remove all matches, everything below the header is collapsed. Use **Todo: Clear Focus** to unfold the document and restore ordinary project and region folding; previous manual fold states are not restored. Focus is per document for the current session and requires `editor.folding` to be enabled with `editor.foldingStrategy` set to `auto`.
 
 ### Task priorities
 
@@ -302,7 +332,7 @@ Relative entries remain workspace globs. Absolute entries name individual files,
   "todo.statistics.statusbar.priority": -1, // The priority of this item. Higher value means the item should be shown more to the left
   "todo.statistics.statusbar.text": "$(check) [finished]/[all] ([percentage]%)", // Template used for rendering the text
   "todo.statistics.statusbar.tooltip": "[pending] Pending - [done] Done - [cancelled] Cancelled", // Template used for rendering the tooltip
-  "todo.embedded.regex": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *\\{%-? *endcomment *-?%\\}| *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|((?: +[^\\n@]*?)(?= *(?:\\{%-? *endcomment *-?%\\}|-->|\\*/|!}|--}}|}}|[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))", // Regex used for finding embedded todos, requires double escaping
+  "todo.embedded.regex": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *\\{%-? *endcomment *-?%\\}| *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|((?: (?:[^ \\n@]| +(?! ))*?)(?= *(?:\\{%-? *endcomment *-?%\\}|-->|\\*/|!}|--}}|}}|[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))", // Regex used for finding embedded todos, requires double escaping
   "todo.embedded.regexFlags": "gi", // Regex flags to use
   "todo.embedded.problems": {"TODO": "warning", "FIXME": "error"}, // Map embedded markers to Problems view severities (disabled by default)
   "todo.embedded.include": ["**/*"], // Globs to use for including files
@@ -334,6 +364,8 @@ Symbols, colors, view settings, and embedded provider settings refresh when chan
 Statistics visibility conditions read `global` and `project` tokens, such as `global.all > 0 && project.pending > 0`. They support numeric/string/boolean literals, comparisons, arithmetic, logical operators, parentheses, and ternary expressions. Use bracket notation for hyphenated names, such as `project['est-total']`. Function calls, assignments, and arbitrary JavaScript execution are not supported; unsupported conditions evaluate to false.
 
 An actual regex will be generated from the value of the `todo.embedded.regex` setting. It uses 2 capturing groups, the first one captures the type of the todo (`TODO`, `FIXME` etc.) and the second one captures an optional description (`TODO: description`).
+
+The default description pattern consumes each run of spaces as a whole, preventing excessive backtracking on long whitespace before a message or comment terminator. If you copied an older default into `todo.embedded.regex`, reset that setting to use the updated default.
 
 To recognize a custom marker containing a hyphen, such as `// QUE-ES: investigate this`, keep the comment prefix outside the first capture and capture the entire marker name:
 
@@ -440,7 +472,19 @@ These actions work with Todo files and supported Markdown tasks, including tasks
 
 ![Timekeeping & Timer](resources/demo/timer.gif)
 
+## Image attachments
+
+On VS Code 1.97 or newer, copy a screenshot or PNG/JPEG image and paste it into a saved file using the **Todo** language mode. The image is saved with a unique filename in `<Todo filename>.assets` beside the Todo file. For example, pasting into `tasks.todo` inserts `<file://./tasks.todo.assets/image-<id>.png>`. Angle brackets keep the link clickable when pasted next to existing text. Ctrl/Cmd-click the link to open the image in VS Code.
+
+If the clipboard also contains non-empty text, normal text paste takes precedence. Use **Paste As...** and select **Paste Image Attachment** to insert the image instead. Multiple images produce space-separated links; pasting at multiple cursors inserts the same links at each cursor. Save an untitled file before pasting an image. This feature requires a local filesystem document; older VS Code versions retain their existing paste behavior.
+
+Image creation and link insertion use VS Code's paste edit so they participate in undo/redo together. Existing images are never overwritten, and a failed image write keeps selected text intact. Attachments stay in their original assets folder when archiving; links are updated when tasks move into a workspace-root archive. Keep the Todo file and its assets folder together when moving or sharing them manually, and keep original assets folders when sharing archives. Symlinked destinations require `todo.followSymlinks` to be enabled.
+
+Todo files display attachment links as text. The HTML and Markdown export commands currently export these links as text as well.
+
 ## Hints
+
+- **Large Todo files**: edits reuse parsing and highlighting for unchanged lines and statistics for unaffected projects. Configuration changes, reopening editors, and date rollover rebuild the caches. Fenced code notes, unfinished or multiline tag arguments, and incomplete task markers use a full refresh. VS Code still requires complete range lists for each decoration style that changes, so very large edits can require more work.
 
 - **Dark/Light Themes**: if you switch between dark and light themes, remember that you can provide specific colors for them via the `todo.colors.dark.*` and `todo.colors.light.*` settings, which will override the default `todo.colors.*` settings.
 

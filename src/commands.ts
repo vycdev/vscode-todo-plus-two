@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import type { TextDocument, TextEditor } from 'vscode';
 import Config from './config';
 import Consts from './consts';
+import { tagFocus } from './tag_focus';
 import Document from './todo/document';
 import ItemFile from './views/items/item';
 import ItemTodo from './views/items/todo';
@@ -44,6 +45,9 @@ import {
   normalizeId,
   willFinishTodo,
 } from './utils/dependencies';
+
+export const focusTag = (tag?: string): Promise<void> => tagFocus.focus(tag);
+export const clearFocus = (): Promise<void> => tagFocus.clear();
 
 /* CALL TODOS METHOD */
 

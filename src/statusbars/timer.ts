@@ -75,10 +75,10 @@ class Timer {
     return true;
   }
 
-  update(doc?: Document) {
+  update(doc?: Document, startedTodos?: ReturnType<Document['getTodosBoxStarted']>) {
     this._updateLayout();
     this.config = Config.get();
-    this.updateData(doc);
+    this.updateData(doc, startedTodos);
     this.updateVisibility();
     this.updateTimer();
 
@@ -90,12 +90,12 @@ class Timer {
     this.updateText();
   }
 
-  updateData(doc?: Document) {
+  updateData(doc?: Document, startedTodos?: ReturnType<Document['getTodosBoxStarted']>) {
     const startedFormat = this.config.timekeeping.started.format,
       timestampOffset = startedFormat.indexOf('s') >= 0 ? 0 : Date.now() % 60000,
       todo =
         doc &&
-        doc.getTodosBoxStarted().find((candidate) => {
+        (startedTodos || doc.getTodosBoxStarted()).find((candidate) => {
           const state = getTimerState(
             candidate.getTimekeepingText ? candidate.getTimekeepingText() : candidate.text,
             startedFormat,
