@@ -7,7 +7,7 @@ import Config from '../../../config';
 import EmbeddedView from '../../../views/embedded';
 import Folder from '../../folder';
 import Consts from '../../../consts';
-import { hasConditionalExcludeGlobs, isFileIncluded } from '../../file-globs';
+import { getFilePathKey, hasConditionalExcludeGlobs, isFileIncluded } from '../../file-globs';
 import { getWorkspaceExcludeRules } from '../../workspace-excludes';
 import { getFollowingContext } from '../context';
 import { updateEmbeddedDocumentCache } from '../document-cache';
@@ -32,8 +32,11 @@ class Abstract {
   nonEmptyFiles: Set<string> = new Set(); // Tracks only files with at least one embedded todo
   watchers: vscode.FileSystemWatcher[] = [];
   private watcherCleanup: (() => void)[] = [];
-  private watcherGeneration = 0;
+  protected watcherGeneration = 0;
   private workspacePaths: ReturnType<typeof createWorkspacePathResolver>;
+  private workspaceInvalidated = false;
+  private indexedFilesData;
+  private cachedFilePaths = new Map<string, string>();
   onDidChangeDataEvent = new vscode.EventEmitter<string | undefined>();
   onDidChangeData = this.onDidChangeDataEvent.event;
 
@@ -64,6 +67,10 @@ class Abstract {
 
     rootPaths = _.castArray(rootPaths);
 
+    if (this.workspacePaths && _.isEqual(this.workspacePaths.rootPaths, rootPaths)) {
+      this.refreshWorkspacePaths();
+    }
+
     const config = Config.get();
 
     this.include = config.embedded.include;
@@ -83,6 +90,8 @@ class Abstract {
     ) {
       this.rootPaths = rootPaths;
       this.unwatchPaths();
+      this.workspaceInvalidated = false;
+      this.getWorkspacePaths();
       const generation = this.watcherGeneration;
       this.nonEmptyFiles = new Set();
       await vscode.window.withProgress(
@@ -112,6 +121,8 @@ class Abstract {
 
       if (this.disposed) return;
     }
+
+    if (this.refreshWorkspacePaths()) return;
 
     return this.getTodos(groupByRoot, groupByType, groupByFile, filter, onlyActiveFile);
   }
@@ -153,10 +164,10 @@ class Abstract {
             return;
 
           if (update) {
-            this.filesData[filePath] = undefined;
+            this.setFileData(filePath, undefined);
             await this.updateFilesData();
           } else {
-            delete this.filesData[filePath];
+            this.deleteFileData(filePath);
             this.nonEmptyFiles.delete(filePath);
           }
 
@@ -176,14 +187,26 @@ class Abstract {
     };
 
     const add = (event) => {
-      if (!this.filesData) return;
+      if (
+        this.disposed ||
+        !this.filesData ||
+        this.refreshWorkspacePaths() ||
+        this.workspaceInvalidated
+      )
+        return;
       const filePath = pathNormalizer(event.fsPath);
       if (!this.isIncluded(filePath)) return;
       queueFileChange(filePath, true);
     };
 
     const change = (event) => {
-      if (!this.filesData) return;
+      if (
+        this.disposed ||
+        !this.filesData ||
+        this.refreshWorkspacePaths() ||
+        this.workspaceInvalidated
+      )
+        return;
       const filePath = pathNormalizer(event.fsPath);
       if (!this.isIncluded(filePath)) {
         queueFileChange(filePath, false);
@@ -194,7 +217,13 @@ class Abstract {
     };
 
     const unlink = (event) => {
-      if (!this.filesData) return;
+      if (
+        this.disposed ||
+        !this.filesData ||
+        this.refreshWorkspacePaths() ||
+        this.workspaceInvalidated
+      )
+        return;
       const filePath = pathNormalizer(event.fsPath);
       queueFileChange(filePath, false);
     };
@@ -263,13 +292,55 @@ class Abstract {
 
   getCachedFilePath(filePath: string) {
     const paths = this.getWorkspacePaths();
-    const key = paths.getKey(filePath);
+    if (this.indexedFilesData !== this.filesData) {
+      this.cachedFilePaths.clear();
+      Object.keys(this.filesData || {}).forEach((cached) =>
+        this.cachedFilePaths.set(getFilePathKey(cached), cached)
+      );
+      this.indexedFilesData = this.filesData;
+    }
 
-    return (
-      Object.keys(this.filesData || {}).find((cached) => paths.getKey(cached) === key) ||
-      paths.getWorkspacePaths(filePath).find((candidate) => this.isIncluded(candidate)) ||
-      filePath
-    );
+    const candidates = paths.getWorkspacePaths(filePath);
+    const cached = [filePath, ...candidates]
+      .map((candidate) => this.cachedFilePaths.get(getFilePathKey(candidate)))
+      .find((candidate) => candidate !== undefined);
+
+    return cached || candidates.find((candidate) => this.isIncluded(candidate)) || filePath;
+  }
+
+  protected setFileData(filePath: string, data) {
+    this.filesData[filePath] = data;
+    if (this.indexedFilesData === this.filesData) {
+      this.cachedFilePaths.set(getFilePathKey(filePath), filePath);
+    }
+  }
+
+  protected deleteFileData(filePath: string) {
+    delete this.filesData[filePath];
+    if (this.indexedFilesData === this.filesData) {
+      this.cachedFilePaths.delete(getFilePathKey(filePath));
+    }
+  }
+
+  protected updateDocumentCache(filePath: string, data: any[]): boolean {
+    const changed = updateEmbeddedDocumentCache(this.filesData, this.nonEmptyFiles, filePath, data);
+    if (changed && this.indexedFilesData === this.filesData) {
+      if (data.length) this.cachedFilePaths.set(getFilePathKey(filePath), filePath);
+      else this.cachedFilePaths.delete(getFilePathKey(filePath));
+    }
+    return changed;
+  }
+
+  private refreshWorkspacePaths(): boolean {
+    if (!this.workspacePaths || !this.workspacePaths.refresh()) return false;
+
+    this.workspaceInvalidated = true;
+    this.unwatchPaths();
+    this.filesData = {};
+    this.nonEmptyFiles.clear();
+    this.onDidChangeDataEvent.fire(undefined);
+    EmbeddedView.refresh();
+    return true;
   }
 
   private getWorkspacePaths() {
@@ -356,7 +427,14 @@ class Abstract {
   }
 
   updateDocumentData(textDocument: vscode.TextDocument) {
-    if (this.disposed || !this.filesData || textDocument.uri.scheme !== 'file') return;
+    if (
+      this.disposed ||
+      !this.filesData ||
+      textDocument.uri.scheme !== 'file' ||
+      this.refreshWorkspacePaths() ||
+      this.workspaceInvalidated
+    )
+      return;
 
     const filePath = this.getCachedFilePath(textDocument.uri.fsPath);
 
@@ -366,7 +444,7 @@ class Abstract {
 
     this.fileDataRevisions[filePath] = (this.fileDataRevisions[filePath] || 0) + 1;
 
-    if (!updateEmbeddedDocumentCache(this.filesData, this.nonEmptyFiles, filePath, data)) return;
+    if (!this.updateDocumentCache(filePath, data)) return;
 
     this.onDidChangeDataEvent.fire(filePath);
 
@@ -385,12 +463,7 @@ class Abstract {
     filePaths.forEach((filePath) => {
       const document = this.getOpenDocument(filePath);
       if (!document) return;
-      updateEmbeddedDocumentCache(
-        this.filesData,
-        this.nonEmptyFiles,
-        filePath,
-        this.parseContent(filePath, document.getText())
-      );
+      this.updateDocumentCache(filePath, this.parseContent(filePath, document.getText()));
     });
   }
 

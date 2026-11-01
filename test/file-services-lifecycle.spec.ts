@@ -92,7 +92,9 @@ describe('Embedded workspace path aliases', () => {
       embedded: { include: ['**/*.html'], exclude: ['**/ignored/**'], batchSize: 50 },
     };
     let content = '<html>No markers</html>';
-    let changed: (event: { fsPath: string }) => void;
+    const events: { [name: string]: (event: { fsPath: string }) => void } = {};
+    const dataChanges: (string | undefined)[] = [];
+    let refreshes = 0;
     const document = {
       uri: { scheme: 'file', fsPath: path.join(workspace, 'index.html') },
       getText: () => content,
@@ -101,16 +103,18 @@ describe('Embedded workspace path aliases', () => {
       vscode: {
         EventEmitter: class {
           event = () => ({ dispose() {} });
-          fire() {}
+          fire(filePath?: string) {
+            dataChanges.push(filePath);
+          }
           dispose() {}
         },
         ProgressLocation: { Window: 1 },
         workspace: {
           textDocuments: [document],
           createFileSystemWatcher: () => ({
-            onDidCreate() {},
-            onDidChange: (listener) => (changed = listener),
-            onDidDelete() {},
+            onDidCreate: (listener) => (events.create = listener),
+            onDidChange: (listener) => (events.change = listener),
+            onDidDelete: (listener) => (events.delete = listener),
             dispose() {},
           }),
         },
@@ -135,7 +139,7 @@ describe('Embedded workspace path aliases', () => {
           },
         },
       },
-      '../../../views/embedded': { default: { refresh() {}, refreshFile() {} } },
+      '../../../views/embedded': { default: { refresh: () => refreshes++, refreshFile() {} } },
       '../../workspace-excludes': { getWorkspaceExcludeRules: () => ({}) },
       '../../folder': {
         default: {
@@ -155,16 +159,75 @@ describe('Embedded workspace path aliases', () => {
       './abstract': { default: Abstract },
     });
     provider = new Provider();
-    if (name === 'ag') provider.getAckmate = async () => [];
+    if (name === 'ag') {
+      provider.getAckmate = async (filePaths) =>
+        filePaths.flatMap((filePath) => {
+          if (!fs.existsSync(filePath)) return [];
+          return fs
+            .readFileSync(filePath, 'utf8')
+            .split(/\r?\n/)
+            .map((line, lineNr) => ({ filePath, line, lineNr }));
+        });
+    }
 
     return {
       document,
       setContent: (value: string) => (content = value),
-      changeOnDisk: () => changed({ fsPath: document.uri.fsPath }),
+      changeOnDisk: () => events.change({ fsPath: document.uri.fsPath }),
+      notify: (event: string, filePath: string) => events[event]({ fsPath: filePath }),
+      dataChanges,
+      refreshes: () => refreshes,
     };
   };
 
+  const getCachedTodos = (): { message: string }[] =>
+    Object.keys(provider.filesData).reduce(
+      (todos, filePath) => todos.concat(provider.filesData[filePath] || []),
+      []
+    );
+
   ['js', 'ag'].forEach((name) => {
+    it(`rescans the ${name} provider after a workspace alias changes targets`, async () => {
+      fs.writeFileSync(path.join(workspace, 'index.html'), '<!--TODO First root-->');
+      const { document, setContent, dataChanges, refreshes } = setup(name);
+      setContent('<!--TODO First root-->');
+      await provider.get();
+      retargetAlias();
+
+      setContent('<!--TODO Unsaved from the previous root-->');
+      expect(provider.updateDocumentData(document)).to.equal(undefined);
+      expect(Object.keys(provider.filesData)).to.deep.equal([]);
+      expect(provider.nonEmptyFiles.size).to.equal(0);
+      expect(dataChanges).to.include(undefined);
+      expect(refreshes()).to.equal(1);
+
+      await provider.get();
+      const data = getCachedTodos();
+      expect(data.map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+    });
+
+    it(`keeps the ${name} path index current across watcher additions and deletions`, async () => {
+      const { document, setContent, notify } = setup(name);
+      await provider.get();
+      provider.getCachedFilePath(document.uri.fsPath);
+
+      const filePath = path.join(workspace, 'created.html');
+      fs.writeFileSync(filePath, '<!--TODO Created-->');
+      document.uri.fsPath = filePath;
+      setContent('<!--TODO Created-->');
+      notify('create', filePath);
+      await provider.dataRefreshQueue;
+      expect(getCachedTodos()).to.have.length(1);
+      const cached = Object.keys(provider.filesData)[0];
+      expect(provider.getCachedFilePath(filePath)).to.equal(cached);
+
+      fs.unlinkSync(filePath);
+      notify('delete', filePath);
+      await provider.dataRefreshQueue;
+      expect(Object.keys(provider.filesData)).to.deep.equal([]);
+      expect(provider.nonEmptyFiles.size).to.equal(0);
+    });
+
     it(`reads unsaved HTML before the initial ${name} scan through a workspace alias`, async () => {
       const { setContent } = setup(name);
       setContent('<!--TODO Use grid style-->');
@@ -201,6 +264,127 @@ describe('Embedded workspace path aliases', () => {
       expect(Object.keys(provider.filesData)).to.deep.equal([]);
       expect(provider.nonEmptyFiles.size).to.equal(0);
     });
+  });
+
+  const retargetAlias = () => {
+    const other = path.join(fixture, 'other', 'workspace');
+    fs.mkdirSync(other, { recursive: true });
+    fs.writeFileSync(path.join(other, 'index.html'), '<!--TODO Second root-->');
+    fs.unlinkSync(path.dirname(alias));
+    fs.symlinkSync(
+      path.dirname(other),
+      path.dirname(alias),
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+  };
+
+  it('detects a changed alias target when requesting cached results', async () => {
+    fs.writeFileSync(path.join(workspace, 'index.html'), '<!--TODO First root-->');
+    setup('js');
+    await provider.get();
+    retargetAlias();
+
+    await provider.get();
+    const data = getCachedTodos();
+    expect(data.map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+  });
+
+  it('rescans an initially empty workspace when its alias changes targets', async () => {
+    fs.unlinkSync(path.join(workspace, 'index.html'));
+    setup('js');
+    await provider.get();
+    expect(Object.keys(provider.filesData)).to.deep.equal([]);
+    retargetAlias();
+
+    await provider.get();
+    expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+  });
+
+  it('discards a pending JavaScript read from the previous alias target', async () => {
+    const { document, setContent } = setup('js');
+    let release: () => void;
+    let started: () => void;
+    const pendingRead = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const reading = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const read = provider.getFileData.bind(provider);
+    let first = true;
+    provider.getFileData = async (filePath) => {
+      const data = await read(filePath);
+      if (first) {
+        first = false;
+        started();
+        await pendingRead;
+      }
+      return data;
+    };
+    setContent('<!--TODO Previous target-->');
+    const pending = provider.get();
+    await reading;
+    retargetAlias();
+    setContent('<!--TODO Edited after retargeting-->');
+    provider.updateDocumentData(document);
+    release();
+    await pending;
+    expect(Object.keys(provider.filesData)).to.deep.equal([]);
+
+    await provider.get();
+    const data = getCachedTodos();
+    expect(data.map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+  });
+
+  it('discards pending external search results after a watcher detects a new alias target', async () => {
+    const { document, notify } = setup('ag');
+    await provider.get();
+    let release: () => void;
+    let started: () => void;
+    const pendingSearch = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const searching = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    provider.getAckmate = async (filePaths) => {
+      started();
+      await pendingSearch;
+      return [{ filePath: filePaths[0], line: '<!--TODO Previous target-->', lineNr: 0 }];
+    };
+    notify('change', document.uri.fsPath);
+    await searching;
+    retargetAlias();
+    notify('change', document.uri.fsPath);
+    release();
+    await provider.dataRefreshQueue;
+    expect(Object.keys(provider.filesData)).to.deep.equal([]);
+    expect(provider.nonEmptyFiles.size).to.equal(0);
+  });
+
+  it('does not enumerate the cache for every excluded watcher event', async () => {
+    const { document, changeOnDisk } = setup('js', [workspace]);
+    await provider.get();
+    fs.mkdirSync(path.join(workspace, 'ignored'));
+    document.uri.fsPath = path.join(workspace, 'ignored', 'generated.html');
+    fs.writeFileSync(document.uri.fsPath, '');
+    const data = {};
+    for (let index = 0; index < 5000; index++) {
+      data[path.join(workspace, `todo-${index}.html`)] = [];
+    }
+    let enumerations = 0;
+    provider.filesData = new Proxy(data, {
+      ownKeys: (target) => {
+        enumerations++;
+        return Reflect.ownKeys(target);
+      },
+    });
+
+    for (let index = 0; index < 100; index++) changeOnDisk();
+    await provider.dataRefreshQueue;
+
+    expect(enumerations).to.be.at.most(1);
+    expect(Object.keys(data)).to.have.length(5000);
   });
 
   it('keeps one cache entry when an aliased root overlaps a canonical nested root', async () => {

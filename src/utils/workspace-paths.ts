@@ -11,17 +11,15 @@ const replaceRoot = (filePath: string, from: string, to: string): string => {
 };
 
 export const createWorkspacePathResolver = (rootPaths: string[]) => {
-  const roots = rootPaths.map((rootPath) => {
-    let realPath = rootPath;
-
+  const resolveRoot = (rootPath: string): string => {
     try {
-      realPath = fs.realpathSync(rootPath);
+      return fs.realpathSync(rootPath);
     } catch {
       // An unavailable root keeps its existing lexical path matching.
+      return rootPath;
     }
-
-    return { rootPath, realPath };
-  });
+  };
+  const roots = rootPaths.map((rootPath) => ({ rootPath, realPath: resolveRoot(rootPath) }));
 
   const getRealPath = (filePath: string): string => {
     const rootPath = findClosestRootPath(filePath, rootPaths);
@@ -34,6 +32,17 @@ export const createWorkspacePathResolver = (rootPaths: string[]) => {
 
   return {
     rootPaths: rootPaths.slice(),
+    refresh(): boolean {
+      let changed = false;
+
+      roots.forEach((root) => {
+        const realPath = resolveRoot(root.rootPath);
+        if (getFilePathKey(realPath) !== getFilePathKey(root.realPath)) changed = true;
+        root.realPath = realPath;
+      });
+
+      return changed;
+    },
     getKey: (filePath: string): string => getFilePathKey(getRealPath(filePath)),
     getWorkspacePaths(filePath: string): string[] {
       const realPath = getRealPath(filePath);
