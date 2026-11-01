@@ -126,7 +126,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Globs to use for including files",
+          "description": "Workspace-relative globs or absolute paths to individual Todo files. Add absolute paths in User settings to show global files across projects. Absolute paths are literal, not globs.",
           "default": [
             "**/TODO",
             "**/TODOS",

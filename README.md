@@ -179,13 +179,31 @@ Typing `@created` or `@now` offers timestamp completions using `todo.timekeeping
 
 Missing IDs receive a warning in the Problems panel. A task cannot be marked done or cancelled until every task with each referenced ID is finished; therefore, a duplicated ID deliberately requires _all_ of its matching tasks to be finished. Both colors are configurable with `todo.colors.id` and `todo.colors.dependency`.
 
+### Global Todo files
+
+To keep a Todo file in the **Files** sidebar when switching projects, add its absolute path to `todo.file.include` in **Preferences: Open User Settings (JSON)**:
+
+```json
+{
+  "todo.file.include": ["**/TODO", "**/*.todo", "C:/Users/you/Documents/global.todo"]
+}
+```
+
+On Linux or macOS, use a path such as `/home/you/global.todo` or `/Users/you/global.todo`. On Windows, use forward slashes as above or escape each backslash as `\\`. Paths refer to the filesystem where the extension runs, including in remote workspaces.
+
+This example retains `TODO` and `*.todo` workspace discovery. Setting this array replaces the defaults; copy the default array from Settings before adding your path if you want to retain every supported filename. Workspace settings can override your User setting.
+
+Relative entries remain workspace globs. Absolute entries name individual files, including paths with spaces or brackets; absolute wildcards, `~`, and environment-variable expansion are not supported. Global files also appear with no folder open. Changes, deletion, and recreation are detected by polling about once per second, and unsaved edits refresh the sidebar.
+
+`todo.file.exclude`, enabled `files.exclude` rules, and `todo.followSymlinks` still apply. Exclusions match workspace-relative paths inside a workspace and full paths outside it. Missing or unreadable files are skipped without hiding other Todo files.
+
 ## Settings
 
 ```js
 {
   "todo.file.name": "TODO", // Todo file name. Other supported names are: `*.todo`, `*.todos`, `*.task`, `*.tasks`, `*.taskpaper` and `todolist.txt`
   "todo.file.defaultContent": "\nTodo:\n  ☐ Item\n", // New todo files default content
-  "todo.file.include": ["**/TODO", "**/TODO.md", ...], // Globs to use for including files
+  "todo.file.include": ["**/TODO", "**/TODO.md", ...], // Workspace globs or absolute paths to individual Todo files
   "todo.file.exclude": ["**/.git/**", ...], // Globs to use for excluding files
   "todo.followSymlinks": false, // Follow symbolic links when enumerating files (can cause cycles)
   "todo.file.batchSize": 50, // Number of Todo files to process in each discovery batch
