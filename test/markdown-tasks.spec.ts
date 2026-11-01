@@ -276,6 +276,33 @@ describe('Markdown task sources', () => {
 });
 
 describe('Markdown archive round trips', () => {
+  it('restores a nested task after its original parent gains timekeeping tags', () => {
+    const content = '# Tasks\n- [ ] Parent @id(parent)\n  - [x] Child\n- [ ] Parent @id(other)';
+    const blocks = collectMarkdownArchiveBlocks(content, {});
+    const archived = insertMarkdownArchiveBlocks(
+      removeMarkdownArchiveBlocks(content, blocks),
+      blocks,
+      {}
+    ).replace(
+      '- [ ] Parent @id(parent)',
+      '- [x] Parent @id(parent) @started(2026-01-01 10:00) @done(2026-01-01 11:00) @lasted(1h)'
+    );
+    const task = parseMarkdownTasks(archived).find(
+      (node) => node.kind === 'todo' && node.inArchive
+    );
+    const restoring = collectMarkdownArchiveBlocks(archived, {}, [task.lineNumber], true);
+    const restored = insertMarkdownArchiveBlocks(
+      removeMarkdownArchiveBlocks(archived, restoring),
+      restoring,
+      {},
+      false
+    );
+    const nodes = parseMarkdownTasks(restored);
+    const child = nodes.find((node) => node.kind === 'todo' && node.title === 'Child');
+    expect(child.parent).to.equal(1);
+    expect(nodes.filter((node) => node.kind === 'todo')).to.have.length(3);
+  });
+
   it('recognizes custom archive names containing trailing heading markers', () => {
     for (const archiveName of ['History #', 'History ###', '**History**']) {
       const options = { archiveName };

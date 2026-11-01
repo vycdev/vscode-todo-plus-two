@@ -20,6 +20,7 @@
 - Prevented HTML comments in block quotes from hiding later Markdown tasks, and preserved archive and restored-parent names that contain heading syntax.
 - Preserved ID and dependency tags separated from another tag by punctuation while keeping reference examples inside tag arguments literal.
 - Bounded section-only Markdown task discovery by enclosing list items, including parents outside selected sections, so commands and dependencies do not include following sibling tasks.
+- Restored archived Markdown children to their original parent after its timekeeping or completion-cleanup tags change, retaining IDs and other labels when matching parent paths.
 - Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
 
 ### Version 5.3.0

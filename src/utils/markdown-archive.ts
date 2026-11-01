@@ -4,7 +4,13 @@ import {
   parseMarkdownTasks,
   quoteMarkdownProjectTitle,
 } from './markdown-tasks';
+import { transformMarkdownTaskText } from './markdown-task-text';
 import { splitLines } from './line-splitting';
+import Tags from './tags';
+
+interface MarkdownArchiveOptions extends MarkdownTaskOptions {
+  finishedRemoveTags?: string[];
+}
 
 export interface MarkdownArchiveBlock {
   start: number;
@@ -17,11 +23,32 @@ export interface MarkdownArchiveBlock {
 const samePath = (left: string[], right: string[]) =>
   left.length === right.length && left.every((title, index) => title === right[index]);
 
-const pathOf = (node: MarkdownTaskNode, nodes: MarkdownTaskNode[]): string[] => {
+const pathTitle = (node: MarkdownTaskNode, options: MarkdownArchiveOptions): string => {
+  if (node.markerStart === undefined) return node.title;
+  // Completing or timing a parent must not change the path of an archived child.
+  return transformMarkdownTaskText(node.title, (text) =>
+    Tags.remove(text, [
+      'created',
+      'started',
+      'toggle',
+      'done',
+      'cancelled',
+      'lasted',
+      'wasted',
+      ...(options.finishedRemoveTags || ['today']),
+    ])
+  );
+};
+
+const pathOf = (
+  node: MarkdownTaskNode,
+  nodes: MarkdownTaskNode[],
+  options: MarkdownArchiveOptions
+): string[] => {
   const path = [];
   let parent = nodes.find((candidate) => candidate.lineNumber === node.parent);
   while (parent && !parent.archiveRoot) {
-    path.unshift(parent.title);
+    path.unshift(pathTitle(parent, options));
     parent = nodes.find((candidate) => candidate.lineNumber === parent.parent);
   }
   return path;
@@ -51,7 +78,7 @@ const childPrefix = (node: MarkdownTaskNode, lines: string[]): string => {
 /** A finished parent moves only with its complete, finished task subtree. */
 export const collectMarkdownArchiveBlocks = (
   content: string,
-  options: MarkdownTaskOptions,
+  options: MarkdownArchiveOptions,
   selectedLines?: number[],
   fromArchive = false
 ): MarkdownArchiveBlock[] => {
@@ -83,7 +110,7 @@ export const collectMarkdownArchiveBlocks = (
     .map((task) => ({
       start: task.lineNumber,
       end: task.endLine,
-      path: pathOf(task, nodes),
+      path: pathOf(task, nodes, options),
       lines: lines.slice(task.lineNumber, task.endLine),
       taskCount: tasks.filter(
         (node) => node.lineNumber >= task.lineNumber && node.lineNumber < task.endLine
@@ -105,7 +132,7 @@ export const removeMarkdownArchiveBlocks = (
 export const insertMarkdownArchiveBlocks = (
   content: string,
   blocks: MarkdownArchiveBlock[],
-  options: MarkdownTaskOptions,
+  options: MarkdownArchiveOptions,
   intoArchive = true,
   sourceEol = '\n'
 ): string => {
@@ -136,7 +163,7 @@ export const insertMarkdownArchiveBlocks = (
         (node) =>
           !node.archiveRoot &&
           node.inArchive === intoArchive &&
-          samePath(pathOf(node, nodes).concat(node.title), names)
+          samePath(pathOf(node, nodes, options).concat(pathTitle(node, options)), names)
       );
       if (found) {
         target = found;
@@ -165,7 +192,7 @@ export const insertMarkdownArchiveBlocks = (
         target &&
         target.kind === 'project' &&
         target.inArchive === intoArchive &&
-        samePath(pathOf(target, nodes).concat(target.title), names);
+        samePath(pathOf(target, nodes, options).concat(pathTitle(target, options)), names);
       if (!validTarget()) {
         const title = quoteMarkdownProjectTitle(block.path[depth]);
         lines[insertAt] = recreateHeading ? `${headingPrefix}${title}` : `${prefix}${title}:`;

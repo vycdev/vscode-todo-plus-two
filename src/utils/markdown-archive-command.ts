@@ -21,7 +21,10 @@ export const archiveMarkdownTasks = async (
 ): Promise<number> => {
   const document = editor.document;
   const content = document.getText();
-  const options = getMarkdownTaskOptions();
+  const options = {
+    ...getMarkdownTaskOptions(),
+    finishedRemoveTags: Config.getKey('timekeeping.finished.remove.tags') || [],
+  };
   const restoring = !!selectedLines;
   const blocks = collectMarkdownArchiveBlocks(content, options, selectedLines, restoring);
   if (!blocks.length) return 0;

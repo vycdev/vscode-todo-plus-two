@@ -255,6 +255,32 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('restores a child to its original parent after completion cleans the parent tags', async () => {
+    const state = loadMarkdown(
+      '# Tasks\n- [ ] Parent @id(parent) @today @cleanup\n  - [x] Child\n- [ ] Parent @id(other)',
+      {
+        'archive.type': 'InSameFile',
+        'timekeeping.finished.remove.tags': ['today', 'cleanup'],
+      }
+    );
+    await state.commands.archive();
+    state.select(1);
+    await state.commands.toggleDone();
+    expect(state.document.lineAt(1).text).to.include('@done(');
+    expect(state.document.lineAt(1).text).not.to.include('@cleanup');
+    const archived = new state.Document(state.editor)
+      .getTodosDone()
+      .find((todo) => todo.markdownNode.inArchive);
+    state.select(archived.lineNumber);
+    await state.commands.unarchive();
+    const child = new state.Document(state.editor)
+      .getTodosDone()
+      .find((todo) => todo.markdownNode.title === 'Child');
+    expect(child.markdownNode.parent).to.equal(1);
+    expect(child.markdownNode.inArchive).to.equal(false);
+    expect(new state.Document(state.editor).getTodos()).to.have.length(3);
+  });
+
   it('limits commands and dependencies to selected headings inside list containers', async () => {
     const original =
       '- [ ] Parent @id(parent)\n  ## Tasks\n  - [ ] Inside @id(inside)\n- [ ] Outside @id(outside)';
