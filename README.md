@@ -465,7 +465,7 @@ work in project text, status bar text and status bar tooltips.
 
 ## Hints
 
-- **Large Todo files**: edits reuse parsing and highlighting for unchanged lines and statistics for unaffected projects. Configuration changes, reopening editors, and date rollover rebuild the caches. Unfinished or multiline tag arguments use a full refresh. VS Code still requires complete range lists for each decoration style that changes, so very large edits can require more work.
+- **Large Todo files**: edits reuse parsing and highlighting for unchanged lines and statistics for unaffected projects. Configuration changes, reopening editors, and date rollover rebuild the caches. Unfinished or multiline tag arguments and incomplete task markers use a full refresh. VS Code still requires complete range lists for each decoration style that changes, so very large edits can require more work.
 
 - **Dark/Light Themes**: if you switch between dark and light themes, remember that you can provide specific colors for them via the `todo.colors.dark.*` and `todo.colors.light.*` settings, which will override the default `todo.colors.*` settings.
 

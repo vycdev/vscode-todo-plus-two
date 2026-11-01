@@ -31,7 +31,7 @@ const withDecorator = (run) => {
   }
   NodeModule._load = (request, parent, isMain) => {
     if (request === 'vscode') return { window };
-    if (request === './incremental-document') return { hasMultilineTag: () => false };
+    if (request === './incremental-document') return { hasMultilineSyntax: () => false };
     if (request === '../../config')
       return {
         default: {

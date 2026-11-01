@@ -55,9 +55,35 @@ const eachItem = (items: Items, run: (item: Item) => void) => {
   arrayKeys.forEach((key) => items[key].forEach(run));
 };
 
-// Reserved tags still allow multiline arguments. Such documents use the canonical
-// full parser until those arguments become line-local again.
-export const hasMultilineTag = (text: string) => /@[^()\r\n]*\([^\r\n)]*(?:\r?\n|$)/.test(text);
+// The canonical regexes allow both multiline tag arguments and whitespace
+// separators spanning lines after a task marker. Preserve those semantics by
+// rebuilding until the input is safe to parse one line at a time.
+export const hasMultilineSyntax = (text: string) => {
+  const symbols = [Consts.symbols.box, Consts.symbols.done, Consts.symbols.cancelled];
+  return text.split(/\r?\n/).some((line) => {
+    // An argument is unfinished only if '@...(' occurs after the last ')'.
+    // Scan directly: a greedy regex retries at every '@' on long tag-like lines.
+    const tag = line.indexOf('@', line.lastIndexOf(')') + 1);
+    if (tag >= 0 && line.indexOf('(', tag + 1) >= 0) return true;
+    // Markdown checkbox prefixes allow a newline between '-' and '[ ]'.
+    if (line.trim() === '-') return true;
+    // A longer configured symbol may overlap a shorter default symbol; check
+    // it separately before the regex can prefer the shorter alternative.
+    if (
+      symbols.some(
+        (symbol) =>
+          typeof symbol === 'string' &&
+          symbol.length &&
+          line.endsWith(symbol) &&
+          /^[^\S\r\n]*$/.test(line.slice(0, -symbol.length))
+      )
+    )
+      return true;
+    Consts.regexes.todoSymbol.lastIndex = 0;
+    const marker = Consts.regexes.todoSymbol.exec(line + '\n');
+    return !!marker && marker[0].includes('\n');
+  });
+};
 
 interface Line {
   text: string;
@@ -206,7 +232,7 @@ export class IncrementalDocument {
   }
 
   private parse(text: string, lineNumber: number) {
-    if (hasMultilineTag(text)) return;
+    if (hasMultilineSyntax(text)) return;
     const doc = new DocumentModule(
       text + (this.lines.crlf && lineNumber < this.editor.document.lineCount - 1 ? '\r' : '')
     );

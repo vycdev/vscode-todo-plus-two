@@ -298,6 +298,82 @@ describe('Incremental Todo decorations and statistics', () => {
     });
   });
 
+  for (const marker of ['☐', '✔', '✘', '- [ ]', '- [x]']) {
+    it(`falls back when deleting the separator after ${marker}`, () => {
+      withDecorationEditor(`Todo:\n  ${marker} \n  Note`, (state) => {
+        state.decorator.update(state.editor);
+        const reads = state.calls.fullText;
+        state.edit(1, 0, state.editor.document.lineAt(1).text.length, `  ${marker}`);
+        expect(state.calls.fullText).to.equal(reads + 1);
+        expectFullParse(state);
+      });
+    });
+  }
+
+  for (const gap of ['\n', '\n\n  \n']) {
+    it(`keeps split Markdown checkbox markers on the full parser (${JSON.stringify(gap)})`, () => {
+      withDecorationEditor(`Todo:\n  -${gap}  [ ] Task`, (state) => {
+        state.decorator.update(state.editor);
+        const reads = state.calls.fullText,
+          line = state.editor.document.lineCount - 1;
+        state.edit(line, 0, state.editor.document.lineAt(line).text.length, '  [x] Task');
+        expect(state.calls.fullText).to.equal(reads + 1);
+        expect(state.utils.statistics.tokens.global.pending).to.equal(0);
+        expect(state.utils.statistics.tokens.global.done).to.equal(1);
+        expectFullParse(state);
+      });
+    });
+  }
+
+  it('resumes incremental editing once a bare task marker has a title', () => {
+    withDecorationEditor('Todo:\n  ☐\n  Note', (state) => {
+      state.decorator.update(state.editor);
+      state.edit(1, 0, 3, '  ☐ Title');
+      const reads = state.calls.fullText;
+      state.edit(1, 4, 4, 'New ');
+      expect(state.calls.fullText).to.equal(reads);
+      expectFullParse(state);
+    });
+  });
+
+  it('handles overlapping configured symbols at a line boundary', () => {
+    withDecorationEditor('Todo:\n  ☐ \n  Note', (state) => {
+      state.config.symbols.box = '☐ ';
+      require('../src/consts').default.update();
+      state.decorator.update(state.editor);
+      const reads = state.calls.fullText;
+      state.edit(2, 0, 6, '  Note @started(26-11-01 10:00)');
+      expect(state.calls.fullText).to.equal(reads + 1);
+      expectFullParse(state);
+    });
+  });
+
+  it('checks long tag-like lines without quadratic backtracking', () => {
+    withDecorationEditor('Todo:\n  ☐ Task', () => {
+      const { hasMultilineSyntax } = require('../src/todo/decorators/incremental-document');
+      expect(hasMultilineSyntax('@'.repeat(100000))).to.equal(false);
+      expect(hasMultilineSyntax('@('.repeat(50000) + ')')).to.equal(false);
+      expect(hasMultilineSyntax('@'.repeat(100000) + '(')).to.equal(true);
+    });
+  });
+
+  it('preserves multiline tag boundary semantics across generated inputs', () => {
+    withDecorationEditor('Todo:\n  ☐ Task', () => {
+      const { hasMultilineSyntax } = require('../src/todo/decorators/incremental-document'),
+        canonical = /@[^()\r\n]*\([^\r\n)]*(?:\r?\n|$)/;
+      const alphabet = '@()abc \n\t';
+      let seed = 94;
+      for (let sample = 0; sample < 1000; sample++) {
+        let input = '';
+        for (let index = 0; index < 50; index++) {
+          seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+          input += alphabet[seed % alphabet.length];
+        }
+        expect(hasMultilineSyntax(input), JSON.stringify(input)).to.equal(canonical.test(input));
+      }
+    });
+  });
+
   for (const invalidate of ['configuration', 'indentation', 'editor', 'day', 'missed event']) {
     it(`rebuilds after ${invalidate} changes`, () => {
       withDecorationEditor('Todo:\n  ☐ First @high', (state) => {

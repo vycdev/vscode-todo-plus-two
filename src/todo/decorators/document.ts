@@ -14,7 +14,7 @@ import TodoDone from './todo_done';
 import TodoCancelled from './todo_cancelled';
 import TodoStarted from './todo_started';
 import { applyCustomColors } from './theme-colors';
-import { hasMultilineTag, IncrementalDocument } from './incremental-document';
+import { hasMultilineSyntax, IncrementalDocument } from './incremental-document';
 
 /* DOCUMENTS LINES CACHE */
 
@@ -74,7 +74,7 @@ const Document = {
           typeof doc.textDocument.version === 'number' &&
           doc.textDocument.languageId === 'todo' &&
           items.projects &&
-          !hasMultilineTag(text) &&
+          !hasMultilineSyntax(text) &&
           Utils.statistics.tokens.createGlobal
             ? new IncrementalDocument(
                 doc.textEditor,
