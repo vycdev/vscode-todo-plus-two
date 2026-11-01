@@ -11,6 +11,7 @@
 
 #### Fixes
 
+- Preserved literal tag text in IDs, dependencies, and other arguments during paused-marker cleanup, and ignored nested timer examples when synchronizing markers. Released obsolete tag-style decoration resources when tags are removed or documents close. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Kept Markdown task discovery and hierarchy correct around indented fence examples, HTML comments, headings inside list items, and custom bracketed symbols. Hidden comment metadata no longer changes task status, dependencies, due dates, estimates, or timers.
 - Refreshed the Files tree for unsaved task edits and cleared editor decorations when Markdown task support is disabled.
 - Preserved multiline comments and relative code indentation when archiving Markdown tasks, and recreated missing section headings when unarchiving in section-only mode.

@@ -9,12 +9,19 @@ import {
 } from '../../utils/task-tag-styles';
 import type { TaskTagStyle } from '../../utils/task-tag-styles';
 
-const types = new Map<string, TextEditorDecorationType>();
+const documents = new Map<object, Map<string, TextEditorDecorationType>>();
+const defaultDocument = {};
 let signature: string;
 
-export const disposeTaskTagStyles = () => {
+export const disposeTaskTagDocument = (document: object) => {
+  const types = documents.get(document);
+  if (!types) return;
   types.forEach((type) => type.dispose());
-  types.clear();
+  documents.delete(document);
+};
+
+export const disposeTaskTagStyles = () => {
+  documents.forEach((_types, document) => disposeTaskTagDocument(document));
   signature = undefined;
 };
 
@@ -29,7 +36,7 @@ const renderStyle = (style: TaskTagStyle, colors: boolean): DecorationRenderOpti
   return options;
 };
 
-export const getTaskTagDecorations = (todos: Todo[]) => {
+export const getTaskTagDecorations = (todos: Todo[], document: object = defaultDocument) => {
   const config = Config.get(),
     rules = getTaskTagStyleRules(config),
     colors = Config.getKey('colors.enabled') !== false,
@@ -39,6 +46,9 @@ export const getTaskTagDecorations = (todos: Todo[]) => {
     disposeTaskTagStyles();
     signature = nextSignature;
   }
+
+  if (!documents.has(document)) documents.set(document, new Map());
+  const types = documents.get(document);
 
   const ranges = new Map<TextEditorDecorationType, Range[]>();
   todos.forEach((todo) => {
@@ -78,6 +88,12 @@ export const getTaskTagDecorations = (todos: Todo[]) => {
     });
   });
 
-  // Empty ranges clear styles when tags are removed or a rule stops matching.
-  return Array.from(types.values()).map((type) => ({ type, ranges: ranges.get(type) || [] }));
+  // Disposing obsolete types clears their editor ranges and bounds the cache by
+  // the styles currently used in each document, rather than the edit history.
+  types.forEach((type, key) => {
+    if (ranges.has(type)) return;
+    type.dispose();
+    types.delete(key);
+  });
+  return Array.from(ranges, ([type, ranges]) => ({ type, ranges }));
 };

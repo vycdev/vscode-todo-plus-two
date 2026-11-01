@@ -146,7 +146,7 @@ describe('Todo timer completion', () => {
   it('deduplicates paused markers and preserves code examples and task identity', () => {
     const Todo = loadTodo({ 'timekeeping.started.format': 'YYYY-MM-DD HH:mm:ss' }),
       initial =
-        '☐ Task @started(2026-08-02 10:00:00) @toggle(2026-08-02 10:30:00) @id(task) @depends(other) `@paused`',
+        '☐ Task @started(2026-08-02 10:00:00) @toggle(2026-08-02 10:30:00) @id(@paused) @depends(@paused) `@paused`',
       todo = new Todo(null, { text: `${initial} @paused @paused` });
     todo.syncPausedTag(new Date(2026, 7, 2, 12, 0));
     expect(todo.lineNextText).to.equal(`${initial} @paused`);
@@ -173,6 +173,22 @@ describe('Todo timer completion', () => {
       const todo = new Todo(null, { text: `${text} @paused` });
       todo.syncPausedTag(new Date(2026, 7, 2, 12, 0));
       expect(todo.lineNextText).to.equal(text);
+    }
+  });
+
+  it('preserves literal paused references during start, unstart, repair and completion', () => {
+    const Todo = loadTodo({
+      'timekeeping.started.time': false,
+      'timekeeping.started.format': 'YYYY-MM-DD HH:mm:ss',
+      'timekeeping.finished.enabled': true,
+      'timekeeping.finished.time': false,
+    });
+    const metadata = '@id(@paused) @depends(@paused) @note(@paused)';
+    for (const action of ['start', 'unstart', 'syncPausedTag', 'finish']) {
+      const todo = new Todo(null, { text: `☐ Task ${metadata} @paused` });
+      todo[action]();
+      expect(todo.lineNextText, action).to.include(metadata);
+      expect(todo.lineNextText, action).not.to.match(/\s@paused(?:\s|$)/);
     }
   });
 });

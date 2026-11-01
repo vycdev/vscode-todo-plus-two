@@ -20,6 +20,7 @@ const loadExtension = () => {
   const configuration = makeEvent();
   const folders = makeEvent();
   const documents = makeEvent();
+  const closedDocuments = makeEvent();
   const editors = makeEvent();
   const dates = makeEvent();
   const visibleEditors = [
@@ -89,6 +90,7 @@ const loadExtension = () => {
       onDidChangeConfiguration: configuration.subscribe,
       onDidChangeWorkspaceFolders: folders.subscribe,
       onDidChangeTextDocument: documents.subscribe,
+      onDidCloseTextDocument: closedDocuments.subscribe,
     },
     window: {
       onDidChangeActiveTextEditor: editors.subscribe,
@@ -124,7 +126,10 @@ const loadExtension = () => {
       },
     },
     './todo/decorators/changes': { default: { onChanges() {} } },
-    './todo/decorators/task-tags': { disposeTaskTagStyles: () => disposed.push('task-tag-styles') },
+    './todo/decorators/task-tags': {
+      disposeTaskTagStyles: () => disposed.push('task-tag-styles'),
+      disposeTaskTagDocument: () => disposed.push('task-tag-document'),
+    },
     './utils': { default: utils },
     './utils/dependency_index': { default: { initialize: initialize('index') } },
     './utils/task-source': {
@@ -157,6 +162,7 @@ const loadExtension = () => {
       configuration,
       folders,
       documents,
+      closedDocuments,
       editors,
       dates,
       files,
@@ -175,6 +181,18 @@ const loadExtension = () => {
 };
 
 describe('Extension lifecycle wiring', () => {
+  it('releases task styling resources when a document closes', () => {
+    const state = loadExtension();
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    state.activate(context);
+    try {
+      state.closedDocuments.fire({});
+      expect(state.disposed).to.include('task-tag-document');
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
+    }
+    expect(state.closedDocuments.listeners.size).to.equal(0);
+  });
   it('refreshes background Markdown editors when parser or tag-style settings change', () => {
     const state = loadExtension();
     const context = { subscriptions: [] as { dispose(): void }[] };

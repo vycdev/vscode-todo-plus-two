@@ -10,7 +10,7 @@ import Formatted from './formatted';
 import Project from './project';
 import Tag from './tag';
 import TodoDue from './todo_due';
-import { getTaskTagDecorations } from './task-tags';
+import { disposeTaskTagDocument, getTaskTagDecorations } from './task-tags';
 import { DocumentLinesCache } from './document-lines-cache';
 import { applyCustomColors } from './theme-colors';
 
@@ -53,7 +53,7 @@ const Document = {
           Utils.statistics.tokens.updateProjects(doc.textDocument, items);
         }
 
-        const decorations = Document.getItemsDecorations(items);
+        const decorations = Document.getItemsDecorations(items, doc.textDocument);
 
         decorations.forEach(({ type, ranges }) => {
           doc.textEditor.setDecorations(type, ranges);
@@ -71,6 +71,7 @@ const Document = {
           Utils.statistics.tokens.global = previousGlobalTokens;
         }
       } else if (doc.textEditor) {
+        disposeTaskTagDocument(doc.textDocument);
         const types = EditorDecorationTypes.get(doc.textEditor) || [];
         EditorDecorationTypes.delete(doc.textEditor);
         types.forEach((type) => {
@@ -122,7 +123,7 @@ const Document = {
     };
   },
 
-  getItemsDecorations(items) {
+  getItemsDecorations(items, document?: vscode.TextDocument) {
     const colorsEnabled = Config.getKey('colors.enabled') !== false;
 
     return _.concat(
@@ -131,7 +132,10 @@ const Document = {
       applyCustomColors(new Tag().getDecorations(items.tags), colorsEnabled),
       applyCustomColors(new TodoDue().getDecorations(items.tagsDue), colorsEnabled),
       new Project().getDecorations(items.projects),
-      getTaskTagDecorations([...items.todosBox, ...items.todosDone, ...items.todosCancelled])
+      getTaskTagDecorations(
+        [...items.todosBox, ...items.todosDone, ...items.todosCancelled],
+        document
+      )
     );
   },
 };

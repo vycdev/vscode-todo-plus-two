@@ -12,7 +12,7 @@ import EmbeddedDiagnostics from './providers/embedded_diagnostics';
 import SymbolsProvider from './providers/symbols';
 import DocumentDecorator from './todo/decorators/document';
 import ChangesDecorator from './todo/decorators/changes';
-import { disposeTaskTagStyles } from './todo/decorators/task-tags';
+import { disposeTaskTagDocument, disposeTaskTagStyles } from './todo/decorators/task-tags';
 import Utils from './utils';
 import DependencyIndex from './utils/dependency_index';
 import ViewEmbedded from './views/embedded';
@@ -178,6 +178,7 @@ const activate = function (context: vscode.ExtensionContext) {
       DocumentDecorator.update();
     }),
     vscode.workspace.onDidChangeTextDocument(ChangesDecorator.onChanges),
+    vscode.workspace.onDidCloseTextDocument(disposeTaskTagDocument),
     vscode.workspace.onDidChangeTextDocument(updateMarkdownContext),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshEmbeddedDocument(document)),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshDueDocument(document)),

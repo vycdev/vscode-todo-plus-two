@@ -140,4 +140,17 @@ describe('Timekeeping utilities', () => {
       )
     ).to.equal(undefined);
   });
+
+  it('ignores timer controls written as literal tag arguments', () => {
+    const state = getTimerState(
+      '☐ Task @started(2026-08-02 10:00:00) @note(@toggle(2026-08-02 10:30:00))',
+      format,
+      new Date(2026, 7, 2, 12, 0)
+    );
+    expect(state.active).to.equal(true);
+    expect(state.elapsedMilliseconds).to.equal(2 * 60 * 60 * 1000);
+    expect(getTimerState('☐ Task @note(@started(2026-08-02 10:00:00))', format)).to.equal(
+      undefined
+    );
+  });
 });

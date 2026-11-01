@@ -89,10 +89,10 @@ describe('Task tag decorations', () => {
   it('clears previous decorations after the matching tag is removed', () => {
     withTaskStyles(({ getTaskTagDecorations, todo }) => {
       const [initial] = getTaskTagDecorations([todo('✔ Work @done')]);
-      const [cleared] = getTaskTagDecorations([todo('✔ Work')]);
+      const cleared = getTaskTagDecorations([todo('✔ Work')]);
       expect(initial.ranges).not.to.be.empty;
-      expect(cleared.type).to.equal(initial.type);
-      expect(cleared.ranges).to.deep.equal([]);
+      expect(cleared).to.deep.equal([]);
+      expect(initial.type.disposed).to.equal(true);
     });
   });
 
@@ -143,6 +143,37 @@ describe('Task tag decorations', () => {
         todo('☐ Work @started(2026-01-01) @toggle(2026-01-02)'),
       ]);
       expect(decoration.type.options.color).to.equal('#4fc1ff');
+    });
+  });
+
+  it('releases obsolete styles instead of retaining every previously used combination', () => {
+    withTaskStyles(({ getTaskTagDecorations, todo, config, created }) => {
+      for (let index = 0; index < 40; index++)
+        config.tags.styles[`label${index}`] = { color: `color-${index}` };
+      for (let index = 0; index < 40; index++) {
+        const decorations = getTaskTagDecorations([todo(`☐ Work @label${index}`)]);
+        expect(decorations).to.have.length(1);
+        expect(created.filter((type) => !type.disposed)).to.have.length(1);
+      }
+      expect(getTaskTagDecorations([])).to.deep.equal([]);
+      expect(created.every((type) => type.disposed)).to.equal(true);
+    });
+  });
+
+  it('keeps document caches independent and releases only the closed document', () => {
+    withTaskStyles(({ getTaskTagDecorations, disposeTaskTagDocument, todo }) => {
+      const firstDocument = {},
+        secondDocument = {};
+      const [first] = getTaskTagDecorations([todo('☐ Work @started')], firstDocument);
+      const [second] = getTaskTagDecorations([todo('☐ Work @paused')], secondDocument);
+      expect(first.type.disposed).to.equal(false);
+      getTaskTagDecorations([], secondDocument);
+      expect(second.type.disposed).to.equal(true);
+      expect(first.type.disposed).to.equal(false);
+      const [reopened] = getTaskTagDecorations([todo('☐ Work @paused')], secondDocument);
+      disposeTaskTagDocument(firstDocument);
+      expect(first.type.disposed).to.equal(true);
+      expect(reopened.type.disposed).to.equal(false);
     });
   });
 });

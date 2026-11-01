@@ -45,7 +45,8 @@ const withDecorator = (run) => {
         },
       };
     if (request === '../document') return { default: Document };
-    if (request === './task-tags') return { getTaskTagDecorations: () => [] };
+    if (request === './task-tags')
+      return { getTaskTagDecorations: () => [], disposeTaskTagDocument() {} };
     if (request === '../../statusbars/timer')
       return { default: { update: (doc) => timerDocuments.push(doc && doc.textDocument) } };
     if (request === '../../statusbars/statistics')
