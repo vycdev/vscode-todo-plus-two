@@ -1,0 +1,94 @@
+{
+  "recordedAt": "2026-11-01",
+  "description": "Controlled simulated-editor benchmark of incremental edits versus forced full cache rebuilds; excludes renderer and IPC; 3 warm-up edits and 20 measured edits per scenario.",
+  "results": [
+    {
+      "scenario": "tagged title",
+      "mode": "full rebuild",
+      "lines": 7000,
+      "medianMs": 83.305,
+      "p95Ms": 97.772,
+      "parses": 20,
+      "projectComputations": 1400,
+      "fullTextReads": 20,
+      "decorationSubmissions": 440
+    },
+    {
+      "scenario": "tagged title",
+      "mode": "incremental",
+      "lines": 7000,
+      "medianMs": 1.061,
+      "p95Ms": 2.454,
+      "parses": 20,
+      "projectComputations": 0,
+      "fullTextReads": 0,
+      "decorationSubmissions": 40
+    },
+    {
+      "scenario": "estimate",
+      "mode": "full rebuild",
+      "lines": 7000,
+      "medianMs": 83.67,
+      "p95Ms": 99.362,
+      "parses": 20,
+      "projectComputations": 1400,
+      "fullTextReads": 20,
+      "decorationSubmissions": 440
+    },
+    {
+      "scenario": "estimate",
+      "mode": "incremental",
+      "lines": 7000,
+      "medianMs": 7.925,
+      "p95Ms": 17.01,
+      "parses": 20,
+      "projectComputations": 20,
+      "fullTextReads": 0,
+      "decorationSubmissions": 60
+    },
+    {
+      "scenario": "completion",
+      "mode": "full rebuild",
+      "lines": 7000,
+      "medianMs": 90.118,
+      "p95Ms": 113.743,
+      "parses": 20,
+      "projectComputations": 1400,
+      "fullTextReads": 20,
+      "decorationSubmissions": 440
+    },
+    {
+      "scenario": "completion",
+      "mode": "incremental",
+      "lines": 7000,
+      "medianMs": 11.46,
+      "p95Ms": 14.548,
+      "parses": 20,
+      "projectComputations": 20,
+      "fullTextReads": 0,
+      "decorationSubmissions": 80
+    },
+    {
+      "scenario": "line insertion",
+      "mode": "full rebuild",
+      "lines": 7000,
+      "medianMs": 86.308,
+      "p95Ms": 92.289,
+      "parses": 20,
+      "projectComputations": 1400,
+      "fullTextReads": 20,
+      "decorationSubmissions": 440
+    },
+    {
+      "scenario": "line insertion",
+      "mode": "incremental",
+      "lines": 7000,
+      "medianMs": 23.065,
+      "p95Ms": 27.551,
+      "parses": 40,
+      "projectComputations": 20,
+      "fullTextReads": 0,
+      "decorationSubmissions": 440
+    }
+  ]
+}

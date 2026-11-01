@@ -15,4 +15,11 @@ describe('Ripgrep provider arguments', () => {
       '/workspace/file.ts',
     ]);
   });
+
+  it('keeps option-like search patterns and file paths after the option terminator', () => {
+    const args = buildRgArgs('-TODO', ['--hidden'], ['--smart-case', '-notes.todo']);
+
+    expect(args.slice(-4)).to.deep.equal(['--', '-TODO', '--smart-case', '-notes.todo']);
+    expect(args.indexOf('--hidden')).to.be.lessThan(args.indexOf('--'));
+  });
 });

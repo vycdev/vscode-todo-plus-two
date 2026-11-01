@@ -12,6 +12,9 @@ import {
   getTagNameCompletions,
 } from '../utils/tag_completions';
 import Timestamps from '../utils/timestamps';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
+import { maskMarkdownTaskText } from '../utils/markdown-task-text';
+import { getCodeBlocks } from '../utils/code-blocks';
 
 /* COMPLETION */
 
@@ -22,7 +25,18 @@ class Completion implements vscode.CompletionItemProvider {
   static triggerCharacters = _.uniq(TAG_TRIGGER_CHARACTERS.concat(TIMESTAMP_TRIGGER_CHARACTERS));
 
   async provideCompletionItems(textDocument: vscode.TextDocument, pos: vscode.Position) {
-    const line = textDocument.lineAt(pos.line).text;
+    if (
+      textDocument.languageId === 'markdown' &&
+      (!isMarkdownTaskDocument(textDocument) ||
+        !getMarkdownTaskNodes(textDocument).some(
+          (node) => node.kind === 'todo' && node.lineNumber === pos.line
+        ))
+    )
+      return null;
+    if (textDocument.languageId !== 'markdown' && getCodeBlocks(textDocument).byLine.has(pos.line))
+      return [];
+    const raw = textDocument.lineAt(pos.line).text;
+    const line = isMarkdownTaskDocument(textDocument) ? maskMarkdownTaskText(raw) : raw;
     const character = line[pos.character - 1];
     const tagPrefix = Timestamps.getPrefix(line, pos.character);
     const tagArgumentPrefix = getTagArgumentPrefix(line, pos.character);
@@ -32,9 +46,12 @@ class Completion implements vscode.CompletionItemProvider {
       return Completion.getDependencyIds(
         textDocument,
         pos,
-        dependency.text.slice(dependency.text.indexOf('(') + 1)
+        // Only the tag opener needs Markdown visibility checks. Its argument
+        // remains plaintext even before a closing parenthesis is typed.
+        raw.slice(dependency.start + dependency.name.length + 1, pos.character)
       );
     }
+    if (raw[pos.character - 1] !== line[pos.character - 1]) return null;
 
     if (
       !character ||
@@ -110,18 +127,24 @@ class Completion implements vscode.CompletionItemProvider {
         return item;
       });
 
-      const dependencyTags = ['@id()', '@depends()'].map((text) => {
-        const item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Reference);
+      const templateTags = ['@id()', '@depends()', '@planned()'].map((text) => {
+        const planned = text === '@planned()';
+        const item = new vscode.CompletionItem(
+          text,
+          planned ? vscode.CompletionItemKind.Value : vscode.CompletionItemKind.Reference
+        );
 
         item.filterText = text;
         item.insertText = text;
+        if (planned)
+          item.detail = 'Work windows, e.g. @planned(10am-1pm); enable todo.planned.enabled';
         if (range) item.range = range;
 
         return item;
       });
 
       return Completion.filterByPrefix(
-        timestampTags.concat(dependencyTags, tagsSpecial, tagsSmart),
+        timestampTags.concat(templateTags, tagsSpecial, tagsSmart),
         tagPrefix && tagPrefix.text
       );
     }

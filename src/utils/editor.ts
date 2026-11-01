@@ -3,13 +3,15 @@
 import * as _ from 'lodash';
 import * as diff from 'diff';
 import * as vscode from 'vscode';
+import type { TextDocument, TextEdit, TextEditor } from 'vscode';
 import Consts from '../consts';
+import { isTaskEditor } from './task-source';
 
 /* EDITOR */
 
 const Editor = {
   isSupported(textEditor?: vscode.TextEditor) {
-    return textEditor && textEditor.document.languageId === Consts.languageId;
+    return isTaskEditor(textEditor);
   },
 
   async open(content: string) {
@@ -45,8 +47,9 @@ const Editor = {
   },
 
   edits: {
-    apply(textEditor: vscode.TextEditor, edits: vscode.TextEdit[]) {
-      const uri = textEditor.document.uri,
+    apply(target: TextEditor | TextDocument, edits: TextEdit[]) {
+      const document = 'document' in target ? target.document : target;
+      const uri = document.uri,
         edit = new vscode.WorkspaceEdit();
 
       edit.set(uri, edits);

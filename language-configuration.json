@@ -1,3 +1,9 @@
 {
-  "surroundingPairs": [["*", "*"]]
+  "surroundingPairs": [["*", "*"]],
+  "folding": {
+    "markers": {
+      "start": "^\\s*@region\\s*$",
+      "end": "^\\s*@endregion\\s*$"
+    }
+  }
 }

@@ -9,6 +9,10 @@ import Files from './files';
 import Folder from './folder';
 import Regex from './regex';
 import { matchesTodoStatus } from './todo-status';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument, isTaskDocument } from './task-source';
+import { maskMarkdownTaskText } from './markdown-task-text';
+import { findClosestRootPath, getFilePathKey } from './file-globs';
+import { getCodeBlocks } from './code-blocks';
 
 /* TYPES */
 
@@ -40,13 +44,13 @@ const DependencyIndex = {
         },
       },
       vscode.workspace.onDidChangeTextDocument(({ document }) => {
-        if (document.languageId === Consts.languageId) updateDiagnostics();
+        if (isTaskDocument(document)) updateDiagnostics();
       }),
       vscode.workspace.onDidOpenTextDocument((document) => {
-        if (document.languageId === Consts.languageId) updateDiagnostics();
+        if (isTaskDocument(document)) updateDiagnostics();
       }),
       vscode.workspace.onDidCloseTextDocument((document) => {
-        if (document.languageId === Consts.languageId) updateDiagnostics();
+        if (isTaskDocument(document)) updateDiagnostics();
       }),
       vscode.workspace.onDidChangeWorkspaceFolders(updateDiagnostics),
       vscode.workspace.onDidChangeConfiguration(updateDiagnostics)
@@ -61,18 +65,28 @@ const DependencyIndex = {
     const dependencies: { [id: string]: DependencyTarget[] } = Object.create(null);
 
     documents.forEach((candidate) => {
+      const markdownNodes = isMarkdownTaskDocument(candidate)
+        ? getMarkdownTaskNodes(candidate)
+        : undefined;
+      const code = markdownNodes ? undefined : getCodeBlocks(candidate);
       for (let lineNumber = 0; lineNumber < candidate.lineCount; lineNumber++) {
+        if (code && code.byLine.has(lineNumber)) continue;
         const text = candidate.lineAt(lineNumber).text;
-        if (!Regex.test(Consts.regexes.todo, text)) continue;
+        const markdownTask =
+          markdownNodes &&
+          markdownNodes.find((node) => node.lineNumber === lineNumber && node.kind === 'todo');
+        if (markdownNodes ? !markdownTask : !Regex.test(Consts.regexes.todo, text)) continue;
 
         const makeLocation = (reference: DependencyReference): DependencyTarget => ({
           ...reference,
           filePath: candidate.uri.fsPath,
           lineNumber,
           text,
+          status: markdownTask ? markdownTask.status : undefined,
         });
 
-        getDependencies(text).forEach((reference) => {
+        const referenceText = markdownTask ? maskMarkdownTaskText(text) : text;
+        getDependencies(referenceText).forEach((reference) => {
           const dependency = makeLocation(reference);
 
           if (!dependencies[dependency.id]) dependencies[dependency.id] = [];
@@ -80,7 +94,7 @@ const DependencyIndex = {
           dependencies[dependency.id].push(dependency);
         });
 
-        getIds(text).forEach((reference) => {
+        getIds(referenceText).forEach((reference) => {
           const target = makeLocation(reference);
 
           if (!targets[target.id]) targets[target.id] = [];
@@ -94,6 +108,7 @@ const DependencyIndex = {
   },
 
   isFinished(target: DependencyTarget) {
+    if (target.status) return target.status !== 'box';
     return matchesTodoStatus(target.text, Consts.regexes.todoFinished);
   },
 
@@ -141,12 +156,21 @@ const DependencyIndex = {
   },
 
   async getTodoDocuments(document?: vscode.TextDocument) {
-    const documents = vscode.workspace.textDocuments
-      .filter((candidate) => candidate.languageId === Consts.languageId)
+    let documents = vscode.workspace.textDocuments
+      .filter((candidate) => isTaskDocument(candidate))
       .slice();
+    const rootPaths = Folder.getAllRootPaths();
 
     try {
-      const paths = await Files.getFilePaths(Folder.getAllRootPaths());
+      const paths = await Files.getFilePaths(rootPaths);
+      const discovered = new Set(paths.map((filePath) => getFilePathKey(filePath)));
+      documents = documents.filter(
+        (candidate) =>
+          !isMarkdownTaskDocument(candidate) ||
+          candidate.uri.scheme !== 'file' ||
+          !findClosestRootPath(candidate.uri.fsPath, rootPaths) ||
+          discovered.has(getFilePathKey(candidate.uri.fsPath))
+      );
       const fileDocuments = await loadAvailableDocuments(
         paths,
         (filePath) => vscode.workspace.openTextDocument(filePath),

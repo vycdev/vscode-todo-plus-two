@@ -1,11 +1,12 @@
 // Do not import Consts or Config since they require the VSCode API. Keep the
 // helper pure so tests can import it.
 import { maskInlineCode } from './todo-status';
+import { parseCodeBlocks, shiftCodeIndentation } from './code-blocks';
 
 // Match project header lines only, not lines that happen to contain a colon
 // such as timestamps in todo tags. Ensure colon is followed by whitespace, end
 // of line, or an @ tag (like @done).
-const projectParts = /^(\s*)([^:]+):(?=\s|$|@)/;
+const projectParts = /^(\s*)(.+?):(?=\s|$|@)/;
 const defaultIndentUnit = '  ';
 
 const sameProjectPath = (left: string[], right: string[]) =>
@@ -19,7 +20,7 @@ export function createArchiveFinishedDateGetter(
   let previousFinishedDate: number | Date = -1;
 
   return (line: string) => {
-    const statusText = maskInlineCode(line);
+    const statusText = maskInlineCode(parseCodeBlocks(line).maskedText);
 
     // Global regular expressions retain their last match position. Reset it
     // so adjacent finished todos are both classified independently.
@@ -56,10 +57,15 @@ export function getRemovableEmptyLineNumbers(
   if (emptyLines < 0) return [];
 
   const removedLineNumberSet = new Set(removedLineNumbers);
+  const code = parseCodeBlocks(lines.join('\n'));
   const removableLineNumbers = [] as number[];
   let streak = 0;
 
   lines.forEach((line, lineNumber) => {
+    if (code.byLine.has(lineNumber)) {
+      streak = 0;
+      return;
+    }
     if (removedLineNumberSet.has(lineNumber)) return;
     if (typeof preserveFromLine === 'number' && lineNumber >= preserveFromLine) return;
 
@@ -85,6 +91,9 @@ export function mergeInsertItemsIntoArchiveContent(
   isTodoLine: (line: string) => boolean = () => false
 ) {
   const normalizedContent = content || '';
+  if (parseCodeBlocks(normalizedContent).blocks.some((block) => !block.closed)) {
+    throw new Error('Close fenced code blocks in the archive before archiving tasks');
+  }
   const sourceLineEnding = config && config.lineEnding === '\r\n' ? '\r\n' : '\n';
   const lineEnding = normalizedContent
     ? normalizedContent.includes('\r\n')
@@ -95,7 +104,13 @@ export function mergeInsertItemsIntoArchiveContent(
   const rootIndentLevel =
     config && typeof config.rootIndentLevel === 'number' ? config.rootIndentLevel : 0;
   // Strip project tags from existing content to avoid clutter and duplicate information
-  const lines = normalizedContent.replace(projectTagRegex, '').split(/\r?\n/);
+  const stripProjectTags = (text: string) => {
+    const code = parseCodeBlocks(text);
+    return text
+      .split(/\r?\n/)
+      .map((line, index) => (code.byLine.has(index) ? line : line.replace(projectTagRegex, '')));
+  };
+  const lines = stripProjectTags(normalizedContent);
 
   // Remove leading and trailing empty lines to avoid creating an extra blank
   // line when merging into empty files or appending to files that have a
@@ -110,8 +125,10 @@ export function mergeInsertItemsIntoArchiveContent(
   }
 
   function detectContentIndentUnit(linesArr: string[]) {
+    const code = parseCodeBlocks(linesArr.join('\n'));
     const wsLens = linesArr
-      .map((l) => {
+      .map((l, index) => {
+        if (code.byLine.has(index)) return '';
         const m = l.match(/^(\s+)/);
         return m ? m[1] : '';
       })
@@ -132,9 +149,12 @@ export function mergeInsertItemsIntoArchiveContent(
     return result.concat((obj.text || '').split(/\r?\n/));
   }, []);
   const sourceIndent = detectContentIndentUnit(sourceLines);
+  const sourceCode = parseCodeBlocks(sourceLines.join('\n'));
   const sourceUsesTabs =
     sourceIndent === '\t' &&
-    sourceLines.every((line) => !/^\s+\S/.test(line) || line.startsWith('\t'));
+    sourceLines.every(
+      (line, index) => sourceCode.byLine.has(index) || !/^\s+\S/.test(line) || line.startsWith('\t')
+    );
   const indentUnit =
     detectContentIndentUnit(lines) ||
     (sourceUsesTabs ? '\t' : (config && config.indentation) || defaultIndentUnit);
@@ -161,6 +181,7 @@ export function mergeInsertItemsIntoArchiveContent(
   }
 
   function parseProjects(linesArr: string[]) {
+    const code = parseCodeBlocks(linesArr.join('\n'));
     const projects = [] as any[];
     const stack: Array<{ name: string; level: number }> = [];
     const contentIndentUnit = detectContentIndentUnit(linesArr);
@@ -171,6 +192,7 @@ export function mergeInsertItemsIntoArchiveContent(
       '.';
 
     for (let i = 0; i < linesArr.length; i++) {
+      if (code.byLine.has(i)) continue;
       const line = linesArr[i];
       if (!line.trim()) continue;
       const indent = (line.match(/^\s*/) || [''])[0];
@@ -224,6 +246,7 @@ export function mergeInsertItemsIntoArchiveContent(
       // further project headers, but there is content at the same or
       // lower indentation.
       for (let k = p.start + 1; k < linesArr.length; k++) {
+        if (code.byLine.has(k)) continue;
         const line = linesArr[k];
         // skip empty lines
         if (!line || !line.trim()) continue;
@@ -280,16 +303,20 @@ export function mergeInsertItemsIntoArchiveContent(
   insertItems.forEach((ins) => {
     const obj = ins.obj || ins; // support older shapes
     // Remove project tags from insert text
-    const text = (obj.text || '').replace(projectTagRegex, '');
+    const text = obj.text || '';
     const projectPath =
       obj.projects && obj.projects.length ? JSON.stringify(obj.projects) : undefined;
-    const textLinesRaw = text.split(/\r?\n/).map((l) => l.replace(projectTagRegex, ''));
+    const textLinesRaw = stripProjectTags(text);
+    const rawCode = parseCodeBlocks(text);
     const projectNames = new Set((obj.projects || []).map((project: string) => project.trim()));
-    const textLines = textLinesRaw.filter((line) => {
+    const textLines = textLinesRaw.filter((line, index) => {
+      if (rawCode.byLine.has(index)) return true;
       const match = isTodoLine(line) ? null : line.match(projectParts);
 
       return !match || !projectNames.has(match[2].trim());
     });
+    const code = parseCodeBlocks(textLines.join('\n'));
+    const sourcePrefix = (textLines[0] || '').match(/^[\t ]*/)[0];
 
     if (projectPath) {
       // Ensure chain
@@ -314,7 +341,9 @@ export function mergeInsertItemsIntoArchiveContent(
         // If inserting under a found project header, normalize the
         // indentation of the incoming block so relative indentation is
         // preserved while aligning with the target header's level.
-        const nonEmptyLines = textLines.filter((l) => (l || '').trim().length > 0);
+        const nonEmptyLines = textLines.filter(
+          (l, index) => !code.byLine.has(index) && (l || '').trim().length > 0
+        );
         const insertedIndentUnit =
           detectContentIndentUnit(textLines) === '\t'
             ? '\t'
@@ -323,14 +352,21 @@ export function mergeInsertItemsIntoArchiveContent(
           ? Math.min(...nonEmptyLines.map((l) => getIndentLevel(l, insertedIndentUnit)))
           : 0;
         const desiredBaseLevel = (target.level || 0) + 1; // one level inside the header
+        const contentIndentUnit = detectContentIndentUnit(lines) || indentUnit;
 
-        const normalized = textLines.map((l) => {
+        const normalized = textLines.map((l, index) => {
+          if (code.byLine.has(index)) {
+            return shiftCodeIndentation(
+              l,
+              sourcePrefix,
+              contentIndentUnit.repeat(desiredBaseLevel)
+            );
+          }
           const trimmed = l.trim();
           if (!trimmed) return '';
           const curLevel = getIndentLevel(l, insertedIndentUnit);
           const rel = curLevel - blockMinIndent;
           const newLevel = Math.max(0, desiredBaseLevel + rel);
-          const contentIndentUnit = detectContentIndentUnit(lines) || indentUnit;
           return `${contentIndentUnit.repeat(newLevel)}${trimmed}`;
         });
 
@@ -348,16 +384,20 @@ export function mergeInsertItemsIntoArchiveContent(
         detectContentIndentUnit(textLines) === '\t'
           ? '\t'
           : (config && config.indentation) || indentUnit;
-      const nonEmptyLines = textLines.filter((line) => line.trim()),
+      const nonEmptyLines = textLines.filter(
+          (line, index) => !code.byLine.has(index) && line.trim()
+        ),
         baseLevel = nonEmptyLines.length
           ? Math.min(...nonEmptyLines.map((line) => getIndentLevel(line, sourceUnit)))
           : 0;
 
       insertIntoRoot(
-        textLines.map((line) =>
-          line.trim()
-            ? `${indentUnit.repeat(rootIndentLevel + getIndentLevel(line, sourceUnit) - baseLevel)}${line.trim()}`
-            : ''
+        textLines.map((line, index) =>
+          code.byLine.has(index)
+            ? shiftCodeIndentation(line, sourcePrefix, indentUnit.repeat(rootIndentLevel))
+            : line.trim()
+              ? `${indentUnit.repeat(rootIndentLevel + getIndentLevel(line, sourceUnit) - baseLevel)}${line.trim()}`
+              : ''
         )
       );
     }

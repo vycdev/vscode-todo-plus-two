@@ -1,3 +1,76 @@
+### Version 5.4.0
+
+Markdown task management, planned work windows, configurable tag styles, and richer Todo sidebars and notes. Read the compatibility notes before upgrading existing task files.
+
+#### Compatibility notes
+
+- Task-text styling now follows literal tags through `todo.tags.styles`. Symbol-only done/cancelled tasks use syntax-theme styling until they have an `@done`/`@cancelled` tag; existing files are not rewritten. Legacy colors and the done-strikethrough preference supply default rule values. Timer commands maintain an `@paused` marker; use `Todo: Sync Paused Tags` to repair markers after manual edits or migrate existing paused tasks. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Markdown task support and numbered-list continuation are enabled by default. Set `todo.markdown.enabled` or `todo.autoRenumber` to `false` to disable them. Planned work windows, Files tag grouping, and embedded manual ordering are opt-in.
+- The minimum VS Code version remains 1.36. Embedded drag-and-drop requires 1.66+ and image paste requires 1.97+; older supported versions retain the other features and embedded Move Up/Down actions.
+
+#### New features
+
+- Added opt-in `@planned(...)` work windows with daily or dated time ranges, multiple sessions, and automatic active-tag highlighting. Enable `todo.planned.enabled` and customize the active color with `todo.colors.planned`. [#82](https://github.com/vycdev/vscode-todo-plus-two/issues/82)
+- Added configurable task-text styles selected by tags, with default Done, Cancelled, Started, and Paused rules. Rules support colors, backgrounds, bold, italic, strikethrough, theme overrides, and per-property priority with the last matching tag breaking ties. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Added Edit Task and Toggle Done row actions to the Files and Due sidebars. Edit task text and tags through a prefilled input prompt, or change task status, while keeping the current editor active. Actions support Todo files and Markdown tasks and reject stale tree rows or prompt edits. VS Code may add an inactive tab for unsaved changes. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
+- Added a root favicon using the Todo+2 logo so T3 Code can discover the project's icon. [#284](https://github.com/vycdev/vscode-todo-plus-two/issues/284)
+- Added explicit, nestable `@region` / `@endregion` folding markers for Todo files, including support for the editor's Fold All Regions command. [#92](https://github.com/vycdev/vscode-todo-plus-two/issues/92)
+- Added **Todo: Focus on Tag…** and **Todo: Clear Focus** commands to fold nonmatching lines while keeping matching tasks and their parent context visible. Focus inserts or reuses one persistent header and refreshes after edits. [#92](https://github.com/vycdev/vscode-todo-plus-two/issues/92)
+- Added opt-in tag grouping in the Files sidebar with `todo.file.view.groupByTags`, including Todo files and Markdown notes, per-group counts, original project and parent-task context, and an Other group for tasks without a selected tag. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
+- Added automatic continuation and renumbering of plain numbered lists on Enter in Todo files, enabled by default and configurable with `todo.autoRenumber`. [#19](https://github.com/vycdev/vscode-todo-plus-two/issues/19)
+- Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
+- Added PNG/JPEG image paste in saved local Todo files on VS Code 1.97 or newer. Images are stored in a sibling `<filename>.assets` folder and inserted as clickable relative links, with undo/redo and existing-file protection. Non-empty clipboard text keeps its normal paste behavior without waiting for image reads or showing image errors; images can also be selected with Paste As. [#6](https://github.com/vycdev/vscode-todo-plus-two/issues/6)
+- Added fenced code notes with GitHub Linguist language names and aliases, highlighted using VS Code's bundled and installed TextMate grammars. Fenced content stays literal to Todo features, and attached blocks are preserved when archiving or unarchiving tasks. [#66](https://github.com/vycdev/vscode-todo-plus-two/issues/66)
+- Added opt-in manual ordering of embedded todo groups, files, and tasks with `todo.embedded.view.sort: "manual"`, Move Up/Down actions, drag-and-drop on VS Code 1.66+, workspace-local persistence, and a Reset Manual Order command. [#40](https://github.com/vycdev/vscode-todo-plus-two/issues/40)
+- Refreshed the README with current commands, settings, compatibility guidance, and eleven real VS Code screenshots, including planned work windows. [#295](https://github.com/vycdev/vscode-todo-plus-two/issues/295)
+
+#### Fixes
+
+- Updated file-discovery dependencies to remove vulnerable glob parsers, preserving filesystem casing and symlink rules, and modernized the build and test tooling while retaining VS Code 1.36 support. [#299](https://github.com/vycdev/vscode-todo-plus-two/issues/299)
+- Rejected impossible `@due` timestamps with seconds and invalid time-zone offsets instead of rolling them forward; valid timestamps, including loosely padded components, remain accepted.
+- Rejected impossible `@due` dates with minute-precision timezone offsets instead of silently moving them into the next month.
+- Rejected impossible `@due` dates and invalid timezone offsets with lowercase `z` or hour-only offsets, while preserving valid timestamps as exact instants. [#277](https://github.com/vycdev/vscode-todo-plus-two/issues/277)
+- Cached unchanged Todo lines and their highlighting, reused unaffected project statistics, and kept tag, status, formatting, and line insertion/deletion edits incremental. Split editors, date-sensitive statistics, archive boundaries, and configuration changes remain synchronized. Fenced code notes retain full parsing so examples stay excluded from task state. [#94](https://github.com/vycdev/vscode-todo-plus-two/issues/94)
+- Fixed unsaved embedded todos being missed when workspace and editor paths use different aliases for the same workspace, including macOS `/var` and `/private/var` paths. [#8](https://github.com/vycdev/vscode-todo-plus-two/issues/8)
+- Rescan embedded todos when a workspace alias changes targets, and keep filesystem updates incremental when the embedded cache is large.
+- Keep dirty alias buffers bound to their original workspace target and restore disk-change notifications after an alias is retargeted.
+- Normalize embedded provider cache paths so an initial Windows scan cannot duplicate or overwrite a newer unsaved edit.
+- Fixed absolute paths in `todo.file.include` so global Todo files stay in the Files sidebar across projects and with no folder open, and refresh on edits, deletion, and recreation. [#17](https://github.com/vycdev/vscode-todo-plus-two/issues/17)
+- Fixed root grouping for workspace folder paths with a trailing separator, including the workspace folder itself.
+- Kept checked Markdown tasks out of pending-task results when `-` is the configured todo box symbol.
+- Preserved `@due(...)` urgency colors when refreshing planned work windows.
+- Rejected malformed planned windows containing inline code in their arguments.
+- Replaced the Todo activity bar's standalone checkmark with a checklist icon to make the Todo views easier to recognize. [#53](https://github.com/vycdev/vscode-todo-plus-two/issues/53)
+- Preserved literal tag text in IDs, dependencies, and other arguments during paused-marker cleanup, and ignored nested timer examples when synchronizing markers. Released obsolete tag-style decoration resources when tags are removed or documents close. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Kept backticks inside tag arguments literal so they cannot hide following task-style or timer tags. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Honored empty task-style color and background overrides for individual themes instead of falling back to the rule's base colors. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Refreshed task styles in every visible split view of the same file after tag edits, and cleared all splits when task support is disabled. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Preserved tag styles on untouched tasks during incremental edits, releasing obsolete decoration types only after all visible split caches stop using them. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Refreshed the Files and Due sidebars after rejecting a stale task action so a retry uses the current document when VS Code has disposed and reopened a background file. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
+- Rejected sidebar prompt edits when Markdown section settings exclude the task while the prompt is open. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
+- Prevented the default embedded-todo regex from freezing the Extension Host on long runs of spaces in comments, affecting both JavaScript scanning and external-search result parsing. [#21](https://github.com/vycdev/vscode-todo-plus-two/issues/21)
+- Kept tag groups and other task views current when a previously indexed file is reopened and edited without saving. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
+- Kept Markdown task discovery and hierarchy correct around indented fence examples, HTML comments, headings inside list items, and custom bracketed symbols. Hidden comment metadata no longer changes task status, dependencies, due dates, estimates, or timers.
+- Refreshed the Files tree for unsaved task edits and cleared editor decorations when Markdown task support is disabled.
+- Preserved multiline comments and relative code indentation when archiving Markdown tasks, and recreated missing section headings when unarchiving in section-only mode.
+- Escaped Markdown archive group labels that resemble task or block syntax, and validated archive merges before removing source tasks.
+- Enabled the explicit Toggle Box command to create and restore Markdown checkboxes on eligible prose and list items.
+- Removed previously loaded Markdown notes from workspace dependency discovery when discovery settings exclude them.
+- Kept escaped Markdown tags literal during task actions and archive cleanup while preserving plain-text dependency IDs.
+- Ignored code fences opened directly after Markdown list markers and protected Setext heading titles and underlines from Toggle Box edits.
+- Preserved escaped punctuation in partially typed dependency completions and refreshed visible Markdown editors when parser settings change.
+- Rejected stale Markdown tree actions after a note is closed and reopened, and preserved CRLF line endings when archiving its entire contents.
+- Treated tag arguments as literal text so nested tag examples cannot finish tasks, create dependencies or due dates, control timers, or get removed by status changes.
+- Prevented HTML comments in block quotes from hiding later Markdown tasks, and preserved archive and restored-parent names that contain heading syntax.
+- Preserved ID and dependency tags separated from another tag by punctuation while keeping reference examples inside tag arguments literal.
+- Bounded section-only Markdown task discovery by enclosing list items, including parents outside selected sections, so commands and dependencies do not include following sibling tasks.
+- Restored archived Markdown children to their original parent after its timekeeping or completion-cleanup tags change, retaining IDs and other labels when matching parent paths.
+- Kept archived Markdown tasks in place when their parent path is ambiguous, while allowing unique deeper destinations below repeated ancestor headings.
+- Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
+- Kept selected Todo text intact when an image attachment cannot be written.
+- Preserved relative file and image attachment links in tasks, project titles, and attached notes when archiving into a workspace-root archive. Project titles containing attachment links keep their hierarchy across repeated archives; fenced code examples remain literal.
+- Excluded worktree Git metadata, benchmark reports, test samples, and editable logo sources from the VSIX package.
+
 ### Version 5.3.0
 
 A large release: nearly 30 new features and well over a hundred fixes since 5.2.0. If you customize statistics conditions or bound a key to `Todo: Toggle Timer`, read the compatibility notes first.

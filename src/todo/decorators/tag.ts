@@ -192,7 +192,7 @@ class Tag extends Line {
     return [...special, id, dependency, normal];
   }
 
-  getDecorations(tags: TagItem[]) {
+  getDecorations(tags: TagItem[], excludedRanges: vscode.Range[] = []) {
     const types = ensureDecorationTypes(),
       lineRanges = types.lines.map(() => []),
       decoratedLines = {};
@@ -208,7 +208,14 @@ class Tag extends Line {
       decoratedLines[tag.lineNumber] = true;
     });
 
-    const tagRanges = super.getItemsRanges(tags),
+    // Due and active planned tags provide their own foreground colors. Overlapping tag
+    // colors otherwise win according to VS Code's stylesheet insertion order.
+    const rangeKey = (range: vscode.Range) =>
+      [range.start.line, range.start.character, range.end.line, range.end.character].join(':');
+    const excluded = new Set(excludedRanges.map(rangeKey));
+    const tagRanges = super.getItemsRanges(
+        excluded.size ? tags.filter((tag) => !excluded.has(rangeKey(tag.range))) : tags
+      ),
       ranges = [...lineRanges, ...tagRanges];
 
     return this.TYPES.map((type, index) => ({

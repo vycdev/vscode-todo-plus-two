@@ -11,6 +11,8 @@ describe('Timer command contributions', () => {
 
     expect(commands['todo.toggleTimer']).to.equal('Todo: Toggle Timer');
     expect(commands['todo.toggleStatusBarTimer']).to.equal('Todo: Toggle Status Bar Timer');
+    expect(commands['todo.syncPausedTags']).to.equal('Todo: Sync Paused Tags');
+    expect(pkg.activationEvents).to.include('onCommand:todo.syncPausedTags');
     expect(pkg.activationEvents).to.include('onCommand:todo.toggleStatusBarTimer');
   });
 
@@ -21,7 +23,7 @@ describe('Timer command contributions', () => {
 
     expect(keybinding).to.deep.include({
       key: 'Alt+t',
-      when: 'editorTextFocus && editorLangId == todo',
+      when: 'editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))',
     });
   });
 });

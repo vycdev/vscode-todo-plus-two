@@ -78,6 +78,31 @@ function loadTimer(settings) {
 }
 
 describe('Timer status bar layout settings', () => {
+  it('uses cached started tasks without rescanning the document, including an empty list', () => {
+    const { instance } = loadTimer({});
+    const doc = {
+      textDocument: { uri: { fsPath: '/workspace/TODO' } },
+      getTodosBoxStarted: () => {
+        throw new Error('Unexpected full scan');
+      },
+    };
+    try {
+      instance.update(doc, [
+        {
+          text: 'Active @started(26-08-21 01:00)',
+          line: { lineNumber: 1 },
+          getTag: () => undefined,
+        },
+      ]);
+      expect(instance.data.text).to.equal('Active @started(26-08-21 01:00)');
+      instance.update(doc, []);
+      expect(instance.item.visible).to.equal(false);
+      expect(instance.intervalId).to.equal(undefined);
+    } finally {
+      instance.dispose();
+    }
+  });
+
   it('applies alignment and priority changes while the active timer is unchanged', () => {
     const settings = {
       'timer.statusbar.alignment': 'left',

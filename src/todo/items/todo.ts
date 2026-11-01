@@ -70,6 +70,7 @@ class Todo extends Item {
 
     if ((was.done || was.cancelled) && is.box) {
       this.unfinish();
+      this.syncPausedTag(new Date(), false);
     }
 
     if (
@@ -114,6 +115,10 @@ class Todo extends Item {
 
   /* TIMEKEEPING */
 
+  getTimekeepingText(): string {
+    return this.lineNextText;
+  }
+
   create() {
     if (Config.getKey('timekeeping.created.enabled')) {
       if (Config.getKey('timekeeping.created.time')) {
@@ -144,6 +149,7 @@ class Todo extends Item {
   }
 
   start() {
+    this.removeTags(['paused']);
     if (Config.getKey('timekeeping.started.time')) {
       const date = moment(),
         format = Config.getKey('timekeeping.started.format'),
@@ -160,12 +166,24 @@ class Todo extends Item {
 
   unstart() {
     this.removeTag(Consts.regexes.tagStarted);
+    this.removeTags(['paused']);
   }
 
-  toggleTimer() {
+  toggleTimer(date: Date = new Date()) {
     const format = Config.getKey('timekeeping.started.format');
 
-    this.addTag(getToggleTag(format));
+    this.addTag(getToggleTag(format, date));
+    this.syncPausedTag(date);
+  }
+
+  syncPausedTag(date: Date = new Date(), finished: boolean = this.isFinished()) {
+    const state = getTimerState(
+      this.getTimekeepingText(),
+      Config.getKey('timekeeping.started.format'),
+      date
+    );
+    this.removeTags(['paused']);
+    if (!finished && state && !state.active) this.addTag('@paused');
   }
 
   finish(isPositive?: boolean) {
@@ -175,10 +193,10 @@ class Todo extends Item {
       finishedDate = new Date(),
       startedFormat = Config.getKey('timekeeping.started.format'),
       timerState = started
-        ? getTimerState(this.lineNextText, startedFormat, finishedDate)
+        ? getTimerState(this.getTimekeepingText(), startedFormat, finishedDate)
         : undefined;
 
-    this.removeTags(Config.getKey('timekeeping.finished.remove.tags'));
+    this.removeTags(['paused', ...(Config.getKey('timekeeping.finished.remove.tags') || [])]);
 
     if (
       started ||
@@ -303,6 +321,7 @@ class Todo extends Item {
   /* IS */
 
   isBox() {
+    if (/^[^\S\n]*-\s+\[[xX]\]\s/.test(this.text)) return false;
     return matchesTodoStatus(this.text, Consts.regexes.todoBox);
   }
 

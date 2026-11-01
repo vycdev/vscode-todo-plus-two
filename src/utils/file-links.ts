@@ -1,6 +1,7 @@
 /* IMPORT */
 
 import * as path from 'path';
+import { parseCodeBlocks } from './code-blocks';
 
 /* RELATIVE FILE LINKS */
 
@@ -31,6 +32,39 @@ export interface RelativeFileLink {
   end: number;
   targetPath: string;
 }
+
+export const makeRelativeFileLink = (documentPath: string, targetPath: string): string => {
+  const relativePath = path.relative(path.dirname(documentPath), targetPath);
+  if (path.isAbsolute(relativePath))
+    throw new Error('Cannot link files on different filesystem roots');
+  const encodedPath = relativePath
+    .split(path.sep)
+    .map((segment) =>
+      encodeURIComponent(segment).replace(
+        /[!'()*]/g,
+        (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+      )
+    )
+    .join('/');
+  return `file://${encodedPath.startsWith('../') ? '' : './'}${encodedPath}`;
+};
+
+export const rebaseRelativeFileLinks = (
+  text: string,
+  sourcePath: string,
+  destinationPath: string
+): string => {
+  if (!path.relative(path.dirname(sourcePath), path.dirname(destinationPath))) return text;
+  const links = findRelativeFileLinks(parseCodeBlocks(text).maskedText, sourcePath);
+  // Replace from the end so earlier link ranges stay valid.
+  for (const link of links.reverse()) {
+    text =
+      text.slice(0, link.start) +
+      makeRelativeFileLink(destinationPath, link.targetPath) +
+      text.slice(link.end);
+  }
+  return text;
+};
 
 export const findRelativeFileLinks = (text: string, documentPath: string): RelativeFileLink[] => {
   const links: RelativeFileLink[] = [];

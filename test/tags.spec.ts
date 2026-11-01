@@ -43,6 +43,19 @@ describe('Tag utilities', () => {
     expect(Tags.remove(text, ['today'])).to.equal('Task `@today` and `code @today(noon)`');
   });
 
+  it('preserves literal tag names inside IDs, dependencies and other tag arguments', () => {
+    const metadata = '@id(@paused) @depends(@paused) @note(@paused)';
+    expect(Tags.remove(`☐ Task ${metadata} @paused`, ['paused'])).to.equal(`☐ Task ${metadata}`);
+    expect(Tags.remove('☐ Task @note(@today) @today', ['today'])).to.equal('☐ Task @note(@today)');
+  });
+
+  it('does not let literal argument backticks hide real cleanup tags', () => {
+    expect(Tags.remove('☐ Task @note(`literal) @paused `code`', ['paused'])).to.equal(
+      '☐ Task @note(`literal) `code`'
+    );
+    expect(Tags.removeAll('☐ Task @note(`literal) @paused `code`')).to.equal('☐ Task `code`');
+  });
+
   it('removes tags immediately after closing inline code delimiters', () => {
     expect(Tags.remove('Task `code`@today', ['today'])).to.equal('Task `code`');
     expect(Tags.removeAll('Task `code`@today')).to.equal('Task `code`');

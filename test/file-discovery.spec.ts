@@ -1,10 +1,50 @@
 import { expect } from 'chai';
+import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { discoverFiles, isAllowedFilePath } from '../src/utils/file-discovery';
 
+const discoverWithReads = (
+  workspace: string,
+  include: string[],
+  exclude: string[],
+  followSymlinks: boolean,
+  workspaceExcludes: Record<string, boolean> = {}
+): { files: string[]; reads: string[] } =>
+  JSON.parse(
+    execFileSync(
+      process.execPath,
+      [
+        '-r',
+        'ts-node/register/transpile-only',
+        '-e',
+        `
+          const fs = require('fs');
+          const path = require('path');
+          const [workspace, include, exclude, followSymlinks, workspaceExcludes] = JSON.parse(process.argv[1]);
+          const readdir = fs.readdir;
+          const reads = [];
+          // Install before loading fast-glob: its filesystem adapter snapshots these methods.
+          fs.readdir = function (directory, ...args) {
+            reads.push(path.relative(workspace, String(directory)).replace(/\\\\/g, '/'));
+            return readdir.call(this, directory, ...args);
+          };
+          require('./src/utils/file-discovery').discoverFiles(
+            [workspace], include, exclude, followSymlinks, () => workspaceExcludes
+          ).then(files => process.stdout.write(JSON.stringify({ files, reads }))).catch(error => {
+            console.error(error);
+            process.exitCode = 1;
+          });
+        `,
+        JSON.stringify([workspace, include, exclude, followSymlinks, workspaceExcludes]),
+      ],
+      { encoding: 'utf8', timeout: 5000 }
+    )
+  );
+
 describe('File discovery symlink policy', () => {
-  it('excludes directory symlinks by default, including literal prefixes and watcher paths', async () => {
+  it('excludes directory symlinks by default, including literal prefixes and watcher paths', async function () {
+    this.timeout(15000);
     const fixture = fs.mkdtempSync(path.join(process.cwd(), '.file-discovery-'));
     const workspace = path.join(fixture, 'workspace');
     const external = path.join(fixture, 'external');
@@ -27,6 +67,8 @@ describe('File discovery symlink policy', () => {
         normalFile,
         linkedFile,
       ]);
+      expect(discoverWithReads(workspace, ['**/*.todo'], [], false).reads).not.to.include('linked');
+      expect(discoverWithReads(workspace, ['**/*.todo'], [], true).reads).to.include('linked');
       expect(isAllowedFilePath(linkedFile, [workspace], false)).to.equal(false);
       expect(isAllowedFilePath(linkedFile, [workspace], true)).to.equal(true);
       expect(isAllowedFilePath(path.join(external, 'external.todo'), [workspace], true)).to.equal(
@@ -38,6 +80,54 @@ describe('File discovery symlink policy', () => {
       fs.unlinkSync(path.join(external, 'external.todo'));
       fs.rmdirSync(workspace);
       fs.rmdirSync(external);
+      fs.rmdirSync(fixture);
+    }
+  });
+
+  it('does not discover file symlinks unless following symlinks is enabled', async () => {
+    const fixture = fs.mkdtempSync(path.join(process.cwd(), '.file-discovery-'));
+    const workspace = path.join(fixture, 'workspace');
+    const external = path.join(fixture, 'external.todo');
+    const link = path.join(workspace, 'linked.todo');
+    fs.mkdirSync(workspace);
+    fs.writeFileSync(external, 'external');
+    fs.symlinkSync(external, link, 'file');
+
+    try {
+      const scan = (follow: boolean) =>
+        discoverFiles([workspace], ['**/*.todo'], [], follow, () => ({}));
+
+      expect(await scan(false)).to.deep.equal([]);
+      expect((await scan(true)).map(path.normalize)).to.deep.equal([link]);
+      expect(isAllowedFilePath(link, [workspace], false)).to.equal(false);
+      expect(isAllowedFilePath(link, [workspace], true)).to.equal(true);
+    } finally {
+      fs.unlinkSync(link);
+      fs.unlinkSync(external);
+      fs.rmdirSync(workspace);
+      fs.rmdirSync(fixture);
+    }
+  });
+});
+
+describe('File discovery across workspace roots', () => {
+  it('returns each file once when workspace roots overlap', async () => {
+    const fixture = fs.mkdtempSync(path.join(process.cwd(), '.file-discovery-'));
+    const nested = path.join(fixture, 'nested');
+    const outerFile = path.join(fixture, 'outer.todo');
+    const innerFile = path.join(nested, 'inner.todo');
+    fs.mkdirSync(nested);
+    fs.writeFileSync(outerFile, '');
+    fs.writeFileSync(innerFile, '');
+
+    try {
+      const files = await discoverFiles([fixture, nested], ['**/*.todo'], [], false, () => ({}));
+      expect(files.map(path.normalize)).to.have.members([outerFile, innerFile]);
+      expect(files).to.have.length(2);
+    } finally {
+      fs.unlinkSync(outerFile);
+      fs.unlinkSync(innerFile);
+      fs.rmdirSync(nested);
       fs.rmdirSync(fixture);
     }
   });
@@ -57,7 +147,8 @@ describe('File discovery exclude pruning', () => {
     fs.rmdirSync(dirPath);
   };
 
-  it('walks each directory once and never descends into excluded directories', async () => {
+  it('walks each directory once and never descends into excluded directories', async function () {
+    this.timeout(10000);
     const fixture = fs.mkdtempSync(path.join(process.cwd(), '.file-discovery-'));
     const workspace = path.join(fixture, 'workspace');
     const expected = [
@@ -70,30 +161,23 @@ describe('File discovery exclude pruning', () => {
     writeFile(path.join(workspace, 'build', 'out', 'hidden.todo'));
     writeFile(path.join(workspace, '.git', 'objects', 'hidden.todo'));
 
-    const readdir = fs.readdir;
-    const reads: string[] = [];
-    (fs as any).readdir = function (dirPath: fs.PathLike, ...args: any[]) {
-      reads.push(path.relative(workspace, path.resolve(String(dirPath))).replace(/\\/g, '/'));
-      return (readdir as any).call(this, dirPath, ...args);
-    };
-
     try {
-      const files = await discoverFiles(
-        [workspace],
+      const { files, reads } = discoverWithReads(
+        workspace,
         ['**/TODO', '**/*.todo', '**/*.taskpaper'],
         ['**/node_modules/**', '**/build/**'],
         false,
-        () => ({ '**/.git': true })
+        { '**/.git': true }
       );
 
       expect(files.map(path.normalize)).to.have.members(expected);
+      expect(reads).to.have.members(['', 'sub']);
       // An excluded directory may be listed, but none of its subdirectories are read.
       expect(
         reads.filter((dirPath) => /^(node_modules|build|\.git)\//.test(dirPath))
       ).to.deep.equal([]);
       expect(reads.filter((dirPath, index) => reads.indexOf(dirPath) !== index)).to.deep.equal([]);
     } finally {
-      (fs as any).readdir = readdir;
       removeDir(fixture);
     }
   });
@@ -115,6 +199,28 @@ describe('File discovery exclude pruning', () => {
       );
 
       expect(files.map(path.normalize)).to.have.members(expected);
+    } finally {
+      removeDir(fixture);
+    }
+  });
+
+  it('preserves filesystem casing rules for include and exclude patterns', async () => {
+    const fixture = fs.mkdtempSync(path.join(process.cwd(), '.file-discovery-'));
+    const mixedCase = path.join(fixture, 'Nested', 'Mixed.ToDo');
+    const excluded = path.join(fixture, 'skip', 'hidden.todo');
+    writeFile(mixedCase);
+    writeFile(excluded);
+
+    try {
+      const files = await discoverFiles(
+        [fixture],
+        ['**/*.todo'],
+        ['**/SKIP/**'],
+        false,
+        () => ({})
+      );
+      const insensitive = process.platform === 'win32' || process.platform === 'darwin';
+      expect(files.map(path.normalize)).to.have.members(insensitive ? [mixedCase] : [excluded]);
     } finally {
       removeDir(fixture);
     }

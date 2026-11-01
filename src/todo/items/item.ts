@@ -3,10 +3,13 @@
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Utils from '../../utils';
+import type { MarkdownTaskNode } from '../../utils/markdown-tasks';
 
 /* ITEM */
 
 class Item {
+  markdownNode?: MarkdownTaskNode;
+  level?: number;
   /* PROPERTIES */
 
   textEditor: vscode.TextEditor;
@@ -76,6 +79,15 @@ class Item {
     this.textDocument = this.textEditor ? textEditor.document : null;
     this._line = line;
     this.match = match;
+  }
+
+  /* POSITION */
+
+  // Cached matches keep their captured text; editor coordinates follow line edits.
+  rebase(lineNumber: number, character = this.range.start.character, line?: vscode.TextLine) {
+    this._pos = new vscode.Position(lineNumber, character);
+    this._range = undefined;
+    this._line = line;
   }
 
   /* IS */
