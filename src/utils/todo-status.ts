@@ -1,10 +1,24 @@
 /* INLINE CODE */
 
-export const getInlineCodeRanges = (text: string): { start: number; end: number }[] => {
+export const getInlineCodeRanges = (
+  text: string,
+  literalTagArguments: boolean = false
+): { start: number; end: number }[] => {
   const ranges: { start: number; end: number }[] = [];
   let cursor = 0;
 
   while (cursor < text.length) {
+    if (
+      literalTagArguments &&
+      text[cursor] === '@' &&
+      (cursor === 0 || !/[a-zA-Z0-9@]/.test(text[cursor - 1]))
+    ) {
+      const tag = /^@[^\s*~(`@]+\([^\r\n)]*\)/.exec(text.slice(cursor));
+      if (tag) {
+        cursor += tag[0].length;
+        continue;
+      }
+    }
     if (text[cursor] !== '`') {
       cursor++;
       continue;
@@ -43,9 +57,9 @@ export const getInlineCodeRanges = (text: string): { start: number; end: number 
   return ranges;
 };
 
-export const maskInlineCode = (text: string): string => {
+export const maskInlineCode = (text: string, literalTagArguments: boolean = false): string => {
   const masked = text.split('');
-  getInlineCodeRanges(text).forEach(({ start, end }) => {
+  getInlineCodeRanges(text, literalTagArguments).forEach(({ start, end }) => {
     for (let index = start; index < end; index++) masked[index] = ' ';
   });
   return masked.join('');

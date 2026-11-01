@@ -3,6 +3,7 @@
 import * as moment from 'moment';
 import Time from './time';
 import { getTagArgumentRanges } from './tags';
+import { getInlineCodeRanges } from './todo-status';
 
 /* TYPES */
 
@@ -34,21 +35,6 @@ interface ParsedTagDate {
   end: number;
 }
 
-const isInsideInlineCode = (text: string, offset: number): boolean => {
-  const runs = text.slice(0, offset).match(/`+/g) || [];
-  let delimiterLength = 0;
-
-  runs.forEach((run) => {
-    if (!delimiterLength) {
-      delimiterLength = run.length;
-    } else if (run.length === delimiterLength) {
-      delimiterLength = 0;
-    }
-  });
-
-  return delimiterLength > 0;
-};
-
 const findTagDates = (
   text: string,
   tag: string,
@@ -58,6 +44,7 @@ const findTagDates = (
 ): ParsedTagDate[] => {
   const regex = new RegExp(`@${tag}\\(([^)]*)\\)`, 'g'),
     argumentsRanges = getTagArgumentRanges(text),
+    inlineCodeRanges = getInlineCodeRanges(text, true),
     matches: ParsedTagDate[] = [];
 
   regex.lastIndex = startIndex;
@@ -66,7 +53,8 @@ const findTagDates = (
 
   while ((match = regex.exec(text))) {
     if (match.index > 0 && /[a-zA-Z0-9`]/.test(text[match.index - 1])) continue;
-    if (isInsideInlineCode(text, match.index)) continue;
+    if (inlineCodeRanges.some((range) => match.index >= range.start && match.index < range.end))
+      continue;
     if (argumentsRanges.some((range) => match.index >= range.start && match.index < range.end))
       continue;
 

@@ -112,6 +112,15 @@ describe('Task tag styling rules', () => {
     expect(resolveTaskTagStyle('☐ Explain `@done` @done', rules).base.strikethrough).to.equal(true);
   });
 
+  it('treats backticks inside tag arguments literally before scanning real inline code', () => {
+    const text = '☐ Task @note(`literal) @blocked `code`';
+    const rules = { blocked: { color: 'red' } };
+    expect(resolveTaskTagStyle(text, rules).base.color).to.equal('red');
+    const pieces = getTaskTagStyleRanges(text).map(({ start, end }) => text.slice(start, end));
+    expect(pieces).to.deep.equal(['☐ Task ', ' ', ' ']);
+    expect(resolveTaskTagStyle('☐ Explain `@note(value) @blocked`', rules).base).to.deep.equal({});
+  });
+
   it('protects Markdown escapes, comments, code, and tag arguments', () => {
     const rules = { blocked: { color: 'red' } };
     const literal = '- [ ] Task \\@blocked <!-- @blocked --> `@blocked` @note(@blocked)';

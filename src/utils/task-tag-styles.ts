@@ -87,7 +87,7 @@ export const getTaskTagStyleRules = (config): TaskTagStyleRules => {
 };
 
 const getTags = (text: string, markdown: boolean) => {
-  const masked = markdown ? maskMarkdownTaskText(text) : maskInlineCode(text),
+  const masked = markdown ? maskMarkdownTaskText(text) : maskInlineCode(text, true),
     regex = /(?<![a-zA-Z0-9@])@([^\s*~(`@]+)(?:\([^\r\n)]*\))?/g,
     tags: { name: string; start: number; end: number }[] = [];
   let match: RegExpExecArray;
@@ -133,7 +133,7 @@ export const getTaskTagStyleRanges = (
 ): { start: number; end: number }[] => {
   const protectedRanges = markdown
     ? getMarkdownTaskProtectedRanges(text)
-    : getInlineCodeRanges(text);
+    : getInlineCodeRanges(text, true);
   const excluded = [...getTags(text, markdown), ...protectedRanges].sort(
       (a, b) => a.start - b.start
     ),

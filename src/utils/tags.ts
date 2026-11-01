@@ -8,7 +8,7 @@ function escapeRegExp(str: string) {
 
 /** Outer tag arguments contain literal metadata, not additional active tags. */
 export const getTagArgumentRanges = (text: string): { start: number; end: number }[] => {
-  const masked = maskInlineCode(text),
+  const masked = maskInlineCode(text, true),
     regex = /(?<![a-zA-Z0-9@])@[^\s*~(`@]+\([^\r\n)]*\)/g,
     ranges: { start: number; end: number }[] = [];
   let match: RegExpExecArray;
@@ -39,7 +39,7 @@ const Tags = {
 
     if (!names.length) return text;
 
-    const masked = maskInlineCode(text),
+    const masked = maskInlineCode(text, true),
       argumentsRanges = getTagArgumentRanges(text),
       regex = new RegExp(
         `(^|[^a-zA-Z0-9])@(?:${names
@@ -64,7 +64,7 @@ const Tags = {
 
   removeAll(text: string) {
     const regex = /(^|[^a-zA-Z0-9])(@[^\s*~(`]+)(\([^)]*\))?/gm,
-      masked = maskInlineCode(text);
+      masked = maskInlineCode(text, true);
 
     return text
       .replace(regex, (match, prefix, tagName, _argument, offset, source) => {

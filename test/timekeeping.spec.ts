@@ -153,4 +153,16 @@ describe('Timekeeping utilities', () => {
       undefined
     );
   });
+
+  it('does not let argument backticks hide real timer tags or invent unmatched code spans', () => {
+    for (const prefix of ['@note(`literal)', '`unmatched']) {
+      const state = getTimerState(
+        `☐ Task ${prefix} @started(2026-08-02 10:00:00) @toggle(2026-08-02 10:30:00)`,
+        format,
+        new Date(2026, 7, 2, 12, 0)
+      );
+      expect(state.active, prefix).to.equal(false);
+      expect(state.elapsedMilliseconds, prefix).to.equal(30 * 60 * 1000);
+    }
+  });
 });
