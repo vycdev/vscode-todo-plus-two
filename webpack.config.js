@@ -16,6 +16,13 @@ const config = {
     devtoolModuleFilenameTemplate: 'file:///[absolute-resource-path]',
   },
   devtool: 'source-map',
+  optimization: {
+    minimizeOptions: {
+      // Node 10 supports BigInt but cannot parse every ES2020 construct.
+      // Keep the minifier aligned with TypeScript's ES2017 output.
+      javascript: { ecma: 2017, compress: { passes: 2 } },
+    },
+  },
   externals: {
     vscode: 'commonjs vscode',
     fsevents: 'commonjs fsevents',

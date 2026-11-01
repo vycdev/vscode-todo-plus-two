@@ -55,7 +55,7 @@ The Extension Host check verifies edits and reports asynchronous errors and edit
 
 ## Build the extension
 
-This project uses webpack 5 to compile the TypeScript source into `out/` (the compiled extension). It cleans the output directory before emitting files and targets Node.js 10.11, the runtime shipped with VS Code 1.36. Development tools use the newer Node.js versions listed above. Build commands from `package.json`:
+This project uses webpack 5 to compile the TypeScript source into `out/` (the compiled extension). It cleans the output directory before emitting files, targets Node.js 10.11 (the runtime shipped with VS Code 1.36), and limits minifier output to ES2017 syntax. Development tools use the newer Node.js versions listed above. Build commands from `package.json`:
 
 ```powershell
 # One-time build (development mode)
