@@ -13,6 +13,7 @@ import StatusbarTimer from './statusbars/timer';
 import Utils from './utils';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
+import { Due } from './views/due';
 import Files from './utils/files';
 import DependencyIndex from './utils/dependency_index';
 import { Comment, Project, Todo, TodoFinished } from './todo/items';
@@ -947,12 +948,14 @@ async function withViewTodoDocument(
     vscode.window.showErrorMessage(`Unable to open the selected task: ${error.message || error}`);
     return;
   }
-  if (
-    !isCurrentDocument(document, todo.obj.documentVersion, todo.obj.textEditor) ||
-    !isTaskDocument(document) ||
-    todo.obj.lineNr >= document.lineCount
-  )
+  if (!isCurrentDocument(document, todo.obj.documentVersion, todo.obj.textEditor)) {
+    // Discovery documents can be disposed and reopened without a visible editor.
+    // Rebuild both views against the live buffer so retrying uses a current row.
+    ViewFiles.refresh();
+    Due.refresh();
     return;
+  }
+  if (!isTaskDocument(document) || todo.obj.lineNr >= document.lineCount) return;
 
   return action(document);
 }

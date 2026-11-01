@@ -2,13 +2,14 @@
 
 #### New features
 
-- Added Edit Task and Toggle Done row actions to the Files and Due sidebars. Edit task text and tags through a prefilled input prompt, or change task status, without opening the source editor. Actions support Todo files and Markdown tasks and reject stale tree rows or prompt edits. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
+- Added Edit Task and Toggle Done row actions to the Files and Due sidebars. Edit task text and tags through a prefilled input prompt, or change task status, while keeping the current editor active. Actions support Todo files and Markdown tasks and reject stale tree rows or prompt edits. VS Code may add an inactive tab for unsaved changes. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
 - Added opt-in tag grouping in the Files sidebar with `todo.file.view.groupByTags`, including Todo files and Markdown notes, per-group counts, original project and parent-task context, and an Other group for tasks without a selected tag. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
 - Added automatic continuation and renumbering of plain numbered lists on Enter in Todo files, enabled by default and configurable with `todo.autoRenumber`. [#19](https://github.com/vycdev/vscode-todo-plus-two/issues/19)
 - Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
 
 #### Fixes
 
+- Refreshed the Files and Due sidebars after rejecting a stale task action so a retry uses the current document when VS Code has disposed and reopened a background file. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
 - Kept tag groups and other task views current when a previously indexed file is reopened and edited without saving. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
 - Kept Markdown task discovery and hierarchy correct around indented fence examples, HTML comments, headings inside list items, and custom bracketed symbols. Hidden comment metadata no longer changes task status, dependencies, due dates, estimates, or timers.
 - Refreshed the Files tree for unsaved task edits and cleared editor decorations when Markdown task support is disabled.

@@ -1126,6 +1126,31 @@ describe('Sidebar task editing', () => {
     expect(state.document.getText()).to.equal('☐ Original');
     expect(state.messages).to.deep.equal(['Unable to open the selected task: File unavailable']);
   });
+
+  it('refreshes both sidebars after rejecting a disposed background document', async () => {
+    const state = loadMarkdown('☐ Original');
+    const [task] = await getTasks(state);
+    const refreshes = [];
+    state.filesView.refresh = () => refreshes.push('files');
+    state.dueView.refresh = () => refreshes.push('due');
+    state.document.isClosed = true;
+    const reopened = { ...state.document, isClosed: false };
+    state.workspace.openTextDocument = async () => reopened;
+    let prompts = 0;
+    state.window.showInputBox = async () => {
+      prompts++;
+      return undefined;
+    };
+
+    await state.commands.viewEditTodo(task);
+
+    expect(prompts).to.equal(0);
+    expect(state.messages[0]).to.include('file changed');
+    expect(refreshes).to.deep.equal(['files', 'due']);
+    // A row rebuilt from the reopened buffer can be edited on the next attempt.
+    await state.commands.viewEditTodo({ obj: { ...task.obj, textEditor: reopened } });
+    expect(prompts).to.equal(1);
+  });
 });
 
 describe('Files view tag grouping', () => {
