@@ -1,9 +1,25 @@
 export interface FoldingLineRange {
   end: number;
+  kind?: 'region';
   start: number;
 }
 
-const getIndentationWidth = (line: string, tabSize: number) => {
+const getRegionRanges = (lines: string[]): FoldingLineRange[] => {
+  const starts: number[] = [];
+  const ranges: FoldingLineRange[] = [];
+
+  lines.forEach((line, lineNumber) => {
+    if (/^\s*@region\s*$/.test(line)) {
+      starts.push(lineNumber);
+    } else if (/^\s*@endregion\s*$/.test(line) && starts.length) {
+      ranges.push({ start: starts.pop(), end: lineNumber, kind: 'region' });
+    }
+  });
+
+  return ranges;
+};
+
+export const getIndentationWidth = (line: string, tabSize: number) => {
   const indentation = line.match(/^\s*/)[0];
 
   return indentation.split('').reduce((width, character) => {
@@ -19,6 +35,7 @@ export const getFoldingRanges = (
   tabSize: number = 4
 ): FoldingLineRange[] => {
   const ranges: FoldingLineRange[] = [];
+  const regions = getRegionRanges(lines);
 
   lines.forEach((line, start) => {
     if (!isFoldStart(line)) return;
@@ -35,8 +52,20 @@ export const getFoldingRanges = (
       end = lineNumber;
     }
 
-    if (end > start) ranges.push({ start, end });
+    if (end <= start) return;
+
+    // Native folds must be nested or disjoint. Explicit regions win when a
+    // project only partially overlaps them, including a shared boundary line.
+    const crossesRegion = regions.some((region) => {
+      const overlaps = start <= region.end && region.start <= end;
+      const containsRegion = start <= region.start && region.end <= end;
+      const insideRegion = region.start <= start && end <= region.end;
+
+      return overlaps && !containsRegion && !insideRegion;
+    });
+
+    if (!crossesRegion) ranges.push({ start, end });
   });
 
-  return ranges;
+  return ranges.concat(regions).sort((a, b) => a.start - b.start);
 };
