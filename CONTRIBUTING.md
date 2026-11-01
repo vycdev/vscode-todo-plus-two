@@ -38,6 +38,21 @@ The suite covers fenced syntax colors, an installed grammar contribution, task
 commands, completion, links, diagnostics, folding, and archive/unarchive. It prints
 the directory containing its JSON report and captured workbench syntax tokens.
 
+For scalability changes, run `npx ts-node test/benchmarks/scalability.ts 7000`. It compares incremental edits with forced full cache rebuilds in a simulated editor and reports parsing, project computation, and decoration submission counts. These timings exclude VS Code rendering and IPC.
+
+An optional check runs inside your installed VS Code in an isolated profile. It exercises tagged tasks, estimates, completion, line insertion/deletion, undo/redo, and split editors in a 7,000-line document:
+
+```powershell
+npm run compile
+$todoTestRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('todo-scalability-' + [guid]::NewGuid())
+New-Item -ItemType Directory -Path $todoTestRoot | Out-Null
+$env:TODO_SCALABILITY_REPORT = Join-Path $todoTestRoot 'results.json'
+code --new-window --user-data-dir (Join-Path $todoTestRoot 'user-data') --extensions-dir (Join-Path $todoTestRoot 'extensions') --extensionDevelopmentPath (Get-Location).Path --extensionTestsPath (Join-Path (Get-Location).Path 'test/extension-host/scalability.js') --skip-welcome --skip-release-notes --disable-workspace-trust --wait
+Get-Content $env:TODO_SCALABILITY_REPORT
+```
+
+The Extension Host check verifies edits and reports asynchronous errors and edit round-trip timings. Inspect highlighting and project annotations manually when changing decoration behavior; VS Code does not expose applied decoration ranges for assertions.
+
 ## Build the extension
 
 This project uses webpack to compile the TypeScript source into `out/` (the compiled extension). Build commands from `package.json`:

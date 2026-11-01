@@ -190,6 +190,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Views, decorations, and status bar
 
+- Cached unchanged Todo lines and their highlighting, reused unaffected project statistics, and kept tag, status, formatting, and line insertion/deletion edits incremental. Split editors, date-sensitive statistics, archive boundaries, and configuration changes remain synchronized. Fenced code notes retain full parsing so examples stay excluded from task state. [#94](https://github.com/vycdev/vscode-todo-plus-two/issues/94)
 - Refreshed timers, statistics, due state, decorations, and view filters after text and configuration changes, including edits that keep the same length, updates to background editors, and due-date rollover at midnight.
 - Fixed symbol parenting, indentation setting changes, decoration range subtraction, dependency completion boundaries, signed duration parsing, and elapsed-only statistics templates.
 - Fixed project and special-tag decorations so color and tag settings refresh without a restart. [#24](https://github.com/vycdev/vscode-todo-plus-two/issues/24), [#2](https://github.com/vycdev/vscode-todo-plus-two/issues/2)
