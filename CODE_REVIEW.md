@@ -34,6 +34,6 @@ Final local validation: a clean `npm ci`, all 384 tests, source/test type checki
 
 Regression coverage exercises archive failure/concurrency paths, dirty and hidden documents, symlink traversal including Windows junctions, scan and provider races, command focus/version changes, prototype-like IDs, invalid/empty regexes, lifecycle cleanup, UI refreshes, expression parsing, and time calculations. Existing export, parser, tag, dependency, and view tests remain part of the full suite.
 
-Run `npm run check` for the source/test type check, full Mocha suite, webpack development build, and Prettier check. CI runs this command on Windows and Linux with Node 22 and 24. Production packaging also requires type checking. Third-party declaration internals are skipped because the retained legacy dependencies use older Node definitions; application and test source are checked.
+Run `pnpm run check` for the source/test type check, full Mocha suite, webpack development build, and Prettier check. CI runs this command on Windows and Linux with Node 22 and 24. Production packaging also requires type checking. Third-party declaration internals are skipped because the retained legacy dependencies use older Node definitions; application and test source are checked.
 
 Validation limits: unit tests use VS Code API doubles; a full interactive Extension Development Host session and native ag execution were not performed. An actual installed ripgrep search was exercised. External processes editing archive files are outside the in-process transfer queue's coordination boundary.

@@ -1,7 +1,7 @@
 import { performance } from 'perf_hooks';
 import { withDecorationEditor } from '../helpers/decoration-editor';
 
-// npx ts-node test/benchmarks/scalability.ts [line count]
+// pnpm exec ts-node test/benchmarks/scalability.ts [line count]
 // This measures extension-side work in a simulated editor, not renderer latency.
 const size = Math.max(100, Number(process.argv[2]) || 7000);
 const text = Array.from({ length: size }, (_, index) =>

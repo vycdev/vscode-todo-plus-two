@@ -50,6 +50,7 @@ export const discoverFiles = async (
   getWorkspaceExcludes: (resourcePath: string) => ExcludeGlobs
 ): Promise<string[]> => {
   const fastGlob = require('fast-glob');
+  const { dot, nocase } = getGlobMatchOptions();
   const scans = await flatMapFulfilled<string, string>(
     rootPaths,
     async (cwd) => {
@@ -58,11 +59,12 @@ export const discoverFiles = async (
         ignore: expandDirectoryExcludeGlobs(
           exclude.concat(getEnabledExcludeGlobs(getWorkspaceExcludes(cwd)))
         ),
-        ...getGlobMatchOptions(),
+        dot,
+        caseSensitiveMatch: !nocase,
         // Relative matching keeps excludes such as **/out/** from matching
         // folders above the workspace root.
         absolute: false,
-        followSymlinkedDirectories: followSymlinks,
+        followSymbolicLinks: followSymlinks,
       };
       const patterns = followSymlinks
         ? include

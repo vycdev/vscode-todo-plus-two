@@ -6,7 +6,7 @@
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
-            "preLaunchTask": "npm: compile:watch",
+            "preLaunchTask": "pnpm: compile:watch",
             "presentation": {
                 "reveal": "silent",
                 "focus": false,

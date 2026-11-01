@@ -2,17 +2,23 @@
 
 TypeScript, VS Code extension (vscode API ^1.36), webpack, moment-mini, mocha+chai.
 
+Development: Node.js 22.12+ on 22.x or Node.js 24; pnpm 10.33.4 is pinned in
+`package.json`. Run `corepack enable pnpm` before setup. The extension still
+targets VS Code 1.36 / Node 10.11; retain the compiler/API pins.
+
 ## Commands
 
 ```bash
-npm install          # install deps
-npm run compile      # webpack dev build → out/
-npm run compile:watch
-npm run test         # mocha tests in test/
-npm run typecheck    # TypeScript source and test checks
-npm run check        # types, tests, development build, formatting
-npm run format       # prettier --write
-npm run format:check
+pnpm install --frozen-lockfile # reproducible install
+pnpm run compile      # webpack dev build → out/
+pnpm run compile:watch
+pnpm run test         # mocha tests in test/
+pnpm run typecheck    # TypeScript source and test checks
+pnpm run check        # types, tests, development build, formatting
+pnpm run format       # prettier --write
+pnpm run format:check
+pnpm run package     # production VSIX, bundled deps, no dependency collection
+pnpm run publish     # VS Code Marketplace only; never use bare pnpm publish
 ```
 
 Debug: open in VS Code, F5 launches Extension Dev Host. Sourcemaps active — breakpoints in `src/` work.

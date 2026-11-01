@@ -20,6 +20,7 @@
 
 #### Fixes
 
+- Updated file-discovery dependencies to remove vulnerable glob parsers, preserving filesystem casing and symlink rules, and modernized the build and test tooling while retaining VS Code 1.36 support. [#299](https://github.com/vycdev/vscode-todo-plus-two/issues/299)
 - Kept checked Markdown tasks out of pending-task results when `-` is the configured todo box symbol.
 - Preserved `@due(...)` urgency colors when refreshing planned work windows.
 - Rejected malformed planned windows containing inline code in their arguments.
