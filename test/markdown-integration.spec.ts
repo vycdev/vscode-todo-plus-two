@@ -255,6 +255,27 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('limits commands and dependencies to selected headings inside list containers', async () => {
+    const original =
+      '- [ ] Parent @id(parent)\n  ## Tasks\n  - [ ] Inside @id(inside)\n- [ ] Outside @id(outside)';
+    const state = loadMarkdown(original, {
+      'markdown.scope': 'sections',
+      'timekeeping.finished.enabled': false,
+      autoCompleteParents: true,
+    });
+    const index = await state.dependencyIndex.get();
+    expect(Object.keys(index.targets)).to.deep.equal(['inside']);
+    for (const line of [0, 3]) {
+      state.select(line);
+      await state.commands.toggleDone();
+      expect(state.document.getText()).to.equal(original);
+    }
+    state.select(2);
+    await state.commands.toggleDone();
+    expect(state.document.lineAt(2).text).to.equal('  - [x] Inside @id(inside)');
+    expect(state.document.lineAt(0).text).to.equal(original.split('\n')[0]);
+  });
+
   it('archives and unarchives tasks with a custom name ending in a heading marker', async () => {
     const state = loadMarkdown('[x] Done', {
       'archive.type': 'InSameFile',

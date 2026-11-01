@@ -7,6 +7,19 @@ import {
 } from '../src/utils/markdown-archive';
 
 describe('Markdown task sources', () => {
+  it('bounds selected task sections by list containers outside the selected sections', () => {
+    for (const parent of ['- Release', '- [ ] Release']) {
+      const content = `${parent}\n  ## Tasks\n  - [ ] Inside\n- [ ] Outside`;
+      const nodes = parseMarkdownTasks(content, { scope: 'sections' });
+      expect(
+        nodes.filter((node) => node.kind === 'todo').map((node) => node.title),
+        parent
+      ).to.deep.equal(['Inside']);
+      expect(nodes.find((node) => node.lineNumber === 0).kind).to.equal('project');
+      expect(nodes.find((node) => node.lineNumber === 1).parent).to.equal(0);
+    }
+  });
+
   it('does not let an HTML comment inside a block quote hide later tasks', () => {
     const content = '> <!-- Unfinished quoted example\n> [ ] Quoted\n\n[ ] Real';
     expect(

@@ -19,6 +19,7 @@
 - Treated tag arguments as literal text so nested tag examples cannot finish tasks, create dependencies or due dates, control timers, or get removed by status changes.
 - Prevented HTML comments in block quotes from hiding later Markdown tasks, and preserved archive and restored-parent names that contain heading syntax.
 - Preserved ID and dependency tags separated from another tag by punctuation while keeping reference examples inside tag arguments literal.
+- Bounded section-only Markdown task discovery by enclosing list items, including parents outside selected sections, so commands and dependencies do not include following sibling tasks.
 - Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
 
 ### Version 5.3.0

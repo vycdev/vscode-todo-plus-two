@@ -214,7 +214,7 @@ export const parseMarkdownTasks = (
       continue;
     const inArchive = !!(parent && parent.inArchive);
     const inSection = headings.some((node) => sections.includes(node.title.toLowerCase()));
-    if (options.scope === 'sections' && !inSection && !inArchive) continue;
+    const inTaskScope = options.scope !== 'sections' || inSection || inArchive;
 
     const task = raw.match(taskPattern);
     if (task) {
@@ -234,7 +234,9 @@ export const parseMarkdownTasks = (
             ? 'done'
             : 'box';
       const node: MarkdownTaskNode = {
-        kind: 'todo',
+        // Out-of-scope list tasks still own nested headings. Expose them only
+        // as structural groups when a selected task section needs that context.
+        kind: inTaskScope ? 'todo' : 'project',
         lineNumber,
         endLine: lines.length,
         level: parent ? parent.level + 1 : 0,
