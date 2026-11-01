@@ -13,6 +13,7 @@ const loadFiles = () => {
   const vscode = {
     commands: { executeCommand() {} },
     workspace: {
+      textDocuments: [] as any[],
       createFileSystemWatcher() {
         watchersCreated++;
         return { onDidCreate() {}, onDidChange() {}, onDidDelete() {}, dispose() {} };
@@ -27,12 +28,21 @@ const loadFiles = () => {
       if (request === '../views/due') return { Due: { refresh() {} } };
       if (request === './folder') return { default: { getAllRootPaths: () => ['/workspace'] } };
       if (request === './workspace-excludes') return { getWorkspaceExcludeRules: () => [] };
+      if (request === './task-source')
+        return {
+          getTaskFileIncludes: (config) => config.file.include,
+          isMarkdownTaskDocument: () => false,
+        };
     }
     return originalLoad.call(this, request, parent, isMain);
   };
   try {
     delete require.cache[modulePath];
-    return { files: require(modulePath).default, watcherCount: () => watchersCreated };
+    return {
+      files: require(modulePath).default,
+      workspace: vscode.workspace,
+      watcherCount: () => watchersCreated,
+    };
   } finally {
     NodeModule._load = originalLoad;
     if (previousModule) require.cache[modulePath] = previousModule;
@@ -41,6 +51,54 @@ const loadFiles = () => {
 };
 
 describe('Todo file loading', () => {
+  it('refreshes cached snapshots from reopened live buffers before filtering', async () => {
+    const { files, workspace } = loadFiles();
+    const filePath = 'C:/workspace/tasks.todo';
+    const previous = { isClosed: true, version: 1, getText: () => '☐ Work @low' };
+    const current = {
+      uri: { scheme: 'file', fsPath: 'C:\\workspace\\tasks.todo' },
+      languageId: 'todo',
+      isClosed: false,
+      version: 1,
+      getText: () => '☐ Work @now',
+    };
+    const data = {
+      filePath,
+      root: 'workspace',
+      rootPath: 'C:/workspace',
+      relativePath: 'tasks.todo',
+      textEditor: previous,
+    };
+    files.filesData = { [filePath]: data };
+    workspace.textDocuments = [current];
+    files.getFileData = async () => {
+      throw new Error('A live buffer must not be reloaded');
+    };
+
+    await files.updateFilesData();
+
+    expect(data.textEditor).to.equal(current);
+    expect(files.getTodos('@now').workspace[filePath]).to.equal(data);
+    expect(files.getTodos('@low')).to.deep.equal({});
+    expect(previous.getText()).to.equal('☐ Work @low');
+  });
+
+  it('ignores closed, untitled, and undiscovered buffers when refreshing file data', async () => {
+    const { files, workspace } = loadFiles();
+    const cached = { getText: () => '☐ Work @low' };
+    files.filesData = { '/workspace/tasks.todo': { textEditor: cached } };
+    workspace.textDocuments = [
+      { uri: { scheme: 'file', fsPath: '/workspace/tasks.todo' }, isClosed: true },
+      { uri: { scheme: 'untitled', fsPath: '/workspace/tasks.todo' }, isClosed: false },
+      { uri: { scheme: 'file', fsPath: '/workspace/untracked.todo' }, isClosed: false },
+    ];
+
+    await files.updateFilesData();
+
+    expect(files.filesData['/workspace/tasks.todo'].textEditor).to.equal(cached);
+    expect(Object.keys(files.filesData)).to.deep.equal(['/workspace/tasks.todo']);
+  });
+
   it('does not let a failed load poison a waiting refresh', async () => {
     const { files } = loadFiles();
     let attempts = 0;
