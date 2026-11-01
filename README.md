@@ -1,89 +1,92 @@
 # <img src="resources/logo/logo.png" width="96" alt="Todo+2 logo" align="left" style="margin-right:16px"> Todo+2
 
 A lightweight, plain-text todo manager for Visual Studio Code. Powerful, customizable and easy to use. [View the demo](#demo).
-This extension is a continuation of the original Todo+ extension by [Fabio Spampinato](https://github.com/fabiospampinato/vscode-todo-plus) and will break compatibility with some of the features. Old issues have been imported from the original repository and will be addressed.
+This extension is a continuation of the original Todo+ extension by [Fabio Spampinato](https://github.com/fabiospampinato/vscode-todo-plus) and includes changes to commands, settings, and task styling. See the [compatibility notes](#compatibility) when upgrading.
 
 [![Version](https://vsmarketplacebadges.dev/version-short/vycdev.vscode-todo-plus-two.svg)](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two) [![Installs](https://vsmarketplacebadges.dev/installs-short/vycdev.vscode-todo-plus-two.svg)](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two) [![Rating](https://vsmarketplacebadges.dev/rating-short/vycdev.vscode-todo-plus-two.svg)](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two&ssr=false#review-details) [![Build](https://img.shields.io/github/actions/workflow/status/vycdev/vscode-todo-plus-two/check.yml?branch=develop&cacheSeconds=3600)](https://github.com/vycdev/vscode-todo-plus-two/actions/workflows/check.yml) [![License](https://img.shields.io/github/license/vycdev/vscode-todo-plus-two?cacheSeconds=3600)](LICENSE) [![Patreon](https://img.shields.io/badge/Patreon-Support-orange?logo=patreon&logoColor=white)](https://www.patreon.com/cw/vycdev)
 
 ## Features
 
-- **Easy to use**: you're just a few shortcuts away from becoming a master
-- **Portable**: being a plain text format you can read and edit it using any editor
-- **Custom symbols**: you can replace the default symbols with any symbol you want
-- **Supported symbols**: the extension recognizes the Todo+ Unicode symbols and Markdown-style checkboxes by default.
-  - **Box**: `☐` or Markdown `- [ ]`
-  - **Done**: `✔` or Markdown `- [x]`
-  - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
-- **Custom colors**: all colors can be customized
-- **Custom special tags**: special tags' names and their colors can be customized
-- **Tag-based task styles**: tags can color task text or apply bold, italic, and strikethrough, with configurable priority and tag-order precedence
-- **Archive**: you can move finished todos to a special "Archive" section with a shortcut
-- **Formatting**: you can format text in a markdown-like fashion, we support: **bold**, _italic_, ~~strikethrough~~ and `code`
-- **Image attachments**: paste PNG/JPEG images into saved Todo files on VS Code 1.97 or newer. Images are saved beside the Todo file and inserted as clickable relative file links.
-- **Go To Symbol**: you can easily move between projects by using the `Go to Symbol in File...` command
-- **Timekeeping**: you can mark todos as started and track elapsed time until completion
-- **Timer**: a timer can be displayed in the statusbar for started todos
-- **Time estimates**: you can estimate the time it will take to complete a todo by adding a tag to it that looks like this: `@est(3 hours)`, `@est(2h30m)` or `@2h30m`. Then you can use the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens in statistics
-- **Task dependencies**: give a task a manual `@id(release-api)` and reference it from any Todo file with `@depends(release-api)`. The extension validates links, helps insert and rename references, and blocks premature completion.
-- **Statistics**: statistics about your entire file and/or project-level statistics about your individual projects
-- **Embedded todos**: it's common to have `//TODO` or `//FIXME` comments in our code, this extension can find those as well, including inline and multiline Liquid comment blocks
-- **Markdown notes**: manage checklists and Todo+ tasks inside Markdown notes, with section grouping, task commands, due dates, statistics, dependencies, and timers. Notes keep their Markdown language mode and preview.
-- **Activity bar views**: you can view your todo file and your embedded todos from a custom activity bar section
+- **Plain-text tasks**: projects, nested todos, notes, custom symbols, inline formatting, and numbered lists.
+- **Markdown notes**: manage checklists alongside prose without changing Markdown language mode or preview.
+- **Files, Due, and Embedded views**: browse tasks, edit titles and tags, change status, filter, group by tag, and arrange embedded comments.
+- **Tags and focus**: priority labels, configurable task styles, region folding, and focus on a selected tag.
+- **Time and progress**: start/pause/resume timers, estimate work, track elapsed time, and show project and status bar statistics.
+- **Planned work**: opt in to local-time work windows with `@planned(...)`, including daily sessions and dated ranges.
+- **Dependencies**: portable task IDs, cross-file links, reference completion and renaming, and checks before completion.
+- **Notes and attachments**: fenced code highlighted by installed language grammars, relative file links, and PNG/JPEG paste.
+- **Archive and export**: move completed work to same-file or separate archives; export Todo files to HTML or Markdown.
+
+[Get started](#getting-started) · [Commands and shortcuts](#commands-and-shortcuts) · [Settings](#settings) · [Screenshots](#demo)
 
 ## Install
 
-Requires Visual Studio Code 1.36 or newer.
+Requires Visual Studio Code 1.36 or newer. Install [Todo+2 from the Marketplace](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two), or open Quick Open (Ctrl/Cmd+P) and enter:
 
-Follow the instructions in the [Marketplace](https://marketplace.visualstudio.com/items?itemName=vycdev.vscode-todo-plus-two), or run the following in the command palette:
-
-```shell
+```text
 ext install vycdev.vscode-todo-plus-two
 ```
 
-## Usage
+### Compatibility
 
-It adds the following commonly used commands to the command palette:
+The core extension supports VS Code 1.36+. Embedded drag-and-drop requires 1.66+, moving views into Explorer requires 1.46+, and image paste requires 1.97+. Older supported versions keep the remaining features and embedded Move Up/Down actions.
 
-```js
-'Todo: Open'; // Open or create your project's todo file
-'Todo: Open Embedded'; // Open embedded todos
-'Todo: Focus on Tag…'; // Keep matching tasks and their parent context visible in the editor
-'Todo: Clear Focus'; // Unfold the active file and restore normal project/region folding
-'Todo: Toggle Box'; // Toggle todo's box symbol
-'Todo: Toggle Done'; // Toggle todo's done symbol
-'Todo: Toggle Cancelled'; // Toggle todo's cancelled symbol
-'Todo: Toggle Start'; // Toggle a todo as started
-'Todo: Toggle Timer'; // Pause or resume time tracking for the selected started task
-'Todo: Sync Paused Tags'; // Repair @paused markers on selected task lines from their timing history
-'Todo: Toggle Status Bar Timer'; // Toggle the timer in the status bar
-'Todo: Archive'; // Archive finished todos
-'Todo: Unarchive'; // Restore an archived task to its project list (when todo.archive.type is InSameFile)
-'Todo: Export to HTML'; // Export the active Todo file as a standalone HTML document
-'Todo: Export to Markdown'; // Export the active Todo file as a Markdown task list
-'Todo: Copy Project with Statistics'; // Copy the project at the cursor, including its rendered statistics
-'Todo: Open Dependency'; // Search task IDs and open a referenced task
-'Todo: Open Dependency at Cursor'; // Open the dependency under the cursor
-'Todo: Add Dependency'; // Search task IDs and add one to the selected todo
-'Todo: Find Dependents'; // Show todos that depend on an ID
-'Todo: Rename Task ID'; // Rename an ID and all matching references
-'Todo: Embedded View - Filter'; // Filter the embedded todos view
-'Todo: Embedded View - Clear Filter'; // Clear the filter in the embedded todos view
-'Todo: Embedded View - Toggle View All Files'; // Toggle between viewing all files or only the current one
-'Todo: Reset Manual Order'; // Reset all saved ordering in the embedded todos view
+This README describes the current `develop` branch, including upcoming 5.4 features; the Marketplace release may differ. See [CHANGELOG.md](CHANGELOG.md) for release and migration notes. In particular, `Todo: Toggle Timer` now pauses/resumes the selected task; `Todo: Toggle Status Bar Timer` controls visibility. Statistics conditions use restricted expressions rather than arbitrary JavaScript. Task-text styles follow literal tags, so existing symbol-only completed tasks use syntax-theme styling until tagged.
+
+## Getting started
+
+1. Open a workspace folder and run **Todo: Open** from the Command Palette (Ctrl/Cmd+Shift+P). This opens or creates the configured Todo file (`TODO` by default). You can also create a `.todo` file directly.
+2. Write a project heading ending in a colon, then indent tasks beneath it. Ctrl/Cmd+Enter adds or removes a task box; Alt+D completes or reopens a task.
+3. Open the **Todo** activity bar icon. **Files** contains Todo files and Markdown notes; **Due** collects unfinished tasks with due dates; **Embedded** finds task comments in source files.
+
+```todo
+Release:
+  ☐ Publish the API @id(api) @high @due(2026-11-02) @est(1h)
+  ☐ Ship the client @depends(api)
+  ✔ Write migration tests @done
 ```
 
-It adds 8 shortcuts when editing a `Todo` file:
+Use `☐`, `✔`, and `✘` for pending, done, and cancelled tasks, or use Markdown checkboxes. Custom symbols are configurable. A colon creates a project, indentation creates hierarchy, and ordinary lines become notes. Todo inline formatting uses `*bold*`, `_italic_`, `~strikethrough~`, and backticks for code.
 
-```js
-'Cmd/Ctrl+Enter'; // Triggers `Todo: Toggle Box`
-'Alt+Enter'; // Triggers `Todo: Toggle Box`
-'Alt+D'; // Triggers `Todo: Toggle Done`
-'Alt+C'; // Triggers `Todo: Toggle Cancelled`
-'Alt+S'; // Triggers `Todo: Toggle Start`
-'Alt+T'; // Triggers `Todo: Toggle Timer`
-'Cmd/Ctrl+Shift+A'; // Triggers  `Todo: Archive`
-'Cmd/Ctrl+Shift+U'; // Triggers `Todo: Unarchive` when todo.archive.type is InSameFile
-```
+In an existing Markdown note, add `- [ ] A task` under a heading. The same task commands work there while preserving the source marker and surrounding prose. [Markdown discovery and scoping](#tasks-in-markdown-notes) control which notes and sections appear.
+
+## Commands and shortcuts
+
+Run these commands from the Command Palette. Availability follows the active document and task context.
+
+| Command (Todo: prefix)                                | Action / default shortcut                                            |
+| ----------------------------------------------------- | -------------------------------------------------------------------- |
+| Open / Open Embedded                                  | Open the Todo file / generate an embedded-task snapshot              |
+| Toggle Box                                            | Ctrl/Cmd+Enter or Alt+Enter                                          |
+| Toggle Done / Toggle Cancelled                        | Alt+D / Alt+C                                                        |
+| Toggle Start / Toggle Timer                           | Alt+S / Alt+T (pause or resume)                                      |
+| Sync Paused Tags                                      | Repair `@paused` markers from timing history                         |
+| Toggle Status Bar Timer                               | Show or hide the timer                                               |
+| Archive / Unarchive                                   | Ctrl/Cmd+Shift+A / Ctrl/Cmd+Shift+U; Unarchive requires `InSameFile` |
+| Focus on Tag… / Clear Focus                           | Fold nonmatching tasks / clear tag focus in Todo files               |
+| Add Dependency / Find Dependents / Rename Task ID     | Manage cross-file task references; F2 also renames an ID             |
+| Export to HTML / Export to Markdown                   | Export the active Todo file                                          |
+| Copy Project with Statistics                          | Copy the current project with rendered statistics                    |
+| Files View - Filter / Files View - Clear Filter       | Filter Files labels and paths                                        |
+| Embedded View - Filter / Embedded View - Clear Filter | Filter Embedded labels and visible context                           |
+| Embedded View - Toggle View All Files                 | Switch between the active file and the workspace                     |
+| Reset Manual Order                                    | Clear workspace-local embedded ranks                                 |
+
+Task shortcuts also work on recognized Markdown tasks. F12 opens the dependency under the cursor; Ctrl/Cmd-click follows dependency and relative file links. These navigation commands are not separate Command Palette entries. Enter continues plain numbered lists in Todo files. VS Code's **Keyboard Shortcuts** editor lets you change bindings.
+
+### Files and Due views
+
+**Files** shows discovered Todo files and Markdown notes with their project, heading, and nested-task hierarchy. Its toolbar provides filtering, expand/collapse, and finished-task visibility. Configure note lines, tag labels, and icons independently with `todo.file.view.showComments`, `showTags`, and `icons`. The activity bar badge counts pending tasks on supported VS Code versions.
+
+**Due** groups unfinished tasks by calendar date across both sources; today's group expands automatically. Add `@due(2026-11-02)` or a date/time such as `@due(2026-11-02T14:30+02:00)`. Invalid dates are ignored. Date-only ISO values are a clear choice for portable notes. Due-tag colors distinguish overdue, today, soon, and later; `todo.due.soonDays` sets the soon window (default 7). Zoned timestamps are grouped by their local calendar date.
+
+The Files and Due views let you edit existing tasks without switching away from your current editor. Hover over a task and choose **Edit Task** (pencil) to edit its text and tags in a prefilled input prompt, or **Toggle Done** (check mark) to complete or reopen it. The same actions are available from the task's right-click menu, alongside Toggle Box, Toggle Cancelled, and Toggle Start. Status actions also keep the current editor active.
+
+Editing preserves the task's indentation and status marker. The prompt includes all source text after the marker, including tags hidden by `todo.file.view.showTags`; keep those tags when changing the title. Press Escape to cancel. If the source changes while the prompt is open, the edit is rejected so it cannot overwrite newer text. Changes stay in the document buffer, support undo/redo, and follow your normal save or Auto Save settings. VS Code may add an inactive tab for a modified file to keep unsaved edits accessible; it does not switch to that tab.
+
+These actions work with Todo files and supported Markdown tasks, including tasks in tag groups and tasks with children. The Embedded view continues to navigate to code comments. Text editing uses VS Code's input prompt; it does not turn the sidebar into a text editor.
+
+![Edit a Markdown task from the Files sidebar](resources/demo/sidebar-actions.png)
 
 ### Tasks in Markdown notes
 
@@ -153,6 +156,8 @@ Release:
 Regions can be nested. The opening `@region` line stays visible when folded; the contents and closing `@endregion` line are hidden. Use the editor's folding controls or **Fold All Regions** / **Unfold All Regions** commands. Regions are available with both `auto` and `indentation` editor folding strategies.
 
 Markers must appear alone on their lines, with optional surrounding whitespace. Unmatched markers are ignored by the Todo folding provider. Project folds remain available inside and around regions; if their ranges cross, the explicit region takes precedence. Adding a region does not automatically collapse it on open.
+
+![An explicit region folded around the release checklist](resources/demo/regions.png)
 
 ### Focus on a tag
 
@@ -278,7 +283,7 @@ To keep a Todo file in the **Files** sidebar when switching projects, add its ab
 }
 ```
 
-On Linux or macOS, use a path such as `/home/you/global.todo` or `/Users/you/global.todo`. On Windows, use forward slashes as above or escape each backslash as `\\`. Paths refer to the filesystem where the extension runs, including in remote workspaces.
+On Linux or macOS, use a path such as `/home/you/global.todo` or `/Users/you/global.todo`. On Windows, use forward slashes as above or escape each backslash as `\\` in JSON. Paths refer to the filesystem where the extension runs, including in remote workspaces.
 
 This example retains `TODO` and `*.todo` workspace discovery. Setting this array replaces the defaults; copy the default array from Settings before adding your path if you want to retain every supported filename. Workspace settings can override your User setting.
 
@@ -288,7 +293,7 @@ Relative entries remain workspace globs. Absolute entries name individual files,
 
 ### Planned work windows
 
-Enable `todo.planned.enabled` to highlight `@planned(...)` tags while it is time to work on an unfinished task in a Todo file or an enabled Markdown task section:
+Planning is disabled by default. Enable `todo.planned.enabled` to highlight `@planned(...)` tags while it is time to work on an unfinished task in a Todo file or an enabled Markdown task section:
 
 ```todo
 ☐ Daily focus @planned(10am-1pm)
@@ -302,121 +307,48 @@ The active tag is bold and uses `todo.colors.planned`, with optional `todo.color
 
 Windows must start and end on the same day; overnight windows, weekday recurrence, date-only tags, natural-language dates, and dates inherited from project headings are not supported. Scheduling leaves task status and timers unchanged. Use `@due(...)` for deadlines and the Due sidebar; planned windows do not appear there.
 
+![Active planned tags in blue, future work with normal tag styling, and a completed task excluded from highlighting](resources/demo/planned-work.png)
+
+The [planned-work sample](resources/readme-planned.todo) shows daily, split, and dated sessions. In this capture, scheduling is enabled with its default blue color; the future dated task also has an independent due date.
+
 ## Settings
 
-```js
+Open Settings and search for `@ext:vycdev.vscode-todo-plus-two` to see every option and its current default. Use User settings for all projects or Workspace settings for one workspace. The following is an optional configuration example, not a list of defaults:
+
+```json
 {
-  "todo.file.name": "TODO", // Todo file name. Other supported names are: `*.todo`, `*.todos`, `*.task`, `*.tasks`, `*.taskpaper` and `todolist.txt`
-  "todo.file.defaultContent": "\nTodo:\n  ☐ Item\n", // New todo files default content
-  "todo.file.include": ["**/TODO", "**/TODO.md", ...], // Workspace globs or absolute paths to individual Todo files
-  "todo.file.exclude": ["**/.git/**", ...], // Globs to use for excluding files
-  "todo.followSymlinks": false, // Follow symbolic links when enumerating files (can cause cycles)
-  "todo.file.batchSize": 50, // Number of Todo files to process in each discovery batch
-  "todo.file.view.expanded": true, // Start the tree in an expanded state
-  "todo.file.view.groupByTags": [], // Group tasks within each file by selected tag names; empty preserves the hierarchy
-  "todo.file.view.showFinished": true, // Show done and cancelled tasks in the Todo files view
-  "todo.file.view.showComments": false, // Show comment-only lines in the Todo files view
-  "todo.file.view.showTags": true, // Show tags in Todo files view labels
-  "todo.file.view.icons": true, // Show icons next to groups in the Todo files view
-  "todo.automaticSymbol": false, // Insert a new todo box after pressing Enter at the end of a non-empty todo
-  "todo.autoRenumber": true, // Continue plain numbered lists and renumber following items on Enter
-  "todo.autoCompleteParents": false, // Mark parents done when Todo: Toggle Done completes all nested todos
-  "todo.symbols.box": "☐", // Box symbol
-  "todo.symbols.done": "✔", // Done symbol
-  "todo.symbols.cancelled": "✘", // Cancelled symbol
-  "todo.colors.enabled": true, // Apply Todo+ editor colors; disable to use the active syntax theme
-  "todo.colors.done": "#a6e22e", // Done todo color
-  "todo.colors.cancelled": "#f92672", // Cancelled todo color
-  "todo.colors.started": "#4fc1ff", // Started todo color
-  "todo.colors.code": "#fd971f", // Code color
-  "todo.colors.comment": "#75715e", // Comment color
-  "todo.colors.project": "#66d9ef", // Project color
-  "todo.colors.projectStatistics": "#4694a3", // Project statistics color
-  "todo.colors.tag": "#e6db74", // Tag color
-  "todo.colors.id": "#4fc1ff", // Task ID color
-  "todo.colors.dependency": "#c586c0", // Task dependency color
-  "todo.colors.due.overdue": "#ae81ff", // Overdue @due tag color
-  "todo.colors.due.today": "#f92672", // @due tag color for tasks due today
-  "todo.colors.due.soon": "#e5d145", // @due tag color for tasks due soon
-  "todo.colors.due.later": "#a6e22e", // @due tag color for future tasks
-  "todo.colors.planned": "#4fc1ff", // Active @planned tag color
-  "todo.colors.tags.background": ["#e54545", "#e59f45", "#e5d145", "#ae81ff"], // Special tags' background colors
-  "todo.colors.tags.foreground": ["#000000", "#000000", "#000000", "#000000"], // Special tags' foreground colors
-  "todo.colors.tags.lineBackground": [], // Whole-line background colors for special tags, matched by todo.tags.names index; the first colored tag wins (include "started" in todo.tags.names to highlight @started)
-  "todo.colors.types": { "TODO": "#ffcc00", "FIXME": "#cc0000" ... }, // Object mapping todo types to their color
-  "todo.decorations.done.strikethrough": true, // Render done todos with strikethrough
-  "todo.colors.dark": { /* "done": "white", ... */ }, // Colors for dark themes
-  "todo.colors.light": { /* "done": "black", ... */ }, // Colors for light themes
-  "todo.tags.names": ["critical", "high", "low", "today"], // Special tags' names
-  "todo.tags.styles": { "blocked": { "color": "#e54545", "bold": true } }, // Task-text rules; built-in done/cancelled/started/paused rules are included by default
-  "todo.tags.namesInference": true, // Infer commonly used tags' names
-  "todo.due.soonDays": 7, // Number of days ahead that @due tags are considered due soon
-  "todo.planned.enabled": false, // Highlight @planned tags during local-time work windows
-  "todo.archive.name": "Archive", // Name of the special "Archive" section
-  "todo.archive.remove.emptyProjects": true, // Remove projects without todos
-  "todo.archive.remove.emptyLines": 1, // Remove extra empty lines, keeping no more than this many consecutive empty lines
-  "todo.archive.remove.tags": ["today"], // Tags to remove from todos when archiving
-  "todo.archive.project.enabled": true, // Enable the @project tag
-  "todo.archive.project.separator": ".", // String used for joining multiple projects
-  "todo.archive.sortByDate": false, // Sort lines by finished date
-  "todo.archive.type": "InMultiSeparateFile", // Where to store archives: InSameFile, InSeparateFile, or InMultiSeparateFile (default)
-  "todo.formatting.enabled": true, // Enable markdown-like formatting
-  "todo.timekeeping.created.enabled": false, // Enable the @created tag
-  "todo.timekeeping.created.time": true, // Insert the time inside the @created tag
-  "todo.timekeeping.created.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @created
-  "todo.timekeeping.started.time": true, // Insert the time inside the @started tag
-  "todo.timekeeping.started.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @started
-  "todo.timekeeping.autoToggle": false, // Automatically pause other active timers when starting a new task
-  "todo.timekeeping.finished.enabled": true, // Enable the @done/cancelled tag. It's always enabled if you explicitly start a todo or if you use only 1 symbol
-  "todo.timekeeping.finished.time": true, // Insert the time inside the @done/cancelled tag
-  "todo.timekeeping.finished.format": "YY-MM-DD HH:mm", // Format used for displaying time inside @done/cancelled
-  "todo.timekeeping.finished.remove.tags": ["today"], // Tags to remove when a todo is marked done or cancelled
-  "todo.timekeeping.elapsed.enabled": true, // Enable the @lasted/wasted tag
-  "todo.timekeeping.elapsed.format": "short-compact", // Format used for displaying time diff inside @lasted/wasted
-  "todo.timekeeping.estimate.format": "short-compact", // Format used for the `[est]`, `[est-total]`, `[est-finished]` and `[est-finished-percentage]` tokens
-  "todo.hoursPerDay": 24, // Number of hours represented by one day when formatting short time durations
-  "todo.manHoursPerDay": 8, // Number of hours represented by one man-day when using man-time duration formats
-  "todo.manDaysPerWeek": 5, // Number of man-days represented by one man-week when using man-time duration formats
-  "todo.timer.statusbar.enabled": true, // Show a timer for started todos in the statusbar
-  "todo.timer.statusbar.alignment": "left", // Should the item be placed to the left or right?
-  "todo.timer.statusbar.color": "", // The foreground color for this item
-  "todo.timer.statusbar.priority": -10, // The priority of this item. Higher value means the item should be shown more to the left
-  "todo.statistics.project.enabled": "global.projects < 100 && project.all > 0", // Show statistics next to a project, boolean or token condition
-  "todo.statistics.project.text": "([pending]) [est]", // Template used for rendering the text
-  "todo.statistics.statusbar.enabled": "global.all > 0", // Show statistics in the statusbar, boolean or token condition
-  "todo.statistics.statusbar.ignoreArchive": true, // Ignore the archive when rendering statistics in the statusbar
-  "todo.statistics.statusbar.alignment": "left", // Should the item be placed to the left or right?
-  "todo.statistics.statusbar.color": "", // The foreground color for this item
-  "todo.statistics.statusbar.command": "", // Command to execute on click
-  "todo.statistics.statusbar.priority": -1, // The priority of this item. Higher value means the item should be shown more to the left
-  "todo.statistics.statusbar.text": "$(check) [finished]/[all] ([percentage]%)", // Template used for rendering the text
-  "todo.statistics.statusbar.tooltip": "[pending] Pending - [done] Done - [cancelled] Cancelled", // Template used for rendering the tooltip
-  "todo.embedded.regex": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *\\{%-? *endcomment *-?%\\}| *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|((?: (?:[^ \\n@]| +(?! ))*?)(?= *(?:\\{%-? *endcomment *-?%\\}|-->|\\*/|!}|--}}|}}|[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))", // Regex used for finding embedded todos, requires double escaping
-  "todo.embedded.regexFlags": "gi", // Regex flags to use
-  "todo.embedded.problems": {"TODO": "warning", "FIXME": "error"}, // Map embedded markers to Problems view severities (disabled by default)
-  "todo.embedded.include": ["**/*"], // Globs to use for including files
-  "todo.embedded.exclude": ["**/.*", "**/.*/**", ...], // Globs to use for excluding files
-  "todo.embedded.batchSize": 50, // Number of files to process in each embedded-todo discovery batch
-  "todo.embedded.showComments": false, // Show comment-only lines in the Embedded (side) view
-  "todo.embedded.provider": "", // The provider to use when searching for embedded todos
-  "todo.embedded.providers.ag.regex": "(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)", // Regex used by ag, requires double escaping
-  "todo.embedded.providers.ag.args": ['--ignore-case'], // Extra arguments to pass to ag
-  "todo.embedded.providers.rg.regex": "(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)", // Regex used by rg, requires double escaping
-  "todo.embedded.providers.rg.args": ['--ignore-case'], // Extra arguments to pass to rg
-  "todo.embedded.file.wholeLine": true, // Show the whole line
-  "todo.embedded.file.groupByRoot": true, // Group embedded todos by workspace root
-  "todo.embedded.file.groupByType": true, // Group embedded todos by type
-  "todo.embedded.file.groupByFile": true, // Group embedded todos by file
-  "todo.embedded.view.wholeLine": false, // Show the whole line
-  "todo.embedded.view.showContext": false, // Show the following source line when it is non-blank and not another embedded todo
-  "todo.embedded.view.sort": "line", // Sort by source line, label, or a manual workspace-local order
-  "todo.embedded.view.groupByRoot": true, // Group embedded todos by workspace root
-  "todo.embedded.view.groupByType": true, // Group embedded todos by type
-  "todo.embedded.view.groupByFile": true, // Group embedded todos by file
-  "todo.embedded.view.expanded": true, // Start the tree in an expanded state
-  "todo.embedded.view.icons": true // Show icons next to todos and types
+  "todo.automaticSymbol": true,
+  "todo.autoCompleteParents": true,
+  "todo.file.view.showFinished": false,
+  "todo.file.view.groupByTags": ["high", "review"],
+  "todo.tags.styles": {
+    "review": { "color": "#e5d145", "italic": true }
+  },
+  "todo.archive.type": "InSameFile",
+  "todo.timekeeping.autoToggle": true,
+  "todo.planned.enabled": true,
+  "todo.embedded.view.sort": "manual",
+  "todo.embedded.view.showContext": true,
+  "todo.embedded.problems": { "TODO": "warning", "FIXME": "error" }
 }
 ```
+
+| Settings                                                      | Purpose and defaults                                                                     |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `todo.file.name`, `include`, `exclude`, `batchSize`           | New file name `TODO`; discovery globs/absolute files; batch size 50                      |
+| `todo.markdown.*`                                             | Enabled; discovers `**/*.md` and `**/*.markdown`; scope `all`                            |
+| `todo.followSymlinks`                                         | Disabled by default; applies to file discovery and attachment destinations               |
+| `todo.file.view.*`                                            | Hierarchy, comments, tags, icons, and finished-task visibility                           |
+| `todo.symbols.*`                                              | Pending `☐`, done `✔`, cancelled `✘`                                                     |
+| `todo.automaticSymbol`, `autoRenumber`, `autoCompleteParents` | Automatic box continuation off, plain list numbering on, parent completion off           |
+| `todo.colors.*`, `todo.tags.*`                                | Element colors, theme overrides, special labels, and tag-based task styles               |
+| `todo.archive.*`                                              | Default storage `InMultiSeparateFile`; archive name, cleanup, project paths, and sorting |
+| `todo.timekeeping.*`                                          | Creation/completion tags, timestamp and elapsed formats; `autoToggle` defaults to false  |
+| `todo.planned.enabled`, `todo.colors.planned`                 | Work-window highlighting off by default; active tag color `#4fc1ff`                      |
+| `todo.timer.statusbar.*`                                      | Timer enabled by default; alignment, color, and priority                                 |
+| `todo.statistics.project.*`, `todo.statistics.statusbar.*`    | Visibility expressions, templates, and status bar layout                                 |
+| `todo.hoursPerDay`, `manHoursPerDay`, `manDaysPerWeek`        | Duration formatting; defaults 24, 8, and 5 respectively                                  |
+| `todo.embedded.*`                                             | Regex, providers, discovery, context, grouping, sorting, and Problems diagnostics        |
 
 Symbols, colors, view settings, and embedded provider settings refresh when changed.
 
@@ -462,9 +394,9 @@ Inserting source lines or changing label/context display settings preserves an u
 
 This extension supports various providers for searching for embedded todos, it'll use the one you set via the `todo.embedded.provider` setting or the first one available between:
 
-1. **[ag / The Silver Searcher](https://github.com/ggreer/the_silver_searcher)**: About 50x faster than the `javascript` provider, it'll use the regex defined under `todo.embedded.providers.ag.regex`. It must be installed in your system.
-2. **[rg / ripgrep](https://github.com/BurntSushi/ripgrep)**: About 50x faster than the `javascript` provider, it'll use the regex defined under `todo.embedded.providers.rg.regex`. It doesn't support lookaheads and lookbehinds. It must be installed in your system, or Visual Studio Code must include it.
-3. **javascript**: Works on every system, but it's quite slow. This is the fallback provider.
+1. **[ag / The Silver Searcher](https://github.com/ggreer/the_silver_searcher)**: Uses the regex defined under `todo.embedded.providers.ag.regex`. It must be installed in your system.
+2. **[rg / ripgrep](https://github.com/BurntSushi/ripgrep)**: Uses the regex defined under `todo.embedded.providers.rg.regex`. It doesn't support lookaheads and lookbehinds. It must be installed in your system, or Visual Studio Code must include it.
+3. **javascript**: Needs no external search tool. This is the fallback provider.
 
 `ag` and `rg` will use their specific regexes for finding the lines containing embedded todos, then those lines will be searched in using the regex defined under `todo.embedded.regex`.
 
@@ -501,35 +433,41 @@ work in project text, status bar text and status bar tooltips.
 
 ## Demo
 
-### [Example todo file](https://github.com/vycdev/vscode-todo-plus-two/blob/master/resources/readme.todo)
+Captured from the actual extension on a Mac mini using Dark Modern. The [sample Todo file](resources/readme.todo) includes dependencies, paused markers, estimates, fenced TypeScript, a folding region, numbered notes, and archived work. Colors for `@review` use the rule shown in [Settings](#settings).
 
-![Example todo file](resources/demo/syntax.png)
+### Todo editor and statistics
 
-### Embedded todos
+Project counts and estimates appear beside headings, with file progress in the status bar. Time estimates accept `@est(3 hours)`, `@est(2h30m)`, or `@2h30m`. [Statistics tokens](#statistics-tokens) include tag-scoped counts and elapsed time.
 
-![Embedded](resources/demo/embedded.gif)
+![Todo editor showing dependencies, task styles, fenced code, numbered notes, and project statistics](resources/demo/syntax.png)
 
-### Activity bar views
+### Markdown, Files, and Due
 
-The Files and Due views let you edit existing tasks without switching away from your current editor. Hover over a task and choose **Edit Task** (pencil) to edit its text and tags in a prefilled input prompt, or **Toggle Done** (check mark) to complete or reopen it. The same actions are available from the task's right-click menu, alongside Toggle Box, Toggle Cancelled, and Toggle Start. Status actions also keep the current editor active.
+Markdown headings and nested checklists appear in Files while the editor retains Markdown mode. Due groups tasks across files by date.
 
-Editing preserves the task's indentation and status marker. The prompt includes all source text after the marker, including tags hidden by `todo.file.view.showTags`; keep those tags when changing the title. Press Escape to cancel. If the source changes while the prompt is open, the edit is rejected so it cannot overwrite newer text. Changes stay in the document buffer, support undo/redo, and follow your normal save or Auto Save settings. VS Code may add an inactive tab for a modified file to keep unsaved edits accessible; it does not switch to that tab.
+![Markdown task hierarchy alongside Files and Due, with Embedded collapsed](resources/demo/activity_bar_views.png)
 
-These actions work with Todo files and supported Markdown tasks, including tasks in tag groups and tasks with children. The Embedded view continues to navigate to code comments. Text editing uses VS Code's input prompt; it does not turn the sidebar into a text editor.
+### Tag grouping and focus
 
-![Activity bar views](resources/demo/activity_bar_views.png)
+Tag groups retain the original project context. Editor tag focus folds nonmatching work while preserving matching tasks and their parents.
 
-### Statistics
+![Files sidebar grouped by high and review tags](resources/demo/tag-groups.png)
 
-![Statistics](resources/demo/statistics.png)
+![Editor focused on high-priority tasks](resources/demo/tag-focus.png)
 
-![Project Statistics](resources/demo/project_statistics.png)
+### Embedded comments
 
-![Project Statistics Advanced](resources/demo/project_statistics_adv.gif)
+The Embedded view finds source comments and supports manual sibling ordering, without changing source files. [Move it into Explorer](#hints) to keep comments beside the file tree.
 
-### Timekeeping & Timer
+![Embedded comments in Explorer after dragging Check migration coverage ahead of Validate the release manifest](resources/demo/embedded-ordering.png)
 
-![Timekeeping & Timer](resources/demo/timer.gif)
+### Timekeeping and timer
+
+Use Alt+S to start a task and Alt+T to pause or resume. Paused tasks carry `@paused`; `@toggle(...)` stores the timing history. Paused time is excluded from elapsed work and final durations. Set `todo.timekeeping.autoToggle` to true to pause other active tasks when starting another timer.
+
+![Running task with its remaining estimate in the status bar](resources/demo/timer-running.png)
+
+![Paused task with an added toggle timestamp and paused marker; the active status bar timer is hidden](resources/demo/timer-paused.png)
 
 ## Image attachments
 
@@ -540,6 +478,14 @@ If the clipboard also contains non-empty text, normal text paste takes precedenc
 Image creation and link insertion use VS Code's paste edit so they participate in undo/redo together. Existing images are never overwritten, and a failed image write keeps selected text intact. Attachments stay in their original assets folder when archiving; links are updated when tasks move into a workspace-root archive. Keep the Todo file and its assets folder together when moving or sharing them manually, and keep original assets folders when sharing archives. Symlinked destinations require `todo.followSymlinks` to be enabled.
 
 Todo files display attachment links as text. The HTML and Markdown export commands currently export these links as text as well.
+
+![Pasted image attachment link opened beside its Todo file](resources/demo/image-attachment.png)
+
+## Archiving and export
+
+Run **Todo: Archive** to move finished tasks and attached notes. The default `InMultiSeparateFile` storage creates a per-source archive; `InSeparateFile` uses a workspace-root archive and `InSameFile` keeps an Archive project in the source. **Todo: Unarchive** restores same-file items to their recorded project. IDs remain plain text and relative attachment links are adjusted when archiving to a workspace-root file. The [Markdown notes section](#tasks-in-markdown-notes) explains how mixed finished and unfinished task hierarchies are archived.
+
+**Todo: Export to HTML** and **Todo: Export to Markdown** export the active Todo file, preserving hierarchy, statuses, notes, and inline formatting. **Todo: Copy Project with Statistics** copies the current project with its displayed statistics. Exports do not include fenced syntax highlighting or rendered attachment images.
 
 ## Hints
 
@@ -565,11 +511,13 @@ alias todo="ag --color-line-number '1;36' --color-path '1;36' --ignore-case --pr
 
 If you found a problem, or have a feature request, please open an [issue](https://github.com/vycdev/vscode-todo-plus-two/issues) about it.
 
-You can find more about contributing here: [CONTRIBUTING.md](/CONTRIBUTING.md)
+You can find more about contributing here: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 Run `npm run check` for types, unit/integration tests, the development build, and formatting. Run `npm run test:e2e:tags` in a desktop session with Node.js 22 or newer to launch an isolated VS Code Extension Development Host for tag styling. It exercises real task commands, undo/redo, dependencies, archiving, Markdown handling, live settings, and rendered styles in dark and light themes. The runner downloads VS Code through `@vscode/test-electron` and writes a JSON report and screenshots to a temporary artifact directory. The separate `npm run test:e2e` suite covers fenced code notes.
 
 Set `VSCODE_EXECUTABLE_PATH` to reuse a VS Code executable, `VSCODE_TEST_VERSION` to select a version, or `TODO_E2E_ARTIFACT_DIR` to choose where reports and screenshots are saved. Tests use a temporary workspace, profile, and extensions directory.
+
+To refresh the README screenshots, see the [capture instructions and audit coverage](resources/demo/README.md).
 
 ## License
 
