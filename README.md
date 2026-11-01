@@ -419,6 +419,10 @@ If you found a problem, or have a feature request, please open an [issue](https:
 
 You can find more about contributing here: [CONTRIBUTING.md](/CONTRIBUTING.md)
 
+Run `npm run check` for types, unit/integration tests, the development build, and formatting. Run `npm run test:e2e` in a desktop session with Node.js 22 or newer to launch an isolated VS Code Extension Development Host. It exercises real task commands, undo/redo, dependencies, archiving, Markdown handling, live settings, and rendered styles in dark and light themes. The runner downloads VS Code through `@vscode/test-electron` and writes a JSON report and screenshots to a temporary artifact directory.
+
+Set `VSCODE_EXECUTABLE_PATH` to reuse a VS Code executable, `VSCODE_TEST_VERSION` to select a version, or `TODO_E2E_ARTIFACT_DIR` to choose where reports and screenshots are saved. Tests use a temporary workspace, profile, and extensions directory.
+
 ## License
 
 MIT © vycdev

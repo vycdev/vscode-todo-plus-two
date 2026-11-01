@@ -1719,7 +1719,8 @@
     "compile:watch": "webpack --mode development --watch",
     "test": "mocha -r ts-node/register \"test/**/*.spec.ts\" --exit",
     "format": "prettier --write \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
-    "format:check": "prettier --check \"**/*.{ts,js,json,md,css,scss,html,svg}\""
+    "format:check": "prettier --check \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
+    "test:e2e": "npm run compile && node test/e2e/run.js"
   },
   "bugs": {
     "url": "https://github.com/vycdev/vscode-todo-plus-two/issues"
@@ -1767,11 +1768,12 @@
     "to-time": "^1.0.2"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.150",
-    "@types/node": "^13.13.4",
     "@types/chai": "^5.2.3",
+    "@types/lodash": "^4.14.150",
     "@types/mocha": "^10.0.10",
+    "@types/node": "^13.13.4",
     "@types/vscode": "1.36.0",
+    "@vscode/test-electron": "^3.1.0",
     "chai": "^6.2.1",
     "markdown-it": "^14.1.0",
     "mocha": "^11.7.5",
