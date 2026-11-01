@@ -3,11 +3,14 @@
 import * as vscode from 'vscode';
 import DependencyIndex from '../utils/dependency_index';
 import { DependencyReference, getDependencies } from '../utils/dependencies';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
+import { maskMarkdownTaskText } from '../utils/markdown-task-text';
 
 /* DEPENDENCY LINKS */
 
 class DependencyLinkProvider implements vscode.DocumentLinkProvider {
   async provideDocumentLinks(document: vscode.TextDocument): Promise<vscode.DocumentLink[]> {
+    if (document.languageId === 'markdown' && !isMarkdownTaskDocument(document)) return [];
     const dependencies = this.getDependencies(document);
 
     if (!dependencies.length) return [];
@@ -36,9 +39,18 @@ class DependencyLinkProvider implements vscode.DocumentLinkProvider {
 
   private getDependencies(document: vscode.TextDocument): DependencyReferenceAtLine[] {
     const dependencies: DependencyReferenceAtLine[] = [];
+    const markdownNodes = isMarkdownTaskDocument(document)
+      ? getMarkdownTaskNodes(document)
+      : undefined;
 
     for (let lineNumber = 0; lineNumber < document.lineCount; lineNumber++) {
-      getDependencies(document.lineAt(lineNumber).text).forEach((dependency) => {
+      if (
+        markdownNodes &&
+        !markdownNodes.some((node) => node.kind === 'todo' && node.lineNumber === lineNumber)
+      )
+        continue;
+      const raw = document.lineAt(lineNumber).text;
+      getDependencies(markdownNodes ? maskMarkdownTaskText(raw) : raw).forEach((dependency) => {
         dependencies.push({ ...dependency, lineNumber });
       });
     }

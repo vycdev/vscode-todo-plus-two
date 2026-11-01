@@ -21,7 +21,7 @@ describe('Timer command contributions', () => {
 
     expect(keybinding).to.deep.include({
       key: 'Alt+t',
-      when: 'editorTextFocus && editorLangId == todo',
+      when: 'editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))',
     });
   });
 });

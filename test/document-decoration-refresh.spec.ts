@@ -82,6 +82,21 @@ const withDecorator = (run) => {
 };
 
 describe('Document decoration refresh', () => {
+  it('clears its decorations when task support is disabled for an editor', () => {
+    withDecorator(({ decorator, editor }) => {
+      const type = {};
+      const applied = [];
+      decorator.getItemsDecorations = () => [{ type, ranges: ['decoration'] }];
+      editor.setDecorations = (kind, ranges) => applied.push({ kind, ranges });
+      decorator.update(editor);
+      editor.supported = false;
+      decorator.update(editor);
+      expect(applied).to.deep.equal([
+        { kind: type, ranges: ['decoration'] },
+        { kind: type, ranges: [] },
+      ]);
+    });
+  });
   it('updates derived task state when tag edits keep the same length', () => {
     withDecorator(({ decorator, editor, setText, timerDocuments }) => {
       decorator.update(editor);

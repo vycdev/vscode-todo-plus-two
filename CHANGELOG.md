@@ -1,3 +1,29 @@
+### Version 5.4.0
+
+#### New features
+
+- Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
+
+#### Fixes
+
+- Kept Markdown task discovery and hierarchy correct around indented fence examples, HTML comments, headings inside list items, and custom bracketed symbols. Hidden comment metadata no longer changes task status, dependencies, due dates, estimates, or timers.
+- Refreshed the Files tree for unsaved task edits and cleared editor decorations when Markdown task support is disabled.
+- Preserved multiline comments and relative code indentation when archiving Markdown tasks, and recreated missing section headings when unarchiving in section-only mode.
+- Escaped Markdown archive group labels that resemble task or block syntax, and validated archive merges before removing source tasks.
+- Enabled the explicit Toggle Box command to create and restore Markdown checkboxes on eligible prose and list items.
+- Removed previously loaded Markdown notes from workspace dependency discovery when discovery settings exclude them.
+- Kept escaped Markdown tags literal during task actions and archive cleanup while preserving plain-text dependency IDs.
+- Ignored code fences opened directly after Markdown list markers and protected Setext heading titles and underlines from Toggle Box edits.
+- Preserved escaped punctuation in partially typed dependency completions and refreshed visible Markdown editors when parser settings change.
+- Rejected stale Markdown tree actions after a note is closed and reopened, and preserved CRLF line endings when archiving its entire contents.
+- Treated tag arguments as literal text so nested tag examples cannot finish tasks, create dependencies or due dates, control timers, or get removed by status changes.
+- Prevented HTML comments in block quotes from hiding later Markdown tasks, and preserved archive and restored-parent names that contain heading syntax.
+- Preserved ID and dependency tags separated from another tag by punctuation while keeping reference examples inside tag arguments literal.
+- Bounded section-only Markdown task discovery by enclosing list items, including parents outside selected sections, so commands and dependencies do not include following sibling tasks.
+- Restored archived Markdown children to their original parent after its timekeeping or completion-cleanup tags change, retaining IDs and other labels when matching parent paths.
+- Kept archived Markdown tasks in place when their parent path is ambiguous, while allowing unique deeper destinations below repeated ancestor headings.
+- Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
+
 ### Version 5.3.0
 
 A large release: nearly 30 new features and well over a hundred fixes since 5.2.0. If you customize statistics conditions or bound a key to `Todo: Toggle Timer`, read the compatibility notes first.

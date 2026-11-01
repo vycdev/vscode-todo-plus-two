@@ -62,7 +62,8 @@
     "onCommand:todo.editorToggleStart",
     "onCommand:todo.editorArchive",
     "onCommand:todo.unarchive",
-    "onCommand:todo.editorUnarchive"
+    "onCommand:todo.editorUnarchive",
+    "onLanguage:markdown"
   ],
   "contributes": {
     "languages": [
@@ -954,6 +955,43 @@
           "minimum": 1,
           "description": "Batch size when loading todo files metadata and refreshing.",
           "default": 50
+        },
+        "todo.markdown.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Todo tasks in Markdown notes while keeping Markdown editing and preview."
+        },
+        "todo.markdown.include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.md",
+            "**/*.markdown"
+          ],
+          "description": "Markdown note globs to scan for tasks. Todo file excludes and workspace files.exclude also apply."
+        },
+        "todo.markdown.scope": {
+          "type": "string",
+          "enum": [
+            "all",
+            "sections"
+          ],
+          "default": "all",
+          "description": "Find tasks throughout Markdown notes, or only below configured task section headings."
+        },
+        "todo.markdown.sections": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "Todo",
+            "Todos",
+            "Tasks"
+          ],
+          "description": "Case-insensitive Markdown heading names used when todo.markdown.scope is sections."
         }
       }
     },
@@ -1208,54 +1246,54 @@
         "command": "todo.toggleBox",
         "key": "Ctrl+Enter",
         "mac": "Cmd+Enter",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.toggleBox",
         "key": "Alt+Enter",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.toggleDone",
         "key": "Alt+d",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.toggleCancelled",
         "key": "Alt+c",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.toggleStart",
         "key": "Alt+s",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.toggleTimer",
         "key": "Alt+t",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.archive",
         "key": "Shift+Ctrl+a",
         "mac": "Shift+Cmd+a",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.unarchive",
         "key": "Shift+Ctrl+u",
         "mac": "Shift+Cmd+u",
-        "when": "editorTextFocus && editorLangId == todo && todo-unarchive-enabled == true"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task)) && todo-unarchive-enabled == true"
       },
       {
         "command": "todo.openDependencyAtCursor",
         "key": "f12",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.renameDependencyId",
         "key": "f2",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       }
     ],
     "views": {
@@ -1287,47 +1325,47 @@
       "commandPalette": [
         {
           "command": "todo.toggleBox",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.toggleCancelled",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.toggleDone",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.toggleStart",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.toggleTimer",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.archive",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.copyProjectWithStatistics",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.unarchive",
-          "when": "editorLangId == todo && todo-unarchive-enabled == true"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active)) && todo-unarchive-enabled == true"
         },
         {
           "command": "todo.addDependency",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.findDependents",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.renameDependencyId",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.openDependency",
@@ -1434,32 +1472,32 @@
         {
           "command": "todo.editorToggleBox",
           "group": "todo@1",
-          "when": "editorTextFocus && editorLangId == todo"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.editorToggleDone",
           "group": "todo@2",
-          "when": "editorTextFocus && editorLangId == todo"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.editorToggleCancelled",
           "group": "todo@3",
-          "when": "editorTextFocus && editorLangId == todo"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.editorToggleStart",
           "group": "todo@4",
-          "when": "editorTextFocus && editorLangId == todo"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.editorArchive",
           "group": "todo@5",
-          "when": "editorTextFocus && editorLangId == todo"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.editorUnarchive",
           "group": "todo@6",
-          "when": "editorTextFocus && editorLangId == todo && todo-unarchive-enabled == true"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active)) && todo-unarchive-enabled == true"
         }
       ],
       "view/title": [

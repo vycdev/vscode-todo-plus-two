@@ -12,6 +12,8 @@ import {
   getTagNameCompletions,
 } from '../utils/tag_completions';
 import Timestamps from '../utils/timestamps';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
+import { maskMarkdownTaskText } from '../utils/markdown-task-text';
 
 /* COMPLETION */
 
@@ -22,7 +24,16 @@ class Completion implements vscode.CompletionItemProvider {
   static triggerCharacters = _.uniq(TAG_TRIGGER_CHARACTERS.concat(TIMESTAMP_TRIGGER_CHARACTERS));
 
   async provideCompletionItems(textDocument: vscode.TextDocument, pos: vscode.Position) {
-    const line = textDocument.lineAt(pos.line).text;
+    if (
+      textDocument.languageId === 'markdown' &&
+      (!isMarkdownTaskDocument(textDocument) ||
+        !getMarkdownTaskNodes(textDocument).some(
+          (node) => node.kind === 'todo' && node.lineNumber === pos.line
+        ))
+    )
+      return null;
+    const raw = textDocument.lineAt(pos.line).text;
+    const line = isMarkdownTaskDocument(textDocument) ? maskMarkdownTaskText(raw) : raw;
     const character = line[pos.character - 1];
     const tagPrefix = Timestamps.getPrefix(line, pos.character);
     const tagArgumentPrefix = getTagArgumentPrefix(line, pos.character);
@@ -32,9 +43,12 @@ class Completion implements vscode.CompletionItemProvider {
       return Completion.getDependencyIds(
         textDocument,
         pos,
-        dependency.text.slice(dependency.text.indexOf('(') + 1)
+        // Only the tag opener needs Markdown visibility checks. Its argument
+        // remains plaintext even before a closing parenthesis is typed.
+        raw.slice(dependency.start + dependency.name.length + 1, pos.character)
       );
     }
+    if (raw[pos.character - 1] !== line[pos.character - 1]) return null;
 
     if (
       !character ||

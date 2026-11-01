@@ -25,6 +25,7 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Task dependencies**: give a task a manual `@id(release-api)` and reference it from any Todo file with `@depends(release-api)`. The extension validates links, helps insert and rename references, and blocks premature completion.
 - **Statistics**: statistics about your entire file and/or project-level statistics about your individual projects
 - **Embedded todos**: it's common to have `//TODO` or `//FIXME` comments in our code, this extension can find those as well, including inline and multiline Liquid comment blocks
+- **Markdown notes**: manage checklists and Todo+ tasks inside Markdown notes, with section grouping, task commands, due dates, statistics, dependencies, and timers. Notes keep their Markdown language mode and preview.
 - **Activity bar views**: you can view your todo file and your embedded todos from a custom activity bar section
 
 ## Install
@@ -77,6 +78,48 @@ It adds 8 shortcuts when editing a `Todo` file:
 'Cmd/Ctrl+Shift+A'; // Triggers  `Todo: Archive`
 'Cmd/Ctrl+Shift+U'; // Triggers `Todo: Unarchive` when todo.archive.type is InSameFile
 ```
+
+### Tasks in Markdown notes
+
+Markdown task support is enabled by default. Open a note or the Todo Files view to see tasks grouped by their headings and nested lists:
+
+```markdown
+# Release notes
+
+Some notes about the release.
+
+## Todos
+
+- [ ] Publish the API @id(api) @due(2026-12-01)
+- [ ] Ship the client @depends(api)
+  - [x] Write tests
+
+Big activity:
+[ ] A Todo+ style task inside the note
+
+## Architecture
+
+[ ] Follow up on the design
+```
+
+Supported task markers include Markdown list checkboxes (`- [ ]`, `* [ ]`, `+ [ ]`, and numbered lists), checked `[x]`/`[X]` boxes, bare `[ ]` boxes, and the standard/configured Todo+ symbols. Headings, including Setext headings, and project/list groups appear only when they contain tasks. Tasks inside fenced or indented code, block quotes, front matter, and HTML comments are ignored, including fences opened directly after a list marker.
+
+The Files view shows Markdown tasks alongside Todo files. Task actions preserve the original checkbox style, bullet, indentation, tags, and surrounding prose. Cancellation uses `@cancelled` on checkbox tasks, including when automatic completion timestamps are disabled. `@due`, `@id`, `@depends`, estimates, statistics, and timer tags work on task lines; examples, HTML-comment payloads, and tags in ordinary prose are excluded from these features. Backslash-escaped tags such as `\@done` remain literal, while tag arguments retain their plain-text spelling. Tag-like text inside another tag's argument is also literal: `@id(@done)` identifies a task without completing it. Added timestamps stay outside HTML comments. Markdown headings retain their theme styling, with optional Todo project statistics appended as editor decorations.
+
+The usual task shortcuts work when the cursor is on a recognized Markdown task. Run `Todo: Toggle Box` from the command palette to turn eligible prose or a list item into a checkbox, or restore a checkbox after removing its marker. Headings and their Setext underlines, code, comments, quotes, and notes outside configured task sections remain excluded. Tag and dependency completions are also limited to task lines. Markdown editing, folding, and preview continue to use VS Code's Markdown support.
+
+```json
+{
+  "todo.markdown.enabled": true,
+  "todo.markdown.include": ["**/*.md", "**/*.markdown"],
+  "todo.markdown.scope": "all",
+  "todo.markdown.sections": ["Todo", "Todos", "Tasks"]
+}
+```
+
+Set `todo.markdown.scope` to `"sections"` to limit discovery to the named headings and their subsections. Heading names match case insensitively, and each section ends at the next heading of the same or a higher level. A heading nested inside a list item also ends when that item ends. Parents outside selected sections provide grouping context and remain excluded from task actions and dependency discovery. Task discovery also respects `todo.file.exclude`, workspace `files.exclude`, and `todo.followSymlinks`. Each file is indexed once, even when its path matches both the Todo and Markdown include settings. Setting the document's language mode to Todo selects the existing Todo parser.
+
+Archiving moves finished task blocks with their indented notes and finished children, while keeping Markdown headings and unrelated prose in the source. A finished parent with unfinished children stays in place; eligible finished children can still be archived. `InSameFile` uses a Markdown Archive heading and supports Unarchive. Restoring a child still finds its original parent after the parent's timekeeping or completion-cleanup tags change. If its parent path matches multiple destinations, tasks stay in the Archive until the parent labels identify a single destination. `InMultiSeparateFile` writes `ARCHIVE.<original-filename>`; `InSeparateFile` uses a shared `ARCHIVE.<todo-file-base-name>.md` at the workspace root. Archive tag cleanup applies to task lines, preserving note text and code examples. Project labels are escaped when necessary, and merges retain source tasks if the archive cannot expose every transferred task. Existing dirty-buffer, write-failure, and concurrent-transfer protections also apply to Markdown archives.
 
 ### Task priorities
 

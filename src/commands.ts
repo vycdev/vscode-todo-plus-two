@@ -21,6 +21,9 @@ import { getTimerState, getToggleTag } from './utils/timekeeping';
 import { HtmlExportLine, renderTodoHtml } from './utils/html-export';
 import { renderTodoMarkdown } from './utils/markdown-export';
 import DocumentDecorator from './todo/decorators/document';
+import { getTaskLevel, getMarkdownTaskNodes, isMarkdownTaskDocument } from './utils/task-source';
+import { archiveMarkdownTasks } from './utils/markdown-archive-command';
+import { maskMarkdownTaskText } from './utils/markdown-task-text';
 import { ProjectCopyLine, renderProjectCopy } from './utils/project-copy';
 import {
   DependencyReference,
@@ -35,12 +38,24 @@ import {
 
 /* CALL TODOS METHOD */
 
-const isCurrentDocument = (document: vscode.TextDocument, version: number): boolean => {
-  if (!document.isClosed && document.version === version) return true;
+const isCurrentDocument = (
+  document: vscode.TextDocument,
+  version: number,
+  expectedDocument?: vscode.TextDocument
+): boolean => {
+  if (
+    !document.isClosed &&
+    document.version === version &&
+    (!expectedDocument || document === expectedDocument)
+  )
+    return true;
 
   vscode.window.showInformationMessage('The Todo file changed. Please run the command again.');
   return false;
 };
+
+const dependencyTaskText = (todo: Todo): string =>
+  todo.markdownNode ? maskMarkdownTaskText(todo.text) : todo.text;
 
 export function registerCommands(
   context: vscode.ExtensionContext,
@@ -94,7 +109,15 @@ async function callTodosMethod(options?, textEditor = vscode.window.activeTextEd
   const version = textEditor.document.version;
 
   const lines = getSelectedLines(textEditor),
-    todos = _.filter(lines.map((line) => doc.getTodoAt(line, options.checkValidity))) as Todo[];
+    todos = _.filter(
+      lines.map(
+        (line) =>
+          doc.getTodoAt(line, options.checkValidity) ||
+          (options.method === 'toggleBox' && isMarkdownTaskDocument(textEditor.document)
+            ? doc.getTodoForCreationAt(line)
+            : undefined)
+      )
+    ) as Todo[];
 
   if (todos.length !== lines.length) vscode.window.showErrorMessage(options.errors.invalid);
 
@@ -187,18 +210,21 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
 
         return {
           lineNumber,
-          level: Utils.ast.getLevel(textEditor.document, text),
+          level: getTaskLevel(textEditor.document, lineNumber, () =>
+            Utils.ast.getLevel(textEditor.document, text)
+          ),
           status,
           isProject: !!project,
         };
       })
-      .filter((line) => textEditor.document.lineAt(line.lineNumber).text.trim()),
+      .filter((line) => line.level >= 0 && textEditor.document.lineAt(line.lineNumber).text.trim()),
     possibleLines = getAutoCompletableParentLines(lines, completedLines);
 
   if (!possibleLines.length) return;
 
   const needsIndex = possibleLines.some(
-      (lineNumber) => getDependencies((doc.getTodoAt(lineNumber, true) as Todo).text).length
+      (lineNumber) =>
+        getDependencies(dependencyTaskText(doc.getTodoAt(lineNumber, true) as Todo)).length
     ),
     dependencyIndex = needsIndex ? await DependencyIndex.get(textEditor.document) : undefined,
     parentLines: number[] = [],
@@ -314,11 +340,15 @@ function getExportLines(textEditor: vscode.TextEditor, doc: Document): HtmlExpor
 
     const todo = doc.getTodoAt(lineNumber, true) as Todo,
       project = doc.getProjectAt(lineNumber, true) as Project,
-      level = Utils.ast.getLevel(textDocument, raw);
+      level = getTaskLevel(textDocument, lineNumber, () => Utils.ast.getLevel(textDocument, raw));
+
+    if (level < 0) return result;
 
     if (todo) {
       const status = todo.getStatus(),
-        text = raw.replace(Consts.regexes.todoSymbol, '').trim();
+        text = todo.markdownNode
+          ? todo.markdownNode.title
+          : raw.replace(Consts.regexes.todoSymbol, '').trim();
 
       result.push({
         kind: 'todo',
@@ -328,8 +358,12 @@ function getExportLines(textEditor: vscode.TextEditor, doc: Document): HtmlExpor
       });
     } else if (project) {
       const match = raw.match(Consts.regexes.projectParts),
-        title = match ? match[2].trim() : raw.trim(),
-        tags = match && match[3] ? match[3].trim() : '';
+        title = project.markdownNode
+          ? project.markdownNode.title
+          : match
+            ? match[2].trim()
+            : raw.trim(),
+        tags = project.markdownNode ? '' : match && match[3] ? match[3].trim() : '';
 
       result.push({
         kind: 'project',
@@ -485,14 +519,22 @@ async function copyProjectWithStatistics() {
     }),
     endOfLine = textDocument.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
     includeRemainingDocument = !!items.archive && items.archive.lineNumber === projectLine,
-    content = renderProjectCopy(
-      lines,
-      projectLine,
-      statistics,
-      project.range.end.character,
-      endOfLine,
-      includeRemainingDocument
-    );
+    content = project.markdownNode
+      ? _.range(projectLine, project.markdownNode.endLine)
+          .map((lineNumber) => {
+            const text = textDocument.lineAt(lineNumber).text;
+            return lineNumber === projectLine ? `${text} ${statistics}` : text;
+          })
+          .join(endOfLine)
+          .trimEnd()
+      : renderProjectCopy(
+          lines,
+          projectLine,
+          statistics,
+          project.range.end.character,
+          endOfLine,
+          includeRemainingDocument
+        );
 
   try {
     await clipboard.writeText(content);
@@ -604,7 +646,10 @@ async function toggleStart(textEditor = vscode.window.activeTextEditor) {
           continue;
         }
 
-        const timerState = getTimerState(fileTodo.text, format);
+        const timerState = getTimerState(
+          fileTodo.getTimekeepingText ? fileTodo.getTimekeepingText() : fileTodo.text,
+          format
+        );
         if (!timerState || !timerState.active) continue;
 
         fileTodo.addTag(toggleTag);
@@ -644,7 +689,11 @@ function toggleTimer() {
 
   return callTodosMethod({
     checkValidity: true,
-    filter: (todo) => todo.isBox() && Boolean(getTimerState(todo.text, format)),
+    filter: (todo) =>
+      todo.isBox() &&
+      Boolean(
+        getTimerState(todo.getTimekeepingText ? todo.getTimekeepingText() : todo.text, format)
+      ),
     filteredError: (todos) =>
       todos.some((todo) => !todo.isBox())
         ? 'Completed todos cannot toggle their timer'
@@ -679,6 +728,7 @@ async function archive() {
 
   Utils.log.debug(`archive on document: ${textEditor.document.fileName}`);
   try {
+    if (isMarkdownTaskDocument(textEditor.document)) return await archiveMarkdownTasks(textEditor);
     return await Utils.archive.run(doc);
   } catch (error) {
     return vscode.window.showErrorMessage(`Unable to archive tasks: ${error.message || error}`);
@@ -702,6 +752,19 @@ async function unarchive() {
     return vscode.window.showInformationMessage(
       'Unarchive is available only when todo.archive.type is set to InSameFile'
     );
+  }
+
+  if (isMarkdownTaskDocument(textEditor.document)) {
+    try {
+      const count = await archiveMarkdownTasks(textEditor, getSelectedLines(textEditor));
+      return vscode.window.showInformationMessage(
+        count
+          ? `Unarchived ${count} task block${count === 1 ? '' : 's'}`
+          : 'No finished archived task found at the cursor'
+      );
+    } catch (error) {
+      return vscode.window.showErrorMessage(`Unable to unarchive tasks: ${error.message || error}`);
+    }
   }
 
   const archive = doc.getArchive();
@@ -778,6 +841,11 @@ async function viewCallTodosMethod(todo: ItemTodo, options?) {
 
   const textEditor = await viewRevealTodo(todo);
   if (!textEditor) return;
+  if (
+    todo.obj.documentVersion !== undefined &&
+    !isCurrentDocument(textEditor.document, todo.obj.documentVersion, todo.obj.textEditor)
+  )
+    return;
 
   return callTodosMethod(options, textEditor);
 }
@@ -806,6 +874,11 @@ async function viewToggleStart(todo: ItemTodo) {
 
   const textEditor = await viewRevealTodo(todo);
   if (!textEditor) return;
+  if (
+    todo.obj.documentVersion !== undefined &&
+    !isCurrentDocument(textEditor.document, todo.obj.documentVersion, todo.obj.textEditor)
+  )
+    return;
 
   return toggleStart(textEditor);
 }
@@ -876,7 +949,11 @@ async function addDependency() {
 
   if (!isCurrentDocument(textEditor.document, version)) return;
 
-  if (getDependencies(todo.text).some((dependency) => dependency.id === selection.label)) {
+  if (
+    getDependencies(dependencyTaskText(todo)).some(
+      (dependency) => dependency.id === selection.label
+    )
+  ) {
     return vscode.window.showInformationMessage(`This task already depends on ${selection.label}`);
   }
 
@@ -954,7 +1031,7 @@ async function getBlockedTodos(
   existingIndex?: any
 ) {
   const candidates = todos
-    .map((todo) => ({ todo, dependencies: getDependencies(todo.text) }))
+    .map((todo) => ({ todo, dependencies: getDependencies(dependencyTaskText(todo)) }))
     .filter(({ dependencies }) => dependencies.length);
 
   // Building the index scans the whole workspace, so skip it for tasks without dependencies.
@@ -979,7 +1056,14 @@ async function getIdAtCursorOrPrompt(prompt: string) {
   const textEditor = vscode.window.activeTextEditor;
 
   if (Utils.editor.isSupported(textEditor)) {
-    const line = textEditor.document.lineAt(textEditor.selection.active.line).text;
+    const raw = textEditor.document.lineAt(textEditor.selection.active.line).text;
+    const markdown = isMarkdownTaskDocument(textEditor.document);
+    const isTask =
+      !markdown ||
+      getMarkdownTaskNodes(textEditor.document).some(
+        (node) => node.kind === 'todo' && node.lineNumber === textEditor.selection.active.line
+      );
+    const line = !isTask ? '' : markdown ? maskMarkdownTaskText(raw) : raw;
     const references: DependencyReference[] = getIds(line).concat(getDependencies(line));
     const reference = references.find(
       ({ tagStart, tagEnd }) =>

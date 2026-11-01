@@ -4,6 +4,7 @@ import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Consts from '../../consts';
 import Document from './document';
+import { isTaskDocument } from '../../utils/task-source';
 
 /* CHANGES */
 
@@ -11,7 +12,7 @@ const Changes = {
   changes: [],
 
   onChanges({ document, contentChanges }) {
-    if (document.languageId !== Consts.languageId) return;
+    if (!isTaskDocument(document)) return;
 
     if (!contentChanges.length) return; //URL: https://github.com/Microsoft/vscode/issues/50344
 

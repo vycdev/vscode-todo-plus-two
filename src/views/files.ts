@@ -18,6 +18,8 @@ import Group from './items/group';
 import Placeholder from './items/placeholder';
 import Todo from './items/todo';
 import View from './view';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
+import { transformMarkdownTaskText } from '../utils/markdown-task-text';
 
 /* FILES */
 
@@ -76,6 +78,7 @@ class Files extends View {
     }
 
     if (obj.textEditor) {
+      if (isMarkdownTaskDocument(obj.textEditor)) return this.getMarkdownChildren(obj);
       const items = [],
         lineNr = obj.hasOwnProperty('lineNr') ? obj.lineNr : -1;
 
@@ -161,6 +164,63 @@ class Files extends View {
     vscode.commands.executeCommand('setContext', 'todo-files-show-finished', this.showFinished);
   }
 
+  private getMarkdownChildren(obj): Item[] {
+    const document = obj.textEditor;
+    const nodes = getMarkdownTaskNodes(document);
+    const byLine = new Map(nodes.map((node) => [node.lineNumber, node]));
+    const visible = new Set<number>();
+    nodes
+      .filter((node) => node.kind === 'todo' && (this.showFinished || node.status === 'box'))
+      .forEach((node) => {
+        const branch = [node];
+        let parent = byLine.get(node.parent);
+        while (parent) {
+          branch.push(parent);
+          parent = byLine.get(parent.parent);
+        }
+        if (
+          !this.filter ||
+          matchesFilesViewFilter(
+            this.filter,
+            obj.filePath,
+            branch.map((record) => document.lineAt(record.lineNumber).text)
+          )
+        ) {
+          branch.forEach((record) => visible.add(record.lineNumber));
+        }
+      });
+    return nodes
+      .filter((node) => node.parent === obj.markdownParent && visible.has(node.lineNumber))
+      .map((node) => {
+        const data = {
+          ...obj,
+          markdownParent: node.lineNumber,
+          lineNr: node.lineNumber,
+          line: document.lineAt(node.lineNumber),
+          documentVersion: document.version,
+        };
+        const label =
+          this.config.file.view.showTags === false
+            ? transformMarkdownTaskText(node.title, Tags.removeAll)
+            : node.title;
+        const hasChildren = nodes.some(
+          (candidate) => candidate.parent === node.lineNumber && visible.has(candidate.lineNumber)
+        );
+        const item =
+          node.kind === 'project' || hasChildren ? new Group(data, label) : new Todo(data, label);
+        item.contextValue = node.kind === 'todo' ? 'todo' : 'group';
+        item.description =
+          node.kind === 'todo'
+            ? node.status === 'done'
+              ? '✓'
+              : node.status === 'cancelled'
+                ? 'Cancelled'
+                : ''
+            : undefined;
+        return item;
+      });
+  }
+
   setTreeView(treeView) {
     super.setTreeView(treeView);
     this.refreshActivityBarBadge();
@@ -180,7 +240,24 @@ class Files extends View {
   updateActivityBarBadge() {
     if (!supportsActivityBarBadge(this.treeView)) return;
 
-    const pending = countPendingTodos(Utils.files.filesData, Consts.regexes.todoBox);
+    const filesData = Utils.files.filesData || {};
+    const markdownFiles = Object.keys(filesData).filter(
+      (filePath) => filesData[filePath] && isMarkdownTaskDocument(filesData[filePath].textEditor)
+    );
+    const regular = Object.keys(filesData).reduce((result, filePath) => {
+      if (!markdownFiles.includes(filePath)) result[filePath] = filesData[filePath];
+      return result;
+    }, {});
+    const pending =
+      countPendingTodos(regular, Consts.regexes.todoBox) +
+      markdownFiles.reduce(
+        (count, filePath) =>
+          count +
+          getMarkdownTaskNodes(filesData[filePath].textEditor).filter(
+            (node) => node.kind === 'todo' && node.status === 'box' && !node.inArchive
+          ).length,
+        0
+      );
 
     updateActivityBarBadge(this.treeView, pending);
   }

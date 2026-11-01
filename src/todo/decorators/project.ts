@@ -12,6 +12,7 @@ import Line from './line';
 let DECORATIONS_SIGNATURE: string;
 let PROJECT_BASIC: vscode.TextEditorDecorationType;
 let PROJECT_STATISTICS: vscode.TextEditorDecorationType;
+let MARKDOWN_STATISTICS: vscode.TextEditorDecorationType;
 
 function getDecorationSignature() {
   return JSON.stringify({
@@ -33,11 +34,16 @@ function ensureDecorationTypes() {
   const signature = getDecorationSignature();
 
   if (signature === DECORATIONS_SIGNATURE) {
-    return { basic: PROJECT_BASIC, statistics: PROJECT_STATISTICS };
+    return {
+      basic: PROJECT_BASIC,
+      statistics: PROJECT_STATISTICS,
+      markdownStatistics: MARKDOWN_STATISTICS,
+    };
   }
 
   if (PROJECT_BASIC) PROJECT_BASIC.dispose();
   if (PROJECT_STATISTICS) PROJECT_STATISTICS.dispose();
+  if (MARKDOWN_STATISTICS) MARKDOWN_STATISTICS.dispose();
 
   const colorsEnabled = Config.getKey('colors.enabled') !== false,
     basicOptions: any = {
@@ -79,10 +85,20 @@ function ensureDecorationTypes() {
   PROJECT_BASIC = vscode.window.createTextEditorDecorationType(basicOptions);
 
   PROJECT_STATISTICS = vscode.window.createTextEditorDecorationType(statisticsOptions);
+  MARKDOWN_STATISTICS = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
+    after: statisticsOptions.after,
+    dark: statisticsOptions.dark ? { after: statisticsOptions.dark.after } : undefined,
+    light: statisticsOptions.light ? { after: statisticsOptions.light.after } : undefined,
+  });
 
   DECORATIONS_SIGNATURE = signature;
 
-  return { basic: PROJECT_BASIC, statistics: PROJECT_STATISTICS };
+  return {
+    basic: PROJECT_BASIC,
+    statistics: PROJECT_STATISTICS,
+    markdownStatistics: MARKDOWN_STATISTICS,
+  };
 }
 
 /* PROJECT */
@@ -102,11 +118,13 @@ class Project extends Line {
     const types = ensureDecorationTypes(),
       condition = Config.getKey('statistics.project.enabled'),
       textEditor = projects.length ? projects[0].textEditor : vscode.window.activeTextEditor;
+    const markdown = projects.some((project) => !!project.markdownNode);
+    if (textEditor) textEditor.setDecorations(types.markdownStatistics, []);
 
     if (condition === false) {
       if (textEditor) textEditor.setDecorations(types.statistics, []);
 
-      return super.getDecorations(projects);
+      return super.getDecorations(markdown ? [] : projects);
     }
 
     if (textEditor) textEditor.setDecorations(types.statistics, []);
@@ -145,11 +163,15 @@ class Project extends Line {
     return [
       {
         type: types.basic,
-        ranges: basicRanges,
+        ranges: markdown ? [] : basicRanges,
       },
       {
         type: types.statistics,
-        ranges: statisticRanges,
+        ranges: markdown ? [] : statisticRanges,
+      },
+      {
+        type: types.markdownStatistics,
+        ranges: markdown ? statisticRanges : [],
       },
     ];
   }
