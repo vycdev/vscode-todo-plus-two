@@ -102,6 +102,7 @@ class Files extends View {
         data.textEditor = obj.textEditor;
         data.filePath = obj.filePath;
         data.lineNr = data.line.lineNumber;
+        data.documentVersion = obj.textEditor.version;
 
         let isGroup = false;
 

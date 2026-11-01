@@ -3,6 +3,7 @@
 import * as _ from 'lodash';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import type { TextDocument, TextEditor } from 'vscode';
 import Config from './config';
 import Consts from './consts';
 import { tagFocus } from './tag_focus';
@@ -13,6 +14,7 @@ import StatusbarTimer from './statusbars/timer';
 import Utils from './utils';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
+import { Due } from './views/due';
 import Files from './utils/files';
 import DependencyIndex from './utils/dependency_index';
 import { Comment, Project, Todo, TodoFinished } from './todo/items';
@@ -23,7 +25,12 @@ import { HtmlExportLine, renderTodoHtml } from './utils/html-export';
 import { renderTodoMarkdown } from './utils/markdown-export';
 import { getCodeBlocks } from './utils/code-blocks';
 import DocumentDecorator from './todo/decorators/document';
-import { getTaskLevel, getMarkdownTaskNodes, isMarkdownTaskDocument } from './utils/task-source';
+import {
+  getTaskLevel,
+  getMarkdownTaskNodes,
+  isMarkdownTaskDocument,
+  isTaskDocument,
+} from './utils/task-source';
 import { archiveMarkdownTasks } from './utils/markdown-archive-command';
 import { maskMarkdownTaskText } from './utils/markdown-task-text';
 import { ProjectCopyLine, renderProjectCopy } from './utils/project-copy';
@@ -157,25 +164,39 @@ const callTodosMethodOptions = {
 };
 
 async function callTodosMethod(options?, textEditor = vscode.window.activeTextEditor) {
+  if (!textEditor || !new Document(textEditor).isSupported()) return;
+
+  return callDocumentTodosMethod(
+    textEditor.document,
+    getSelectedLines(textEditor),
+    options,
+    textEditor
+  );
+}
+
+async function callDocumentTodosMethod(
+  textDocument: TextDocument,
+  lines: number[],
+  options?,
+  textEditor?: TextEditor
+) {
+  if (!isTaskDocument(textDocument)) return;
+
   options = _.isString(options) ? { method: options } : options;
   options = _.merge({}, callTodosMethodOptions, options);
 
-  const doc = new Document(textEditor);
+  const doc = new Document(textEditor || textDocument);
+  const version = textDocument.version;
 
-  if (!doc.isSupported()) return;
-
-  const version = textEditor.document.version;
-
-  const lines = getSelectedLines(textEditor),
-    todos = _.filter(
-      lines.map(
-        (line) =>
-          doc.getTodoAt(line, options.checkValidity) ||
-          (options.method === 'toggleBox' && isMarkdownTaskDocument(textEditor.document)
-            ? doc.getTodoForCreationAt(line)
-            : undefined)
-      )
-    ) as Todo[];
+  const todos = _.filter(
+    lines.map(
+      (line) =>
+        doc.getTodoAt(line, options.checkValidity) ||
+        (textEditor && options.method === 'toggleBox' && isMarkdownTaskDocument(textDocument)
+          ? doc.getTodoForCreationAt(line)
+          : undefined)
+    )
+  ) as Todo[];
 
   if (todos.length !== lines.length) vscode.window.showErrorMessage(options.errors.invalid);
 
@@ -196,7 +217,7 @@ async function callTodosMethod(options?, textEditor = vscode.window.activeTextEd
   if (options.blockOnOpenDependencies) {
     const blocked = await getBlockedTodos(
       todosFiltered.filter((todo) => willFinishTodo(todo, options.method)),
-      textEditor.document
+      textDocument
     );
 
     if (blocked.length) {
@@ -213,7 +234,8 @@ async function callTodosMethod(options?, textEditor = vscode.window.activeTextEd
 
   if (!todosFiltered.length) return;
 
-  if (!isCurrentDocument(textEditor.document, version)) return;
+  if (!isCurrentDocument(textEditor ? textEditor.document : textDocument, version, textDocument))
+    return;
 
   todosFiltered.map((todo) => todo[options.method](...options.args));
 
@@ -221,39 +243,42 @@ async function callTodosMethod(options?, textEditor = vscode.window.activeTextEd
 
   if (!edits.length) return;
 
-  const selectionsTagIndexes = textEditor.selections.map((selection) => {
-    const line = textEditor.document.lineAt(selection.start.line);
-    return line.text.indexOf(Consts.symbols.tag);
-  });
+  const selectionsTagIndexes =
+    textEditor &&
+    textEditor.selections.map((selection) => {
+      const line = textDocument.lineAt(selection.start.line);
+      return line.text.indexOf(Consts.symbols.tag);
+    });
 
-  const applied = await Utils.editor.edits.apply(textEditor, edits);
+  const applied = await Utils.editor.edits.apply(textEditor || textDocument, edits);
   if (!applied) return;
 
-  textEditor.selections = textEditor.selections.map((selection, index) => {
-    // Putting the cursors before first new tag
-    if (selectionsTagIndexes[index] >= 0) return selection;
-    const line = textEditor.document.lineAt(selection.start.line);
-    if (selection.start.character !== line.text.length) return selection;
-    const tagIndex = line.text.indexOf(Consts.symbols.tag);
-    if (tagIndex < 0) return selection;
-    const position = new vscode.Position(selection.start.line, tagIndex);
-    return new vscode.Selection(position, position);
-  });
+  if (textEditor && textEditor.document === textDocument)
+    textEditor.selections = textEditor.selections.map((selection, index) => {
+      // Putting the cursors before first new tag
+      if (selectionsTagIndexes[index] >= 0) return selection;
+      const line = textDocument.lineAt(selection.start.line);
+      if (selection.start.character !== line.text.length) return selection;
+      const tagIndex = line.text.indexOf(Consts.symbols.tag);
+      if (tagIndex < 0) return selection;
+      const position = new vscode.Position(selection.start.line, tagIndex);
+      return new vscode.Selection(position, position);
+    });
 
   if (options.autoCompleteParents && Config.getKey('autoCompleteParents')) {
     await autoCompleteParents(
-      textEditor,
+      textDocument,
       todosFiltered.map((todo) => todo.line.lineNumber)
     );
   }
 }
 
-async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines: number[]) {
-  const version = textEditor.document.version;
-  const doc = new Document(textEditor),
-    lines: AutoCompleteLine[] = _.range(textEditor.document.lineCount)
+async function autoCompleteParents(textDocument: TextDocument, completedLines: number[]) {
+  const version = textDocument.version;
+  const doc = new Document(textDocument),
+    lines: AutoCompleteLine[] = _.range(textDocument.lineCount)
       .map((lineNumber): AutoCompleteLine => {
-        const text = textEditor.document.lineAt(lineNumber).text,
+        const text = textDocument.lineAt(lineNumber).text,
           todo = doc.getTodoAt(lineNumber, true) as Todo,
           project = doc.getProjectAt(lineNumber, true) as Project,
           status = todo
@@ -268,8 +293,8 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
 
         return {
           lineNumber,
-          level: getTaskLevel(textEditor.document, lineNumber, () =>
-            Utils.ast.getLevel(textEditor.document, text)
+          level: getTaskLevel(textDocument, lineNumber, () =>
+            Utils.ast.getLevel(textDocument, text)
           ),
           status,
           isProject: !!project,
@@ -278,9 +303,9 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
       .filter(
         (line) =>
           line.level >= 0 &&
-          (isMarkdownTaskDocument(textEditor.document) ||
-            !getCodeBlocks(textEditor.document).byLine.has(line.lineNumber)) &&
-          textEditor.document.lineAt(line.lineNumber).text.trim()
+          (isMarkdownTaskDocument(textDocument) ||
+            !getCodeBlocks(textDocument).byLine.has(line.lineNumber)) &&
+          textDocument.lineAt(line.lineNumber).text.trim()
       ),
     possibleLines = getAutoCompletableParentLines(lines, completedLines);
 
@@ -290,11 +315,11 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
       (lineNumber) =>
         getDependencies(dependencyTaskText(doc.getTodoAt(lineNumber, true) as Todo)).length
     ),
-    dependencyIndex = needsIndex ? await DependencyIndex.get(textEditor.document) : undefined,
+    dependencyIndex = needsIndex ? await DependencyIndex.get(textDocument) : undefined,
     parentLines: number[] = [],
     remainingLines = possibleLines.slice();
 
-  if (!isCurrentDocument(textEditor.document, version)) return;
+  if (!isCurrentDocument(textDocument, version)) return;
 
   let madeProgress = true;
 
@@ -310,9 +335,9 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
       if (eligibleLines.indexOf(lineNumber) < 0) continue;
 
       const todo = doc.getTodoAt(lineNumber, true) as Todo,
-        blocked = await getBlockedTodos([todo], textEditor.document, parentLines, dependencyIndex);
+        blocked = await getBlockedTodos([todo], textDocument, parentLines, dependencyIndex);
 
-      if (!isCurrentDocument(textEditor.document, version)) return;
+      if (!isCurrentDocument(textDocument, version)) return;
 
       if (blocked.length) continue;
 
@@ -322,7 +347,7 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
     }
   }
 
-  if (!isCurrentDocument(textEditor.document, version)) return;
+  if (!isCurrentDocument(textDocument, version)) return;
 
   const parents = parentLines.map((lineNumber) => doc.getTodoAt(lineNumber, true) as Todo);
 
@@ -332,7 +357,7 @@ async function autoCompleteParents(textEditor: vscode.TextEditor, completedLines
     (all, todo) => all.concat(todo.makeEdit() || []),
     [] as vscode.TextEdit[]
   );
-  if (edits.length) await Utils.editor.edits.apply(textEditor, edits);
+  if (edits.length) await Utils.editor.edits.apply(textDocument, edits);
 }
 
 /* COMMANDS */
@@ -627,9 +652,23 @@ function toggleCancelled() {
 }
 
 async function toggleStart(textEditor = vscode.window.activeTextEditor) {
+  if (!textEditor || !new Document(textEditor).isSupported()) return;
+
+  return toggleDocumentStart(textEditor.document, getSelectedLines(textEditor), textEditor);
+}
+
+async function toggleDocumentStart(
+  textDocument: TextDocument,
+  lines: number[],
+  textEditor?: TextEditor
+) {
+  if (!isTaskDocument(textDocument)) return;
+
   const autoToggle = Config.getKey('timekeeping.autoToggle');
   if (!autoToggle) {
-    return callTodosMethod(
+    return callDocumentTodosMethod(
+      textDocument,
+      lines,
       {
         checkValidity: true,
         filter: (todo) => todo.isBox(),
@@ -643,13 +682,8 @@ async function toggleStart(textEditor = vscode.window.activeTextEditor) {
     );
   }
 
-  if (!textEditor) return;
-
-  const doc = new Document(textEditor);
-  if (!doc.isSupported()) return;
-
-  const version = textEditor.document.version;
-  const lines = getSelectedLines(textEditor);
+  const doc = new Document(textEditor || textDocument);
+  const version = textDocument.version;
   const todos = _.filter(lines.map((line) => doc.getTodoAt(line, true))) as Todo[];
 
   if (todos.length !== lines.length) {
@@ -675,10 +709,11 @@ async function toggleStart(textEditor = vscode.window.activeTextEditor) {
   if (startingTodos.length) {
     // Find all other active timers in the workspace
     const allTodos = await Files.get();
-    if (!isCurrentDocument(textEditor.document, version)) return;
+    if (!isCurrentDocument(textEditor ? textEditor.document : textDocument, version, textDocument))
+      return;
 
     const documents = new Map<string, vscode.TextDocument>();
-    documents.set(textEditor.document.uri.toString(), textEditor.document);
+    documents.set(textDocument.uri.toString(), textDocument);
     if (allTodos) {
       for (const root of Object.keys(allTodos)) {
         const rootFiles = allTodos[root];
@@ -704,7 +739,7 @@ async function toggleStart(textEditor = vscode.window.activeTextEditor) {
 
       for (const fileTodo of fileDoc.getTodosBoxStarted() as Todo[]) {
         if (
-          fileDocument.uri.toString() === textEditor.document.uri.toString() &&
+          fileDocument.uri.toString() === textDocument.uri.toString() &&
           selectedLines.has(fileTodo.line.lineNumber)
         ) {
           continue;
@@ -729,13 +764,18 @@ async function toggleStart(textEditor = vscode.window.activeTextEditor) {
     }
 
     if (hasEdits) {
-      if (!isCurrentDocument(textEditor.document, version)) return;
+      if (
+        !isCurrentDocument(textEditor ? textEditor.document : textDocument, version, textDocument)
+      )
+        return;
       if (!(await vscode.workspace.applyEdit(workspaceEdit))) return;
     }
   }
 
   // Now perform the normal toggleStart on the selected todos
-  return callTodosMethod(
+  return callDocumentTodosMethod(
+    textDocument,
+    lines,
     {
       checkValidity: true,
       filter: (todo) => todo.isBox(),
@@ -909,18 +949,89 @@ function viewRevealTodo(todo: ItemTodo) {
   }
 }
 
-async function viewCallTodosMethod(todo: ItemTodo, options?) {
-  if (!todo || !todo.obj || !todo.obj.filePath || !_.isNumber(todo.obj.lineNr)) return;
-
-  const textEditor = await viewRevealTodo(todo);
-  if (!textEditor) return;
+async function withViewTodoDocument(
+  todo: ItemTodo,
+  action: (document: TextDocument) => Promise<unknown>
+) {
   if (
-    todo.obj.documentVersion !== undefined &&
-    !isCurrentDocument(textEditor.document, todo.obj.documentVersion, todo.obj.textEditor)
+    !todo ||
+    !todo.obj ||
+    !todo.obj.filePath ||
+    !todo.obj.textEditor ||
+    !Number.isInteger(todo.obj.lineNr) ||
+    todo.obj.lineNr < 0 ||
+    !Number.isInteger(todo.obj.documentVersion)
   )
     return;
 
-  return callTodosMethod(options, textEditor);
+  let document: TextDocument;
+  try {
+    document = await vscode.workspace.openTextDocument(todo.obj.filePath);
+  } catch (error) {
+    vscode.window.showErrorMessage(`Unable to open the selected task: ${error.message || error}`);
+    return;
+  }
+  if (!isCurrentDocument(document, todo.obj.documentVersion, todo.obj.textEditor)) {
+    // Discovery documents can be disposed and reopened without a visible editor.
+    // Rebuild both views against the live buffer so retrying uses a current row.
+    ViewFiles.refresh();
+    Due.refresh();
+    return;
+  }
+  if (!isTaskDocument(document) || todo.obj.lineNr >= document.lineCount) return;
+
+  return action(document);
+}
+
+const validateTaskText = (value: string): string | undefined =>
+  !value.trim() || /[\r\n]/.test(value) ? 'Enter a non-empty, single-line task.' : undefined;
+
+function viewEditTodo(todo: ItemTodo) {
+  return withViewTodoDocument(todo, async (document) => {
+    const task = new Document(document).getTodoAt(todo.obj.lineNr, true) as Todo;
+    if (!task) return;
+
+    const text = task.line.text;
+    const symbol = text.match(Consts.regexes.todoSymbol);
+    const markerEnd = task.markdownNode ? task.markdownNode.markerEnd : symbol && symbol[0].length;
+    if (markerEnd === undefined || markerEnd === null) return;
+
+    const start = markerEnd + text.slice(markerEnd).match(/^[ \t]*/)[0].length;
+    const value = text.slice(start);
+    const version = document.version;
+    const next = await vscode.window.showInputBox({
+      prompt: 'Edit task text and tags',
+      value,
+      ignoreFocusOut: true,
+      validateInput: validateTaskText,
+    });
+
+    if (next === undefined || next === value) return;
+    const invalid = validateTaskText(next);
+    if (invalid) return vscode.window.showErrorMessage(invalid);
+    if (!isCurrentDocument(document, version) || !isTaskDocument(document)) return;
+
+    if (!new Document(document).getTodoAt(task.line.lineNumber, true)) {
+      vscode.window.showInformationMessage(
+        'This task is no longer included by the current settings. Please run the command again.'
+      );
+      return;
+    }
+
+    task.lineNextText = text.slice(0, start) + next;
+    const edits = task.makeEdit();
+    if (edits && edits.length && !(await Utils.editor.edits.apply(document, edits)))
+      vscode.window.showErrorMessage('Unable to edit the selected task');
+  });
+}
+
+function viewCallTodosMethod(todo: ItemTodo, options?) {
+  return withViewTodoDocument(todo, (document) =>
+    callDocumentTodosMethod(document, [todo.obj.lineNr], {
+      ...(_.isString(options) ? { method: options } : options),
+      checkValidity: true,
+    })
+  );
 }
 
 function viewToggleBox(todo: ItemTodo) {
@@ -942,18 +1053,8 @@ function viewToggleCancelled(todo: ItemTodo) {
   });
 }
 
-async function viewToggleStart(todo: ItemTodo) {
-  if (!todo || !todo.obj || !todo.obj.filePath || !_.isNumber(todo.obj.lineNr)) return;
-
-  const textEditor = await viewRevealTodo(todo);
-  if (!textEditor) return;
-  if (
-    todo.obj.documentVersion !== undefined &&
-    !isCurrentDocument(textEditor.document, todo.obj.documentVersion, todo.obj.textEditor)
-  )
-    return;
-
-  return toggleStart(textEditor);
+function viewToggleStart(todo: ItemTodo) {
+  return withViewTodoDocument(todo, (document) => toggleDocumentStart(document, [todo.obj.lineNr]));
 }
 
 function openDependencyTarget(target: DependencyTarget) {
@@ -1291,6 +1392,7 @@ export {
   unarchive,
   viewOpenFile,
   viewRevealTodo,
+  viewEditTodo,
   viewToggleBox,
   viewToggleDone,
   viewToggleCancelled,

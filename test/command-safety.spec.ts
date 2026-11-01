@@ -2,6 +2,8 @@ import { expect } from 'chai';
 
 const makeEditor = () => ({
   document: {
+    languageId: 'todo',
+    lineCount: 1,
     version: 1,
     isClosed: false,
     uri: { fsPath: '/workspace/TODO' },
@@ -36,6 +38,7 @@ const loadCommands = (activeEditor = makeEditor(), todoText = '☐ Task') => {
         return { dispose() {} };
       },
     },
+    workspace: { openTextDocument: async (_path) => activeEditor.document },
   };
   const utils = {
     log: { debug() {} },
@@ -84,7 +87,10 @@ const loadCommands = (activeEditor = makeEditor(), todoText = '☐ Task') => {
     './todo/document': { default: Document },
     './utils': { default: utils },
     './utils/dependency_index': { default: dependencyIndex },
-    './utils/task-source': { isMarkdownTaskDocument: () => false },
+    './utils/task-source': {
+      isMarkdownTaskDocument: () => false,
+      isTaskDocument: (document) => document.languageId === 'todo',
+    },
   };
   NodeModule._load = (request, parent, isMain) => {
     if (parent && parent.filename === modulePath) {
@@ -183,14 +189,25 @@ describe('Command edit safety', () => {
     expect(state.mutatedEditors).to.deep.equal([]);
   });
 
-  it('uses the editor opened by a tree action when focus changes', async () => {
+  it('uses the tree target document without opening an editor when focus changes', async () => {
     const target = makeEditor();
     const unrelated = makeEditor();
     const state = loadCommands(unrelated);
-    state.utils.file.open = async () => target;
-    await state.commands.viewToggleBox({ obj: { filePath: '/workspace/TODO', lineNr: 0 } });
-    expect(state.mutatedEditors).to.deep.equal([target]);
-    expect(state.edits[0][0]).to.equal(target);
+    state.utils.file.open = async () => {
+      throw new Error('Tree edits must not reveal the editor');
+    };
+    state.vscode.workspace.openTextDocument = async () => target.document;
+    await state.commands.viewToggleBox({
+      obj: {
+        filePath: '/workspace/TODO',
+        lineNr: 0,
+        documentVersion: target.document.version,
+        textEditor: target.document,
+      },
+    });
+    expect(state.mutatedEditors).to.deep.equal([target.document]);
+    expect(state.edits[0][0]).to.equal(target.document);
+    expect(state.vscode.window.activeTextEditor).to.equal(unrelated);
   });
 
   it('does not toggle an unselected task at the start of the ending line', async () => {

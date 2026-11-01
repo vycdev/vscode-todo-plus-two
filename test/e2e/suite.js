@@ -562,6 +562,57 @@ module.exports.run = async () => {
         await screenshot('incremental-task-styles');
       }
     );
+    await step(
+      'keep background sidebar actions and paused-marker styles synchronized without moving focus',
+      async () => {
+        await settings.update(
+          'timekeeping.autoToggle',
+          false,
+          vscode.ConfigurationTarget.Workspace
+        );
+        fs.writeFileSync(
+          path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, 'background.todo'),
+          'Background:\n  ☐ E2EBackground @id(@paused) @note(@paused) @started(2020-01-01 10:00:00) @toggle(2020-01-01 10:30:00) @paused\n'
+        );
+        const background = await open('background.todo', vscode.ViewColumn.Two);
+        const active = await open('notes.md');
+        const row = () => ({
+          obj: {
+            filePath: background.document.uri.fsPath,
+            lineNr: 1,
+            textEditor: background.document,
+            documentVersion: background.document.version,
+          },
+        });
+        const value = () => background.document.lineAt(1).text;
+        await vscode.commands.executeCommand('todo.viewToggleDone', row());
+        assert.strictEqual(vscode.window.activeTextEditor, active);
+        assert(!marker(value()));
+        assert(value().includes('@id(@paused) @note(@paused)'));
+        assert(value().includes('@lasted(30m)'));
+        await expectStyle(
+          'E2EBackground',
+          (css) => css.color === 'rgb(166, 226, 46)' && css.decoration.includes('line-through')
+        );
+        await vscode.commands.executeCommand('todo.viewToggleDone', row());
+        assert.strictEqual(vscode.window.activeTextEditor, active);
+        assert(marker(value()));
+        await expectStyle(
+          'E2EBackground',
+          (css) => css.color === 'rgb(229, 209, 69)' && !css.decoration.includes('line-through')
+        );
+        await screenshot('background-sidebar-styles');
+        await vscode.commands.executeCommand('todo.viewToggleStart', row());
+        assert(!marker(value()));
+        assert(!value().includes('@started('));
+        assert(value().includes('@id(@paused) @note(@paused)'));
+        await vscode.commands.executeCommand('todo.viewToggleStart', row());
+        assert.strictEqual(vscode.window.activeTextEditor, active);
+        assert(value().includes('@started('));
+        assert(!marker(value()));
+        await expectStyle('E2EBackground', (css) => css.color === 'rgb(79, 193, 255)');
+      }
+    );
     report.status = 'passed';
   } catch (error) {
     report.status = 'failed';
