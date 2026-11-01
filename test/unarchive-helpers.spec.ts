@@ -12,6 +12,51 @@ const options = {
 };
 
 describe('unarchiveItemsFromSameFileContent', () => {
+  it('leaves outdented code untouched when restoring a task', () => {
+    const content = 'Work:\n\nArchive:\n  Work:\n    ✔ Restore\n    ```python\nprint(1)\n    ```';
+    const result = unarchiveItemsFromSameFileContent(content, [4], 2, options);
+    expect(result.content).to.contain('  ✔ Restore\n  ```python\nprint(1)\n  ```');
+  });
+  it('restores complete fenced notes and ignores selections inside them', () => {
+    const content = [
+      'Work:',
+      '  ☐ Existing',
+      '',
+      'Archive:',
+      '  Work:',
+      '    ✔ Restore',
+      '    ```ts',
+      '     code  ',
+      '',
+      '    ✔ literal',
+      '    Work:',
+      '    @project(literal)',
+      '    ```',
+    ].join('\n');
+    const result = unarchiveItemsFromSameFileContent(content, [5, 9], 3, options);
+    expect(result.count).to.equal(1);
+    expect(result.content).to.contain(
+      [
+        '  ✔ Restore',
+        '  ```ts',
+        '   code  ',
+        '',
+        '  ✔ literal',
+        '  Work:',
+        '  @project(literal)',
+        '  ```',
+      ].join('\n')
+    );
+    expect(result.content.split('✔ literal')).to.have.length(2);
+  });
+
+  it('does not detach unfinished fenced notes from their task', () => {
+    const content = 'Archive:\n  ✔ Restore\n  ```ts\n  code';
+    expect(unarchiveItemsFromSameFileContent(content, [1], 0, options)).to.deep.equal({
+      content,
+      count: 0,
+    });
+  });
   it('restores a task and its attached comments to the bottom of its original project', () => {
     const content = [
       'Projects:',

@@ -1,5 +1,6 @@
 import Due from './due';
 import { maskInlineCode } from './todo-status';
+import { parseCodeBlocks } from './code-blocks';
 
 export interface DueTaskLine {
   date: Date;
@@ -30,8 +31,10 @@ export const getDueTaskLines = (
   soonDays: number = 7
 ): DueTaskLine[] => {
   const tasks: DueTaskLine[] = [];
+  const code = parseCodeBlocks(lines.join('\n'));
 
   lines.forEach((text, lineNumber) => {
+    if (code.byLine.has(lineNumber)) return;
     const maskedText = maskInlineCode(text);
 
     if (!matches(maskedText, todoRegex) || matches(maskedText, finishedRegex)) return;

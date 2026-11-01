@@ -53,6 +53,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Colors and decorations
 
+- Added fenced code notes with GitHub Linguist language names and aliases, highlighted using VS Code's bundled and installed TextMate grammars. Fenced content stays literal to Todo features, and attached blocks are preserved when archiving or unarchiving tasks. [#66](https://github.com/vycdev/vscode-todo-plus-two/issues/66)
 - Added strikethrough styling for done todos, enabled by default and configurable with `todo.decorations.done.strikethrough`. [#54](https://github.com/vycdev/vscode-todo-plus-two/issues/54)
 - Added configurable coloring for started todos with `todo.colors.started`. [#59](https://github.com/vycdev/vscode-todo-plus-two/issues/59)
 - Added urgency coloring for `@due(...)` tags, configurable with `todo.colors.due.*` and `todo.due.soonDays`. [#95](https://github.com/vycdev/vscode-todo-plus-two/issues/95)

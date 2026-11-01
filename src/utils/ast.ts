@@ -4,6 +4,7 @@ import * as detectIndent from 'detect-indent';
 import * as vscode from 'vscode';
 import Consts from '../consts';
 import Editor from './editor';
+import { getCodeBlocks } from './code-blocks';
 
 /* AST */
 
@@ -73,6 +74,7 @@ const AST = {
     // strictlyMonotonic: only go strictly up or down, don't process other elements at the same level
 
     const { lineCount } = textDocument;
+    const code = getCodeBlocks(textDocument);
 
     const startLine = lineNr >= 0 ? textDocument.lineAt(lineNr) : null,
       startLevel = startLine ? AST.getLevel(textDocument, startLine.text) : -1;
@@ -82,6 +84,12 @@ const AST = {
 
     while (nextLine >= 0 && nextLine < lineCount) {
       const line = textDocument.lineAt(nextLine);
+
+      // Code does not participate in the Todo indentation hierarchy.
+      if (code.byLine.has(nextLine)) {
+        nextLine += direction;
+        continue;
+      }
 
       if (skipEmptyLines && (!line.text || Consts.regexes.empty.test(line.text))) {
         nextLine += direction;

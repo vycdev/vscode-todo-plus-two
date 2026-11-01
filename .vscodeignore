@@ -6,6 +6,8 @@ out/test/**
 resources/*.gif
 resources/*.psd
 src/**
+scripts/**
+syntax/code-languages.json
 test/**
 tsconfig.json
 webpack.config.js

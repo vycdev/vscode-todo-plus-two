@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { parseCodeBlocks } from '../src/utils/code-blocks';
 
 const loadSymbols = () => {
   const NodeModule = require('module'),
@@ -31,7 +32,12 @@ const loadSymbols = () => {
           line: { text },
           range: new Range(lineNumber, 0, lineNumber, text.length),
         }))
-        .filter((project) => /:$/.test(project.line.text));
+        .filter(
+          (project) =>
+            !parseCodeBlocks(this.textDocument.lines.join('\n')).byLine.has(
+              project.range.start.line
+            ) && /:$/.test(project.line.text)
+        );
     }
   }
   const level = (text) => text.length - text.trimStart().length;
@@ -72,13 +78,28 @@ const loadSymbols = () => {
 };
 
 describe('Project document symbols', () => {
+  const documentFromLines = (lines: string[]) => ({
+    lines,
+    lineCount: lines.length,
+    getText: () => lines.join('\n'),
+    lineAt: (lineNumber: number) => ({
+      text: lines[lineNumber],
+      range: { end: { character: lines[lineNumber].length } },
+    }),
+  });
+
+  it('includes trailing fenced notes in a project range without adding fake project symbols', () => {
+    const Symbols = loadSymbols();
+    const symbols = new Symbols().provideDocumentSymbols(
+      documentFromLines(['Work:', '  ```python', 'Archive:', '  ```', 'Next:'])
+    );
+    expect(symbols.map((symbol) => symbol.name)).to.deep.equal(['Work', 'Next']);
+    expect(symbols[0].range.end.line).to.equal(3);
+  });
   it('does not parent projects under a previous project whose scope has ended', () => {
     const Symbols = loadSymbols();
     const lines = ['First:', '  Nested:', '    task', 'root task', '  Later:', '    task'];
-    const document = {
-      lines,
-      lineAt: (lineNumber) => ({ range: { end: { character: lines[lineNumber].length } } }),
-    };
+    const document = documentFromLines(lines);
     const symbols = new Symbols().provideDocumentSymbols(document);
 
     expect(symbols.map((symbol) => symbol.name)).to.deep.equal(['First', 'Later']);

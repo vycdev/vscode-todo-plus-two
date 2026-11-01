@@ -1,3 +1,5 @@
+import { parseCodeBlocks, shiftCodeIndentation } from './code-blocks';
+
 export interface UnarchiveOptions {
   indentation?: string;
   isFinishedTodo: (line: string) => boolean;
@@ -48,10 +50,12 @@ function areEqual(left: string[], right: string[]) {
 }
 
 function getProjectRecords(lines: string[], options: UnarchiveOptions, indentation: string) {
+  const code = parseCodeBlocks(lines.join('\n'));
   const records: ProjectRecord[] = [];
   const stack: ProjectRecord[] = [];
 
   lines.forEach((line, start) => {
+    if (code.byLine.has(start)) return;
     if (!line.trim()) return;
 
     const level = getLineLevel(line, indentation);
@@ -83,9 +87,11 @@ function getProjectNamesAtLine(
   indentation: string
 ) {
   const archiveLevel = getLineLevel(lines[archiveLine], indentation);
+  const code = parseCodeBlocks(lines.join('\n'));
   const stack: Array<{ name: string; level: number }> = [];
 
   for (let index = archiveLine + 1; index < todoLine; index++) {
+    if (code.byLine.has(index)) continue;
     const line = lines[index];
 
     if (!line.trim()) continue;
@@ -116,7 +122,9 @@ function getProjectEnd(
   options: UnarchiveOptions,
   indentation: string
 ) {
+  const code = parseCodeBlocks(lines.join('\n'));
   for (let index = project.start + 1; index < lines.length; index++) {
+    if (code.byLine.has(index)) continue;
     const line = lines[index];
 
     if (!line.trim()) continue;
@@ -191,7 +199,8 @@ function getUnarchiveBlock(
   options: UnarchiveOptions,
   indentation: string
 ) {
-  if (!options.isFinishedTodo(lines[todoLine])) return;
+  const code = parseCodeBlocks(lines.join('\n'));
+  if (code.byLine.has(todoLine) || !options.isFinishedTodo(lines[todoLine])) return;
 
   const todoLevel = getLineLevel(lines[todoLine], indentation);
   const blockLines = [lines[todoLine]];
@@ -199,6 +208,15 @@ function getUnarchiveBlock(
 
   for (let index = todoLine + 1; index < lines.length; index++) {
     const line = lines[index];
+    const fenced = code.byLine.get(index);
+    if (fenced) {
+      if (getLineLevel(line, indentation) < todoLevel) break;
+      if (!fenced.closed) return;
+      blockLines.push(...pendingEmptyLines, ...lines.slice(index, fenced.endLine + 1));
+      pendingEmptyLines.length = 0;
+      index = fenced.endLine;
+      continue;
+    }
 
     if (!line.trim()) {
       pendingEmptyLines.push(line);
@@ -226,7 +244,11 @@ function normalizeBlock(
   targetLevel: number,
   indentation: string
 ) {
-  return lines.map((line) => {
+  const code = parseCodeBlocks(lines.join('\n'));
+  const sourcePrefix = lines[0].match(/^[\t ]*/)[0];
+  return lines.map((line, index) => {
+    if (code.byLine.has(index))
+      return shiftCodeIndentation(line, sourcePrefix, indentation.repeat(targetLevel));
     if (!line.trim()) return '';
 
     const relativeLevel = Math.max(0, getLineLevel(line, indentation) - todoLevel);
