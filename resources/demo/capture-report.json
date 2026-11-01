@@ -2,8 +2,9 @@
   "platform": "darwin",
   "vscode": "1.144.0",
   "theme": "Dark Modern",
-  "capturedAt": "2026-11-01T13:15:44.163Z",
-  "bundleSha256": "0cfe0f95a9275a8f7991a644a5c91b30d22377cae546368b84275e5fa2dae3b7",
+  "capturedAt": "2026-11-01T13:37:49.484Z",
+  "sourceCommit": "6e960c3608929b04c2ef480352d3d5939d8f68d1",
+  "bundleSha256": "6c3d83aafd5ebee7346f8151d4d57ccff57a4c861497081925c3a00ccb2b5f39",
   "captures": [
     "syntax.png",
     "activity_bar_views.png",
@@ -14,7 +15,22 @@
     "embedded-ordering.png",
     "timer-running.png",
     "timer-paused.png",
-    "image-attachment.png"
+    "image-attachment.png",
+    "planned-work.png"
   ],
-  "status": "passed"
+  "status": "passed",
+  "plannedStyles": {
+    "active": {
+      "color": "rgb(79, 193, 255)",
+      "weight": "700"
+    },
+    "future": {
+      "color": "rgb(230, 219, 116)",
+      "weight": "400"
+    },
+    "completed": {
+      "color": "rgb(230, 219, 116)",
+      "weight": "400"
+    }
+  }
 }

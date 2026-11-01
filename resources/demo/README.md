@@ -1,10 +1,13 @@
 # README screenshots and audit
 
 The gallery was captured on November 1, 2026 on the Mac mini (Apple silicon),
-using VS Code 1.144.0 and the development bundle built from `4be6f1d`.
+using VS Code 1.144.0 and the development bundle built from `6e960c3`, including
+the merged issue #82 implementation. All eleven captures were refreshed after
+that merge.
 All images show actual extension UI. Dark Modern, 16 px editor text, 25 px line
 height, and a 1440 px viewport are shared throughout. Editor/sidebar captures
-are 900 px tall; timer captures use 400 px and image paste uses 650 px to avoid
+are 900 px tall; timer captures use 400 px, planned work uses 500 px, and image
+paste uses 650 px to avoid
 unnecessary empty space. No task labels, decorations, or controls were composited.
 
 ## Reproduce
@@ -17,40 +20,44 @@ npm run compile
 # Optional: reuse an installed, current VS Code instead of downloading stable.
 export VSCODE_EXECUTABLE_PATH='/Applications/Visual Studio Code.app/Contents/MacOS/Code'
 export TODO_SCREENSHOT_DIR='/absolute/path/to/captures'
+export TODO_SCREENSHOT_SOURCE="$(git rev-parse HEAD)"
 node scripts/capture-readme.js
 ```
 
 Omit `VSCODE_EXECUTABLE_PATH` to download VS Code through `@vscode/test-electron`.
 The runner creates an isolated workspace, user profile, and extensions folder.
-It uses the bundled sample at [resources/readme.todo](../readme.todo), plus
+It uses the bundled samples at [resources/readme.todo](../readme.todo) and
+[resources/readme-planned.todo](../readme-planned.todo), plus
 generated Markdown and TypeScript examples. Dates deliberately match the capture
 day; update the sample dates when producing a later gallery.
 
 The companion suite drives actual commands, clicks, folding, native image paste,
 and embedded drag-and-drop. It asserts that dragging changes row order and that
-paste inserts an attachment link. The PNG clipboard helper restores the original
+paste inserts an attachment link. It checks rendered active, future, and completed
+planned-tag colors before capturing scheduling. The PNG clipboard helper restores the original
 clipboard when finished, provided another application has not changed it.
 Temporary paths are resolved to their real filesystem paths so macOS aliases
 do not interfere with the default symlink policy.
 
-`capture-report.json` records the VS Code version, theme, bundle SHA-256, time,
+`capture-report.json` records the VS Code version, theme, source commit (when supplied), bundle SHA-256, time,
 captured files, and outcome. Inspect every image before copying it into this
 directory. Failed runs can leave a diagnostic `failure.png`; do not publish it.
 
 ## Gallery coverage
 
-| Asset                    | Verified content                                                                                                             |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `syntax.png`             | Project/file statistics, estimates, dependency links, tag styles, paused markers, fenced TypeScript, numbered notes, archive |
-| `activity_bar_views.png` | Markdown mode, headings, nested checkboxes, Files hierarchy, Due date groups, current checklist icon                         |
-| `sidebar-actions.png`    | Real Edit Task input opened with the row pencil; source tags remain visible in the prompt                                    |
-| `tag-groups.png`         | Selected tag groups, counts, original project context, Other group                                                           |
-| `tag-focus.png`          | Matching high-priority tasks, preserved ancestors, inserted focus header                                                     |
-| `regions.png`            | Explicit region collapsed while other projects stay visible                                                                  |
-| `embedded-ordering.png`  | Embedded moved into Explorer; sibling order differs from source after a real drag                                            |
-| `timer-running.png`      | Started style and remaining estimate in the status bar                                                                       |
-| `timer-paused.png`       | Actual pause command adds `@toggle` and `@paused`, removes active status bar timer                                           |
-| `image-attachment.png`   | Native PNG paste saves an attachment and inserts a relative link; pasted image opened beside the source                      |
+| Asset                    | Verified content                                                                                                                    |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `syntax.png`             | Project/file statistics, estimates, dependency links, tag styles, paused markers, fenced TypeScript, numbered notes, archive        |
+| `activity_bar_views.png` | Markdown mode, headings, nested checkboxes, Files hierarchy, Due date groups, current checklist icon                                |
+| `sidebar-actions.png`    | Real Edit Task input opened with the row pencil; source tags remain visible in the prompt                                           |
+| `tag-groups.png`         | Selected tag groups, counts, original project context, Other group                                                                  |
+| `tag-focus.png`          | Matching high-priority tasks, preserved ancestors, inserted focus header                                                            |
+| `regions.png`            | Explicit region collapsed while other projects stay visible                                                                         |
+| `embedded-ordering.png`  | Embedded moved into Explorer; sibling order differs from source after a real drag                                                   |
+| `timer-running.png`      | Started style and remaining estimate in the status bar                                                                              |
+| `timer-paused.png`       | Actual pause command adds `@toggle` and `@paused`, removes active status bar timer                                                  |
+| `image-attachment.png`   | Native PNG paste saves an attachment and inserts a relative link; pasted image opened beside the source                             |
+| `planned-work.png`       | Active daily/split windows use blue bold tags; future dated work and completed tasks retain normal tags; due dates stay independent |
 
 Reviewed all seven prior gallery assets. Replaced `syntax.png` and
 `activity_bar_views.png`; removed the old embedded and timer GIFs and the three
@@ -71,7 +78,8 @@ branding, compatibility wording, and symbols; subsequent edits append or correct
 individual features. Neither those changes nor the November 1 incremental
 sections were used as the audit boundary. Reviewed subsequent first-parent
 history, README/image history, merged PR metadata, the changelog, and current
-implementation through `4be6f1d`, including every November 1 commit.
+implementation through `6e960c3`, including every November 1 commit and the later
+issue #82 merge.
 
 | Change group                                                       | Documentation / implementation cross-check                                                                                                                                                                                                                                                                                                                               |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -82,6 +90,7 @@ implementation through `4be6f1d`, including every November 1 commit.
 | Embedded ordering (#283), Explorer placement (#293), icon (#294)   | Drag API gate, sibling ranks and persistence, real moved view, checklist SVG and badge                                                                                                                                                                                                                                                                                   |
 | Date/path/regex fixes (#275, #276, #278, #288, #290), cache (#280) | Strict due parsing/local dates, workspace alias deduplication, regex reset advice, incremental decoration/statistics behavior                                                                                                                                                                                                                                            |
 | Favicon (#287)                                                     | Project tooling asset; no extension workflow to document                                                                                                                                                                                                                                                                                                                 |
+| Planned work (#297, issue #82)                                     | Opt-in local-time windows in Todo and Markdown tasks, multiple ranges/tags, exclusions, minute refresh, default/theme colors, and separation from deadlines; planned parser, refresh helper, and decorations                                                                                                                                                             |
 | Earlier 5.3 / fork work                                            | Dependencies, archive/unarchive and storage modes, HTML/Markdown export, relative links, timestamp/tag completions, automatic boxes/parent completion, timer pause/auto-toggle, duration formats, tag statistics, due colors/view, Files filters/visibility, embedded context/Problems/Liquid providers, theme colors/minimap, discovery/exclusions/symlinks and batches |
 | Earlier inherited work                                             | Files/Embedded views, view filtering/grouping, global discovery, theme overrides, estimates and statistics, timer, folding and inline formatting                                                                                                                                                                                                                         |
 

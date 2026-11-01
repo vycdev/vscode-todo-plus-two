@@ -130,6 +130,7 @@ exports.run = async () => {
     vscode: vscode.version,
     theme: vscode.workspace.getConfiguration('workbench').get('colorTheme'),
     capturedAt: new Date().toISOString(),
+    sourceCommit: process.env.TODO_SCREENSHOT_SOURCE || undefined,
     bundleSha256: require('crypto')
       .createHash('sha256')
       .update(fs.readFileSync(path.join(__dirname, '../out/extension.js')))
@@ -318,6 +319,55 @@ exports.run = async () => {
         await new Promise((resolve) => clipboard.once('exit', resolve));
       }
     }
+    // Keep scheduling fixtures out of the earlier sidebar captures.
+    await command('workbench.action.closeAllEditors');
+    await vscode.workspace
+      .getConfiguration('editor')
+      .update('wordWrap', 'on', vscode.ConfigurationTarget.Workspace);
+    await vscode.workspace
+      .getConfiguration('todo')
+      .update('planned.enabled', true, vscode.ConfigurationTarget.Workspace);
+    await call('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 500,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    const plannedFile = vscode.Uri.joinPath(
+      vscode.workspace.workspaceFolders[0].uri,
+      'planned.todo'
+    );
+    await vscode.workspace.fs.writeFile(
+      plannedFile,
+      fs.readFileSync(path.join(__dirname, '../resources/readme-planned.todo'))
+    );
+    await open('planned.todo');
+    await pause(1200);
+    const plannedStyles = await evaluate(`(() => {
+      const read = label => {
+        const row = [...document.querySelectorAll('.monaco-editor .view-line')].find(el => el.textContent.includes(label));
+        const tag = row && [...row.querySelectorAll('span')].find(el => el.childElementCount === 0 && el.textContent.includes('planned'));
+        if (!tag) return null;
+        const css = getComputedStyle(tag); return { color: css.color, weight: css.fontWeight };
+      };
+      return { active: read('documentation'), future: read('Prepare'), completed: read('Finish') };
+    })()`);
+    assert(
+      plannedStyles.active &&
+        plannedStyles.active.color === 'rgb(79, 193, 255)' &&
+        Number(plannedStyles.active.weight) >= 600,
+      `Actual planned tag has the active blue/bold style: ${JSON.stringify(plannedStyles)}`
+    );
+    assert(
+      plannedStyles.future && plannedStyles.future.color !== plannedStyles.active.color,
+      'Future planned tag retains its normal color'
+    );
+    assert(
+      plannedStyles.completed && plannedStyles.completed.color !== plannedStyles.active.color,
+      'Completed task is excluded from active-window styling'
+    );
+    report.plannedStyles = plannedStyles;
+    await shot('planned-work');
     report.status = 'passed';
   } catch (error) {
     report.status = 'failed';

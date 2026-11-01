@@ -1,0 +1,8 @@
+Planned work:
+  ☐ Review documentation @planned(00:00-23:59)
+  ☐ Split a work session @planned(09:00-12:00, 13:00-17:00)
+  ☐ Prepare tomorrow's release @planned(2026-11-02 15:00-17:00) @due(2026-11-02)
+  ✔ Finish the migration notes @planned(00:00-23:59) @done
+
+Active windows highlight the planned tag. Completed tasks keep their normal style.
+Undated windows repeat daily in local time. Due dates remain separate deadlines.

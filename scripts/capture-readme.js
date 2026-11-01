@@ -62,7 +62,11 @@ async function main() {
     vscodeExecutablePath: process.env.VSCODE_EXECUTABLE_PATH,
     extensionDevelopmentPath: root,
     extensionTestsPath: path.join(__dirname, 'readme-screenshots.js'),
-    extensionTestsEnv: { TODO_SCREENSHOT_DIR: artifacts, TODO_SCREENSHOT_PORT: String(port) },
+    extensionTestsEnv: {
+      TODO_SCREENSHOT_DIR: artifacts,
+      TODO_SCREENSHOT_PORT: String(port),
+      TODO_SCREENSHOT_SOURCE: process.env.TODO_SCREENSHOT_SOURCE || '',
+    },
     launchArgs: [
       workspace,
       `--user-data-dir=${path.join(temporary, 'profile')}`,

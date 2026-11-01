@@ -293,7 +293,7 @@ Relative entries remain workspace globs. Absolute entries name individual files,
 
 ### Planned work windows
 
-Enable `todo.planned.enabled` to highlight `@planned(...)` tags while it is time to work on an unfinished task in a Todo file or an enabled Markdown task section:
+Planning is disabled by default. Enable `todo.planned.enabled` to highlight `@planned(...)` tags while it is time to work on an unfinished task in a Todo file or an enabled Markdown task section:
 
 ```todo
 ☐ Daily focus @planned(10am-1pm)
@@ -344,6 +344,7 @@ Open Settings and search for `@ext:vycdev.vscode-todo-plus-two` to see every opt
 | `todo.colors.*`, `todo.tags.*`                                | Element colors, theme overrides, special labels, and tag-based task styles               |
 | `todo.archive.*`                                              | Default storage `InMultiSeparateFile`; archive name, cleanup, project paths, and sorting |
 | `todo.timekeeping.*`                                          | Creation/completion tags, timestamp and elapsed formats; `autoToggle` defaults to false  |
+| `todo.planned.enabled`, `todo.colors.planned`                 | Work-window highlighting off by default; active tag color `#4fc1ff`                      |
 | `todo.timer.statusbar.*`                                      | Timer enabled by default; alignment, color, and priority                                 |
 | `todo.statistics.project.*`, `todo.statistics.statusbar.*`    | Visibility expressions, templates, and status bar layout                                 |
 | `todo.hoursPerDay`, `manHoursPerDay`, `manDaysPerWeek`        | Duration formatting; defaults 24, 8, and 5 respectively                                  |
