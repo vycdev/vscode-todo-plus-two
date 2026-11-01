@@ -18,6 +18,7 @@
 
 #### Fixes
 
+- Replaced the Todo activity bar's standalone checkmark with a checklist icon to make the Todo views easier to recognize. [#53](https://github.com/vycdev/vscode-todo-plus-two/issues/53)
 - Preserved literal tag text in IDs, dependencies, and other arguments during paused-marker cleanup, and ignored nested timer examples when synchronizing markers. Released obsolete tag-style decoration resources when tags are removed or documents close. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Kept backticks inside tag arguments literal so they cannot hide following task-style or timer tags. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Honored empty task-style color and background overrides for individual themes instead of falling back to the rule's base colors. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
