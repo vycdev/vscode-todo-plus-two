@@ -51,6 +51,9 @@
     "onCommand:todo.viewEmbeddedClearFilter",
     "onCommand:todo.viewEmbeddedShowAllFiles",
     "onCommand:todo.viewEmbeddedShowActiveFile",
+    "onCommand:todo.viewEmbeddedMoveUp",
+    "onCommand:todo.viewEmbeddedMoveDown",
+    "onCommand:todo.viewEmbeddedResetOrder",
     "onCommand:todo.viewOpenFile",
     "onCommand:todo.viewRevealTodo",
     "onCommand:todo.viewToggleBox",
@@ -926,9 +929,10 @@
           "type": "string",
           "enum": [
             "line",
-            "label"
+            "label",
+            "manual"
           ],
-          "description": "Sort todos either by label or by source line number",
+          "description": "Sort todos by source line number, label, or a manual order saved in this workspace. In manual mode, drag a row onto a sibling (VS Code 1.66+) or use Move Up and Move Down to reorder groups, files, and todos",
           "default": "line"
         },
         "todo.embedded.view.groupByRoot": {
@@ -1203,6 +1207,19 @@
         }
       },
       {
+        "command": "todo.viewEmbeddedMoveUp",
+        "title": "Move Up"
+      },
+      {
+        "command": "todo.viewEmbeddedMoveDown",
+        "title": "Move Down"
+      },
+      {
+        "command": "todo.viewEmbeddedResetOrder",
+        "title": "Reset Manual Order",
+        "category": "Todo"
+      },
+      {
         "command": "todo.viewOpenFile",
         "title": "Open"
       },
@@ -1439,6 +1456,14 @@
           "when": "false"
         },
         {
+          "command": "todo.viewEmbeddedMoveUp",
+          "when": "false"
+        },
+        {
+          "command": "todo.viewEmbeddedMoveDown",
+          "when": "false"
+        },
+        {
           "command": "todo.viewOpenFile",
           "when": "false"
         },
@@ -1584,9 +1609,24 @@
           "command": "todo.viewEmbeddedShowActiveFile",
           "when": "view == todo.views.2embedded && todo-embedded-all == true",
           "group": "navigation@1"
+        },
+        {
+          "command": "todo.viewEmbeddedResetOrder",
+          "when": "view == todo.views.2embedded && config.todo.embedded.view.sort == manual",
+          "group": "2_sort"
         }
       ],
       "view/item/context": [
+        {
+          "command": "todo.viewEmbeddedMoveUp",
+          "when": "view == todo.views.2embedded && config.todo.embedded.view.sort == manual && todo-embedded-filtered == false && todo-embedded-all == true && viewItem =~ /^(group|file|todo)$/",
+          "group": "2_sort@1"
+        },
+        {
+          "command": "todo.viewEmbeddedMoveDown",
+          "when": "view == todo.views.2embedded && config.todo.embedded.view.sort == manual && todo-embedded-filtered == false && todo-embedded-all == true && viewItem =~ /^(group|file|todo)$/",
+          "group": "2_sort@2"
+        },
         {
           "command": "todo.viewOpenFile",
           "when": "view =~ /todo\\.views/ && viewItem == file"

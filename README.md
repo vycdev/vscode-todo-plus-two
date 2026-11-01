@@ -64,6 +64,7 @@ It adds the following commonly used commands to the command palette:
 'Todo: Embedded View - Filter'; // Filter the embedded todos view
 'Todo: Embedded View - Clear Filter'; // Clear the filter in the embedded todos view
 'Todo: Embedded View - Toggle View All Files'; // Toggle between viewing all files or only the current one
+'Todo: Reset Manual Order'; // Reset all saved ordering in the embedded todos view
 ```
 
 It adds 8 shortcuts when editing a `Todo` file:
@@ -265,7 +266,7 @@ Missing IDs receive a warning in the Problems panel. A task cannot be marked don
   "todo.embedded.file.groupByFile": true, // Group embedded todos by file
   "todo.embedded.view.wholeLine": false, // Show the whole line
   "todo.embedded.view.showContext": false, // Show the following source line when it is non-blank and not another embedded todo
-  "todo.embedded.view.sort": "line", // Sort todos either by label or by source line
+  "todo.embedded.view.sort": "line", // Sort by source line, label, or a manual workspace-local order
   "todo.embedded.view.groupByRoot": true, // Group embedded todos by workspace root
   "todo.embedded.view.groupByType": true, // Group embedded todos by type
   "todo.embedded.view.groupByFile": true, // Group embedded todos by file
@@ -297,6 +298,20 @@ Dates are formatted using [moment](https://momentjs.com/docs/#/displaying/format
 `Todo: Toggle Timer` pauses and resumes a started task by appending `@toggle(...)` timestamps. Paused time is excluded from the status bar timer and from the final `@lasted(...)` or `@wasted(...)` duration.
 
 To contribute embedded markers to VS Code's Problems view, map each marker to an `error`, `warning`, `info`, or `hint` severity with `todo.embedded.problems`. Only configured markers are reported. Diagnostics are populated when Todo+2 is active, for example after opening the Embedded Todos view.
+
+## Manual Embedded Ordering
+
+Set `"todo.embedded.view.sort": "manual"`, then right-click a group, file, or todo in the Embedded view and choose **Move Up** or **Move Down**. Moves reorder siblings within their current parent. To prioritize todos from different files directly under a marker group, also set `"todo.embedded.view.groupByFile": false`.
+
+On VS Code 1.66 or newer, you can also **drag a single group, file, or todo onto a sibling** to take its position. Dragging upward places the row before the target; dragging downward places it after the target. Drop onto another row in the same parent, rather than the empty area or a different group. Move Up/Down remains available on older supported VS Code versions.
+
+The order is saved locally for the current workspace and survives refreshes and window reloads. Groups and files without saved ranks start alphabetically; todos start by file path and source position. Newly discovered entries appear after ranked siblings. Switching to `line` or `label` keeps the saved manual order for later use. Reordering is unavailable while filtering or showing only the active file, so hidden siblings cannot be moved accidentally.
+
+Choose **Reset Manual Order** from the Embedded view's **...** menu, or run **Todo: Reset Manual Order**, to clear all saved ranks, including those for other grouping layouts. This restores the initial order without changing the sort setting.
+
+Ordering only affects the sidebar; it does not edit source files or change the generated **Open Embedded** snapshot. Groups still represent captured marker types, not arbitrary trailing `@tags`. Custom workflow markers must be included in the embedded regex and any external provider regex, as described above.
+
+Inserting source lines or changing label/context display settings preserves an unchanged comment's rank. Renaming its file or editing the matched comment treats it as a new entry. Identical comments are distinguished by occurrence within a file; deleting or rearranging identical occurrences can change which one receives a saved rank.
 
 ## Embedded Todos Providers
 

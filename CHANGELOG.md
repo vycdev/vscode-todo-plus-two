@@ -87,6 +87,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 
 ##### Embedded todos
 
+- Added opt-in manual ordering of embedded todo groups, files, and tasks with `todo.embedded.view.sort: "manual"`, Move Up/Down actions, drag-and-drop on VS Code 1.66+, workspace-local persistence, and a Reset Manual Order command. [#40](https://github.com/vycdev/vscode-todo-plus-two/issues/40)
 - Added embedded todo detection for inline and multiline Liquid comments, including nested `comment` blocks inside `{% liquid %}` tags. Scans respect raw blocks, avoid duplicate matches, and batch file reads to keep the editor responsive. [#46](https://github.com/vycdev/vscode-todo-plus-two/issues/46)
 - Added opt-in Problems view diagnostics for embedded markers through `todo.embedded.problems`. [#60](https://github.com/vycdev/vscode-todo-plus-two/issues/60)
 - Added optional context lines to the embedded todos view with `todo.embedded.view.showContext`. Embedded view filters also search visible context lines. [#79](https://github.com/vycdev/vscode-todo-plus-two/issues/79)
