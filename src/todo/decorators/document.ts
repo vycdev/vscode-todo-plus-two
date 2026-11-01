@@ -34,7 +34,10 @@ const Document = {
       StatusbarTimer = require('../../statusbars/timer').default;
 
     if (res) {
-      const doc = new DocumentModule(res);
+      const doc = new DocumentModule(res),
+        editors = vscode.window.visibleTextEditors.filter(
+          (editor) => editor.document === doc.textDocument
+        );
 
       if (doc.isSupported()) {
         // if ( !force && !DocumentsLinesCache.didChange ( doc ) ) return; //FIXME: Decorations might get trashed, so we can't skip this work //URL: https://github.com/Microsoft/vscode/issues/50415
@@ -55,13 +58,15 @@ const Document = {
 
         const decorations = Document.getItemsDecorations(items, doc.textDocument);
 
-        decorations.forEach(({ type, ranges }) => {
-          doc.textEditor.setDecorations(type, ranges);
+        // Decoration types are shared by a document, but their ranges belong to
+        // each editor. Replacing a type must refresh every visible split view.
+        editors.forEach((editor) => {
+          decorations.forEach(({ type, ranges }) => editor.setDecorations(type, ranges));
+          EditorDecorationTypes.set(
+            editor,
+            decorations.map(({ type }) => type)
+          );
         });
-        EditorDecorationTypes.set(
-          doc.textEditor,
-          decorations.map(({ type }) => type)
-        );
 
         if (isActive) {
           StatusbarTimer.update(doc);
@@ -70,16 +75,18 @@ const Document = {
           // but the status bar continues to describe the active document.
           Utils.statistics.tokens.global = previousGlobalTokens;
         }
-      } else if (doc.textEditor) {
+      } else {
         disposeTaskTagDocument(doc.textDocument);
-        const types = EditorDecorationTypes.get(doc.textEditor) || [];
-        EditorDecorationTypes.delete(doc.textEditor);
-        types.forEach((type) => {
-          try {
-            doc.textEditor.setDecorations(type, []);
-          } catch {
-            // A color refresh may already have disposed the shared type.
-          }
+        editors.forEach((editor) => {
+          const types = EditorDecorationTypes.get(editor) || [];
+          EditorDecorationTypes.delete(editor);
+          types.forEach((type) => {
+            try {
+              editor.setDecorations(type, []);
+            } catch {
+              // A color refresh may already have disposed the shared type.
+            }
+          });
         });
       }
     }

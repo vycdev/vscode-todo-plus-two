@@ -93,10 +93,10 @@ module.exports.run = async () => {
     report.steps.push({ name, status: 'passed', durationMs: Date.now() - started });
     console.log(`E2E PASS: ${name}`);
   };
-  const style = async (token) => {
+  const style = async (token, all = false) => {
     const expression = `(() => {
-      const line = [...document.querySelectorAll('.monaco-editor .view-line')].find(el => el.textContent.includes(${JSON.stringify(token)}));
-      if (!line) return null;
+      const lines = [...document.querySelectorAll('.monaco-editor .view-line')].filter(el => el.textContent.includes(${JSON.stringify(token)}));
+      return lines.map(line => {
       const span = [...line.querySelectorAll('span')].reverse().find(el => el.textContent.includes(${JSON.stringify(token)}));
       if (!span) return null;
       const css = getComputedStyle(span);
@@ -108,10 +108,11 @@ module.exports.run = async () => {
       backgrounds.push(css.backgroundColor);
       let decoration = ''; for (let node = span; node && node !== line; node = node.parentElement) decoration += ' ' + getComputedStyle(node).textDecorationLine;
       return {color: css.color, backgrounds, weight: css.fontWeight, italic: css.fontStyle, decoration, text: line.textContent};
+      });
     })()`;
     const result = await renderer.call('Runtime.evaluate', { expression, returnByValue: true });
     if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
-    return result.result.value;
+    return all ? result.result.value : result.result.value[0];
   };
   const expectStyle = (token, predicate) =>
     waitFor(
@@ -419,6 +420,91 @@ module.exports.run = async () => {
         await screenshot('bulk-paused-markers');
       }
     );
+    await step(
+      'refresh task styles in both split views of the same document after edits',
+      async () => {
+        await settings.update(
+          'tags.styles',
+          { splitA: { color: '#ff0000' }, splitB: { color: '#00ff00' } },
+          vscode.ConfigurationTarget.Workspace
+        );
+        todo = await open('scenario.todo');
+        const line = select(todo, 'E2ECosmetic');
+        await todo.edit((edit) => edit.replace(line.range, '  ☐ E2ECosmetic @splitA'));
+        const split = await vscode.window.showTextDocument(todo.document, {
+          viewColumn: vscode.ViewColumn.Two,
+          preview: false,
+        });
+        select(split, 'E2ECosmetic');
+        const expectBoth = (color) =>
+          waitFor(
+            () => style('E2ECosmetic', true),
+            (styles) => styles.length === 2 && styles.every((css) => css && css.color === color),
+            `Both split views render ${color}`
+          );
+        await expectBoth('rgb(255, 0, 0)');
+        const edited = select(split, 'E2ECosmetic');
+        await split.edit((edit) => edit.replace(edited.range, '  ☐ E2ECosmetic @splitB'));
+        await expectBoth('rgb(0, 255, 0)');
+        await screenshot('split-editor-refresh');
+        await split.edit((edit) =>
+          edit.replace(select(split, 'E2ECosmetic').range, '  ☐ E2ECosmetic')
+        );
+        await waitFor(
+          () => style('E2ECosmetic', true),
+          (styles) =>
+            styles.length === 2 && styles.every((css) => css && css.color !== 'rgb(0, 255, 0)'),
+          'Both split views clear removed task styles'
+        );
+      }
+    );
+    await step(
+      'clear and restore styles in both Markdown splits when support changes',
+      async () => {
+        markdown = await open('notes.md');
+        const line = select(markdown, 'E2EMarkdown');
+        await markdown.edit((edit) => edit.replace(line.range, '- [ ] E2ESplitMarkdown @splitA'));
+        const split = await vscode.window.showTextDocument(markdown.document, {
+          viewColumn: vscode.ViewColumn.Two,
+          preview: false,
+        });
+        select(split, 'E2ESplitMarkdown');
+        const expectBoth = (enabled) =>
+          waitFor(
+            () => style('E2ESplitMarkdown', true),
+            (styles) =>
+              styles.length === 2 &&
+              styles.every((css) => css && (css.color === 'rgb(255, 0, 0)') === enabled),
+            `Markdown split styles ${enabled ? 'enabled' : 'disabled'}`
+          );
+        await expectBoth(true);
+        await settings.update('markdown.enabled', false, vscode.ConfigurationTarget.Workspace);
+        await expectBoth(false);
+        await settings.update('markdown.enabled', true, vscode.ConfigurationTarget.Workspace);
+        await expectBoth(true);
+        await screenshot('markdown-split-support');
+      }
+    );
+    await step('preserve task styling and metadata through tag focus and clear focus', async () => {
+      todo = await open('scenario.todo');
+      const line = select(todo, 'E2ECosmetic');
+      await todo.edit((edit) => edit.replace(line.range, '  ☐ E2ECosmetic @splitB'));
+      const before = todo.document.getText();
+      await vscode.commands.executeCommand('todo.focusTag', 'splitB');
+      assert.strictEqual(todo.document.getText(), `(folded)\n${before}`);
+      const targetLine = select(todo, 'E2ECosmetic').lineNumber;
+      const ranges = await vscode.commands.executeCommand(
+        'vscode.executeFoldingRangeProvider',
+        todo.document.uri
+      );
+      assert(ranges.length > 0, 'Nonmatching tasks have focus folding ranges');
+      assert(!ranges.some((range) => range.start < targetLine && targetLine <= range.end));
+      await expectStyle('E2ECosmetic', (css) => css.color === 'rgb(0, 255, 0)');
+      await command('clearFocus');
+      assert.strictEqual(todo.document.getText(), `(folded)\n${before}`);
+      await expectStyle('E2ECosmetic', (css) => css.color === 'rgb(0, 255, 0)');
+      await screenshot('tag-focus-styling');
+    });
     report.status = 'passed';
   } catch (error) {
     report.status = 'failed';

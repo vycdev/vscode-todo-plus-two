@@ -19,6 +19,7 @@
 - Preserved literal tag text in IDs, dependencies, and other arguments during paused-marker cleanup, and ignored nested timer examples when synchronizing markers. Released obsolete tag-style decoration resources when tags are removed or documents close. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Kept backticks inside tag arguments literal so they cannot hide following task-style or timer tags. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Honored empty task-style color and background overrides for individual themes instead of falling back to the rule's base colors. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Refreshed task styles in every visible split view of the same file after tag edits, and cleared all splits when task support is disabled. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Prevented the default embedded-todo regex from freezing the Extension Host on long runs of spaces in comments, affecting both JavaScript scanning and external-search result parsing. [#21](https://github.com/vycdev/vscode-todo-plus-two/issues/21)
 - Kept tag groups and other task views current when a previously indexed file is reopened and edited without saving. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
 - Kept Markdown task discovery and hierarchy correct around indented fence examples, HTML comments, headings inside list items, and custom bracketed symbols. Hidden comment metadata no longer changes task status, dependencies, due dates, estimates, or timers.

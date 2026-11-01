@@ -10,7 +10,7 @@ const withDecorator = (run) => {
   const statisticsUpdates = [];
   const textDocument = { getText: () => text, tokens: { pending: 1 } };
   const editor = { document: textDocument, supported: true, setDecorations: () => undefined };
-  const window = { activeTextEditor: editor };
+  const window = { activeTextEditor: editor, visibleTextEditors: [editor] };
   const tokens = {
     global: {},
     updateGlobal: (items) => {
@@ -22,8 +22,10 @@ const withDecorator = (run) => {
     textDocument;
     textEditor;
     constructor(res) {
-      this.textEditor = res;
-      this.textDocument = res.document;
+      this.textEditor = res.document
+        ? res
+        : window.visibleTextEditors.find((editor) => editor.document === res);
+      this.textDocument = res.document || res;
     }
     isSupported() {
       return this.textEditor.supported;
@@ -80,6 +82,32 @@ const withDecorator = (run) => {
 };
 
 describe('Document decoration refresh', () => {
+  it('refreshes both split views of an edited document without touching other documents', () => {
+    withDecorator(({ decorator, editor, window, setText }) => {
+      const applied = [];
+      const split = { ...editor, setDecorations: (type, ranges) => applied.push({ type, ranges }) };
+      const unrelated = {
+        ...split,
+        document: { getText: () => 'other', tokens: { pending: 2 } },
+        setDecorations: () => {
+          throw new Error('Unrelated editor was decorated');
+        },
+      };
+      window.visibleTextEditors.push(split, unrelated);
+      const initial = {},
+        updated = {};
+      decorator.getItemsDecorations = () => [{ type: initial, ranges: ['original'] }];
+      decorator.update(split);
+      decorator.getItemsDecorations = () => [{ type: updated, ranges: ['changed'] }];
+      setText('task @review');
+      decorator.updateLines(editor.document, [0]);
+      expect(applied).to.deep.equal([
+        { type: initial, ranges: ['original'] },
+        { type: updated, ranges: ['changed'] },
+      ]);
+    });
+  });
+
   it('clears its decorations when task support is disabled for an editor', () => {
     withDecorator(({ decorator, editor }) => {
       const type = {};
@@ -93,6 +121,19 @@ describe('Document decoration refresh', () => {
         { kind: type, ranges: ['decoration'] },
         { kind: type, ranges: [] },
       ]);
+    });
+  });
+  it('clears decorations in every split when task support is disabled', () => {
+    withDecorator(({ decorator, editor, window }) => {
+      const applied = [];
+      const split = { ...editor, setDecorations: (_type, ranges) => applied.push(ranges) };
+      window.visibleTextEditors.push(split);
+      decorator.getItemsDecorations = () => [{ type: {}, ranges: ['original'] }];
+      decorator.update(editor);
+      editor.supported = false;
+      split.supported = false;
+      decorator.update(editor.document);
+      expect(applied).to.deep.equal([['original'], []]);
     });
   });
   it('updates derived task state when tag edits keep the same length', () => {
