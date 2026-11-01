@@ -47,14 +47,15 @@ const Due = {
 
     if (parsed.isValid()) {
       // Moment's strict mode does not validate timezone offset ranges.
-      const offset = value.match(/[+-](\d{2}):?(\d{2})$/);
+      // Require a clock component so date-only days are not mistaken for offsets.
+      const offset = value.match(/:\d{2}[+-](\d{2})(?::?(\d{2}))?$/);
       if (offset && (Number(offset[1]) > 23 || Number(offset[2]) > 59)) return;
 
       return parsed.toDate();
     }
 
     const formattedDateRe =
-      /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]\d{1,2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)?|\d{2}-\d{2}-\d{2}(?: \d{2}:\d{2})?|\d{2}\/\d{2}\/(?:\d{2}|\d{4})(?: \d{2}:\d{2})?)$/;
+      /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]\d{1,2}:\d{2}(?::\d{2})?(?:[Zz]|[+-]\d{2}(?::?\d{2})?)?)?|\d{2}-\d{2}-\d{2}(?: \d{2}:\d{2})?|\d{2}\/\d{2}\/(?:\d{2}|\d{4})(?: \d{2}:\d{2})?)$/;
 
     if (formattedDateRe.test(value)) return;
 
