@@ -8,6 +8,7 @@
 - Added opt-in tag grouping in the Files sidebar with `todo.file.view.groupByTags`, including Todo files and Markdown notes, per-group counts, original project and parent-task context, and an Other group for tasks without a selected tag. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
 - Added automatic continuation and renumbering of plain numbered lists on Enter in Todo files, enabled by default and configurable with `todo.autoRenumber`. [#19](https://github.com/vycdev/vscode-todo-plus-two/issues/19)
 - Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
+- Added PNG/JPEG image paste in saved local Todo files on VS Code 1.97 or newer. Images are stored in a sibling `<filename>.assets` folder and inserted as clickable relative links, with undo/redo and existing-file protection. Non-empty clipboard text keeps its normal paste behavior without waiting for image reads or showing image errors; images can also be selected with Paste As. [#6](https://github.com/vycdev/vscode-todo-plus-two/issues/6)
 
 #### Fixes
 
@@ -30,6 +31,8 @@
 - Restored archived Markdown children to their original parent after its timekeeping or completion-cleanup tags change, retaining IDs and other labels when matching parent paths.
 - Kept archived Markdown tasks in place when their parent path is ambiguous, while allowing unique deeper destinations below repeated ancestor headings.
 - Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
+- Kept selected Todo text intact when an image attachment cannot be written.
+- Preserved relative file and image attachment links in tasks, project titles, and attached notes when archiving into a workspace-root archive. Project titles containing attachment links keep their hierarchy across repeated archives; fenced code examples remain literal.
 
 ### Version 5.3.0
 

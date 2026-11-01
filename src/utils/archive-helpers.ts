@@ -6,7 +6,7 @@ import { parseCodeBlocks, shiftCodeIndentation } from './code-blocks';
 // Match project header lines only, not lines that happen to contain a colon
 // such as timestamps in todo tags. Ensure colon is followed by whitespace, end
 // of line, or an @ tag (like @done).
-const projectParts = /^(\s*)([^:]+):(?=\s|$|@)/;
+const projectParts = /^(\s*)(.+?):(?=\s|$|@)/;
 const defaultIndentUnit = '  ';
 
 const sameProjectPath = (left: string[], right: string[]) =>

@@ -14,6 +14,7 @@ import * as path from 'path';
 import Folder from './folder';
 import { getCodeBlocks } from './code-blocks';
 import { archiveToFile } from './archive-storage';
+import { rebaseRelativeFileLinks } from './file-links';
 import {
   createArchiveFinishedDateGetter,
   getRemovableEmptyLineNumbers,
@@ -181,9 +182,21 @@ const Archive = {
 
         const archiveFileName = `ARCHIVE.${archiveFileBase}`;
         const archivePath = path.join(rootPath, archiveFileName);
+        const rebasedItems = insertItems.map((item) => ({
+          ...item,
+          obj: {
+            ...item.obj,
+            text: rebaseRelativeFileLinks(item.obj.text, originalPath, archivePath),
+            projects:
+              item.obj.projects &&
+              item.obj.projects.map((project: string) =>
+                rebaseRelativeFileLinks(project, originalPath, archivePath)
+              ),
+          },
+        }));
 
         await archiveToFile(archivePath, doc.textDocument, edits, (content) =>
-          Archive.mergeInsertItemsIntoArchiveContent(content, insertItems, helperConfig, Todo.is)
+          Archive.mergeInsertItemsIntoArchiveContent(content, rebasedItems, helperConfig, Todo.is)
         );
         editsApplied = true;
       } else {
