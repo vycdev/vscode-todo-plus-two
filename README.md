@@ -533,6 +533,8 @@ Todo files display attachment links as text. The HTML and Markdown export comman
 
 - **Activity Bar**: you can switch the focus to the `Todo` activity bar view by assigning a shortcut to the `workbench.view.extension.todo` command.
 
+- **Embedded todos in Explorer**: In VS Code 1.46 or newer, open the Command Palette, run `View: Move View`, select `Embedded`, then select `Explorer`. VS Code remembers this placement across sessions. To restore the default layout, run `View: Reset View Locations`—this resets the locations of **all views**.
+
 - **Icons**: icons can be used in `todo.statistics.statusbar.text`. [Here](https://octicons.github.com/) you can browse a list of supported icons. If for instance you click the first icon, you'll get a page with `.octicon-alert` written in it, to get the string to use simply remove the `.octicon-` part, so in this case the icon name would be `alert`.
 
 - **CLI**: you can view your embedded todos from the command line with the `todo` command if you install [ag](https://github.com/ggreer/the_silver_searcher) and add the following to your shell configuration file:
