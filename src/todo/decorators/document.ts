@@ -13,6 +13,7 @@ import TodoDue from './todo_due';
 import TodoDone from './todo_done';
 import TodoCancelled from './todo_cancelled';
 import TodoStarted from './todo_started';
+import { getPlannedDecorations } from './todo_planned';
 import { DocumentLinesCache } from './document-lines-cache';
 import { applyCustomColors } from './theme-colors';
 
@@ -93,6 +94,28 @@ const Document = {
     Document.update(res, true);
   },
 
+  updatePlanned(res: vscode.TextEditor = vscode.window.activeTextEditor, now: Date = new Date()) {
+    if (!res || !Utils.editor.isSupported(res)) return;
+
+    const doc = new DocumentModule(res);
+    const colorsEnabled = Config.getKey('colors.enabled') !== false;
+    const enabled = Config.getKey('planned.enabled') === true && colorsEnabled;
+    const planned = applyCustomColors(
+      getPlannedDecorations(enabled ? doc.getTodosBox() : [], now),
+      colorsEnabled
+    );
+    const due = applyCustomColors(new TodoDue().getDecorations(doc.getTagsDue()), colorsEnabled);
+    const foregroundRanges = _.concat(planned[0].ranges, ...due.map(({ ranges }) => ranges));
+
+    // Restore ordinary tag colors as windows end, and remove competing colors
+    // when windows start, without recalculating statistics or running timers.
+    const tags = applyCustomColors(
+      new Tag().getDecorations(doc.getTags(), foregroundRanges),
+      colorsEnabled
+    );
+    [...tags, ...due, ...planned].forEach(({ type, ranges }) => res.setDecorations(type, ranges));
+  },
+
   /* ITEMS */
 
   getItems(doc: DocumentModule) {
@@ -112,14 +135,18 @@ const Document = {
 
   getItemsDecorations(items) {
     const colorsEnabled = Config.getKey('colors.enabled') !== false;
+    const planned = applyCustomColors(getPlannedDecorations(items.todosBox), colorsEnabled);
+    const due = applyCustomColors(new TodoDue().getDecorations(items.tagsDue), colorsEnabled);
+    const foregroundRanges = _.concat(planned[0].ranges, ...due.map(({ ranges }) => ranges));
 
     return _.concat(
       applyCustomColors(new Comment().getDecorations(items.comments), colorsEnabled),
       applyCustomColors(new Formatted().getDecorations(items.formatted), colorsEnabled),
-      applyCustomColors(new Tag().getDecorations(items.tags), colorsEnabled),
-      applyCustomColors(new TodoDue().getDecorations(items.tagsDue), colorsEnabled),
+      applyCustomColors(new Tag().getDecorations(items.tags, foregroundRanges), colorsEnabled),
+      due,
       new Project().getDecorations(items.projects),
       applyCustomColors(new TodoStarted().getDecorations(items.todosStarted), colorsEnabled),
+      planned,
       new TodoDone().getDecorations(items.todosDone),
       applyCustomColors(new TodoCancelled().getDecorations(items.todosCancelled), colorsEnabled)
     );

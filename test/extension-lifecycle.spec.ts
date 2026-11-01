@@ -12,7 +12,7 @@ const makeEvent = () => {
   };
 };
 
-const loadExtension = () => {
+const loadExtension = (plannedEnabled = false) => {
   const NodeModule = require('module');
   const originalLoad = NodeModule._load;
   const modulePath = require.resolve('../src/extension');
@@ -22,7 +22,10 @@ const loadExtension = () => {
   const documents = makeEvent();
   const editors = makeEvent();
   const dates = makeEvent();
+  const visible = makeEvent();
+  const focus = makeEvent();
   const visibleEditors = [{ supported: true }, { supported: false }];
+  const plannedEditors = [];
   const events: string[] = [];
   const disposed: string[] = [];
   const disposable = (name: string) => ({ dispose: () => disposed.push(name) });
@@ -86,7 +89,12 @@ const loadExtension = () => {
       onDidChangeWorkspaceFolders: folders.subscribe,
       onDidChangeTextDocument: documents.subscribe,
     },
-    window: { onDidChangeActiveTextEditor: editors.subscribe, visibleTextEditors: visibleEditors },
+    window: {
+      onDidChangeActiveTextEditor: editors.subscribe,
+      onDidChangeVisibleTextEditors: visible.subscribe,
+      onDidChangeWindowState: focus.subscribe,
+      visibleTextEditors: visibleEditors,
+    },
     languages: {
       registerCompletionItemProvider: () => disposable('completion'),
       registerDocumentLinkProvider: () => disposable('links'),
@@ -100,14 +108,22 @@ const loadExtension = () => {
     './config': {
       default: {
         get: () => ({ embedded: { view: {} }, file: { view: {} } }),
-        getKey: () => 'InSameFile',
+        getKey: (key) => (key === 'planned.enabled' ? plannedEnabled : 'InSameFile'),
         check() {},
       },
     },
     './consts': { default: { languageId: 'todo', update() {} } },
     './providers/file_links': { FileLinkProvider: Provider },
     './providers/embedded_diagnostics': { default: Diagnostics },
-    './todo/decorators/document': { default: { update: () => events.push('decorations') } },
+    './todo/decorators/document': {
+      default: {
+        update: () => events.push('decorations'),
+        updatePlanned: (editor) => {
+          events.push('planned-decorations');
+          plannedEditors.push(editor);
+        },
+      },
+    },
     './todo/decorators/changes': { default: { onChanges() {} } },
     './utils': { default: utils },
     './utils/dependency_index': { default: { initialize: initialize('index') } },
@@ -137,6 +153,10 @@ const loadExtension = () => {
       documents,
       editors,
       dates,
+      visible,
+      focus,
+      visibleEditors,
+      plannedEditors,
       files,
       embedded,
       provider,
@@ -206,6 +226,8 @@ describe('Extension lifecycle wiring', () => {
         document: { uri: { scheme: 'file', fsPath: '/workspace/tasks.todo' }, languageId: 'todo' },
       });
       expect(timers.size).to.equal(2);
+      expect(state.events).to.deep.equal([]);
+      state.events.length = 0;
 
       context.subscriptions.forEach((subscription) => subscription.dispose());
       cleaned = true;
@@ -220,9 +242,15 @@ describe('Extension lifecycle wiring', () => {
         'log',
         'diagnostics',
       ]);
-      [state.configuration, state.folders, state.documents, state.editors, state.dates].forEach(
-        (event) => expect(event.listeners.size).to.equal(0)
-      );
+      [
+        state.configuration,
+        state.folders,
+        state.documents,
+        state.editors,
+        state.dates,
+        state.visible,
+        state.focus,
+      ].forEach((event) => expect(event.listeners.size).to.equal(0));
       timers.forEach((callback) => callback());
       expect(state.events).to.deep.equal([]);
       expect(state.embedded.provider).to.equal(undefined);
@@ -230,6 +258,33 @@ describe('Extension lifecycle wiring', () => {
       if (!cleaned) context.subscriptions.forEach((subscription) => subscription.dispose());
       global.setTimeout = originalSetTimeout;
       global.clearTimeout = originalClearTimeout;
+    }
+  });
+
+  it('refreshes planned highlights in all visible Todo editors on focus, visibility, and edits', () => {
+    const state = loadExtension(true);
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    state.activate(context);
+    state.visibleEditors.push({ supported: true });
+
+    try {
+      for (const fire of [
+        () => state.focus.fire({ focused: true }),
+        () => state.visible.fire(),
+        () =>
+          state.documents.fire({ document: { languageId: 'todo', uri: { scheme: 'untitled' } } }),
+      ]) {
+        state.plannedEditors.length = 0;
+        fire();
+        expect(state.plannedEditors).to.deep.equal(
+          state.visibleEditors.filter((editor) => editor.supported)
+        );
+      }
+      state.plannedEditors.length = 0;
+      state.focus.fire({ focused: false });
+      expect(state.plannedEditors).to.deep.equal([]);
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
     }
   });
 });

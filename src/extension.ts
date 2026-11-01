@@ -14,6 +14,7 @@ import DocumentDecorator from './todo/decorators/document';
 import ChangesDecorator from './todo/decorators/changes';
 import Utils from './utils';
 import DependencyIndex from './utils/dependency_index';
+import { createPlannedRefresh } from './utils/planned-refresh';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
 import { Due } from './views/due';
@@ -56,6 +57,14 @@ const activate = function (context: vscode.ExtensionContext) {
   new EmbeddedDiagnostics(Utils.embedded).initialize(context);
   Utils.init.language(context);
   Utils.statistics.tokens.updateDisabledAll();
+
+  const plannedRefresh = createPlannedRefresh(
+    () =>
+      vscode.window.visibleTextEditors
+        .filter((editor) => Utils.editor.isSupported(editor))
+        .forEach((editor) => DocumentDecorator.updatePlanned(editor)),
+    () => Config.getKey('planned.enabled') === true && Config.getKey('colors.enabled') !== false
+  );
 
   const embeddedRefreshTimers = {};
   let dueRefreshTimer;
@@ -115,6 +124,7 @@ const activate = function (context: vscode.ExtensionContext) {
     StatusbarTimer,
     Utils.command,
     Utils.log,
+    plannedRefresh,
     {
       dispose: () => {
         disposed = true;
@@ -141,7 +151,15 @@ const activate = function (context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeConfiguration(updateFileCaches),
     vscode.workspace.onDidChangeConfiguration(Utils.statistics.tokens.updateDisabledAll),
     vscode.workspace.onDidChangeConfiguration(() => DocumentDecorator.update()),
+    vscode.workspace.onDidChangeConfiguration(() => plannedRefresh.refresh()),
+    vscode.window.onDidChangeVisibleTextEditors(() => plannedRefresh.refresh()),
+    vscode.window.onDidChangeWindowState(({ focused }) => {
+      if (focused) plannedRefresh.refresh();
+    }),
     vscode.workspace.onDidChangeTextDocument(ChangesDecorator.onChanges),
+    vscode.workspace.onDidChangeTextDocument(({ document }) => {
+      if (document.languageId === Consts.languageId) plannedRefresh.refresh();
+    }),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshEmbeddedDocument(document)),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshDueDocument(document)),
     Due.onDidChangeDate(() => {
@@ -160,6 +178,7 @@ const activate = function (context: vscode.ExtensionContext) {
   Utils.init.views(context);
 
   DocumentDecorator.update();
+  plannedRefresh.refresh();
 
   Commands.registerCommands(context, Commands);
   return Commands;

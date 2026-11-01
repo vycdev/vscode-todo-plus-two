@@ -25,6 +25,7 @@ const Consts = {
         done: _.get(config, `${root}.done`),
         cancelled: _.get(config, `${root}.cancelled`),
         started: _.get(config, `${root}.started`),
+        planned: _.get(config, `${root}.planned`),
         code: _.get(config, `${root}.code`),
         comment: _.get(config, `${root}.comment`),
         project: _.get(config, `${root}.project`),

@@ -93,6 +93,19 @@ describe('Dependency completions', () => {
 });
 
 describe('Tag argument completions', () => {
+  it('offers a planned tag template before it has been used in a document', async () => {
+    const { Completion } = loadCompletion();
+    const text = 'Task @';
+    const completions = await new Completion().provideCompletionItems(
+      { lineAt: () => ({ text }) },
+      { line: 0, character: text.length }
+    );
+
+    expect(completions.find((item) => item.label === '@planned()').insertText).to.equal(
+      '@planned()'
+    );
+  });
+
   it('replaces an auto-closed parenthesis without duplicating it', async () => {
     const { Completion } = loadCompletion();
     const text = 'Task @note()';

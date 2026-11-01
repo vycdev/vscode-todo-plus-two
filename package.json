@@ -294,6 +294,11 @@
           "description": "@due tag color for future tasks",
           "default": "#a6e22e"
         },
+        "todo.colors.planned": {
+          "type": "string",
+          "description": "Active @planned tag color (requires todo.planned.enabled)",
+          "default": "#4fc1ff"
+        },
         "todo.colors.tags.background": {
           "type": "array",
           "items": {
@@ -385,6 +390,9 @@
             "dependency": {
               "type": "string"
             },
+            "planned": {
+              "type": "string"
+            },
             "due": {
               "type": "object",
               "properties": {
@@ -456,6 +464,9 @@
             "dependency": {
               "type": "string"
             },
+            "planned": {
+              "type": "string"
+            },
             "due": {
               "type": "object",
               "properties": {
@@ -516,6 +527,11 @@
           "minimum": 0,
           "description": "Number of days ahead that @due tags are considered due soon",
           "default": 7
+        },
+        "todo.planned.enabled": {
+          "type": "boolean",
+          "description": "Highlight @planned(...) tags on unfinished tasks during their local-time work windows",
+          "default": false
         },
         "todo.archive.name": {
           "type": "string",

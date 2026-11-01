@@ -133,7 +133,7 @@ class Document {
   }
 
   getTags() {
-    return this.getItems(Tag, Consts.regexes.tagSpecialNormal);
+    return this.getItems(Tag, Consts.regexes.tagSpecialNormal) as Tag[];
   }
 
   getTagsDue() {

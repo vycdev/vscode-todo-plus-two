@@ -110,18 +110,24 @@ class Completion implements vscode.CompletionItemProvider {
         return item;
       });
 
-      const dependencyTags = ['@id()', '@depends()'].map((text) => {
-        const item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Reference);
+      const templateTags = ['@id()', '@depends()', '@planned()'].map((text) => {
+        const planned = text === '@planned()';
+        const item = new vscode.CompletionItem(
+          text,
+          planned ? vscode.CompletionItemKind.Value : vscode.CompletionItemKind.Reference
+        );
 
         item.filterText = text;
         item.insertText = text;
+        if (planned)
+          item.detail = 'Work windows, e.g. @planned(10am-1pm); enable todo.planned.enabled';
         if (range) item.range = range;
 
         return item;
       });
 
       return Completion.filterByPrefix(
-        timestampTags.concat(dependencyTags, tagsSpecial, tagsSmart),
+        timestampTags.concat(templateTags, tagsSpecial, tagsSmart),
         tagPrefix && tagPrefix.text
       );
     }

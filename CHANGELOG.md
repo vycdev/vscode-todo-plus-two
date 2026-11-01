@@ -1,3 +1,15 @@
+### Version 5.4.0
+
+#### New features
+
+- Added opt-in `@planned(...)` work windows with daily or dated time ranges, multiple sessions, and automatic active-tag highlighting. Enable `todo.planned.enabled` and customize the active color with `todo.colors.planned`. [#82](https://github.com/vycdev/vscode-todo-plus-two/issues/82)
+
+#### Fixes
+
+- Kept checked Markdown tasks out of pending-task results when `-` is the configured todo box symbol.
+- Preserved `@due(...)` urgency colors when refreshing planned work windows.
+- Rejected malformed planned windows containing inline code in their arguments.
+
 ### Version 5.3.0
 
 A large release: nearly 30 new features and well over a hundred fixes since 5.2.0. If you customize statistics conditions or bound a key to `Todo: Toggle Timer`, read the compatibility notes first.
