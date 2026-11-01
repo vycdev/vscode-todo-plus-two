@@ -6,6 +6,7 @@ import Consts from '../../consts';
 import Utils from '../../utils';
 import AST from '../../utils/ast';
 import Due from '../../utils/due';
+import { parseCodeBlocks } from '../../utils/code-blocks';
 import Tokens from '../../utils/statistics_tokens';
 import { getEstimateDuration, isFixedEstimateDuration } from '../../utils/estimate';
 import DocumentModule from '../document';
@@ -57,8 +58,10 @@ const eachItem = (items: Items, run: (item: Item) => void) => {
 
 // The canonical regexes allow both multiline tag arguments and whitespace
 // separators spanning lines after a task marker. Preserve those semantics by
-// rebuilding until the input is safe to parse one line at a time.
+// rebuilding until the input is safe to parse one line at a time. Fenced code
+// notes also require whole-document context to exclude examples from the model.
 export const hasMultilineSyntax = (text: string) => {
+  if (parseCodeBlocks(text).blocks.length) return true;
   const symbols = [Consts.symbols.box, Consts.symbols.done, Consts.symbols.cancelled];
   return text.split(/\r?\n/).some((line) => {
     // An argument is unfinished only if '@...(' occurs after the last ')'.

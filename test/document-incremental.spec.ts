@@ -315,6 +315,52 @@ describe('Incremental Todo decorations and statistics', () => {
     });
   });
 
+  for (const eol of ['\n', '\r\n']) {
+    it(`keeps fenced code examples out of cached task and Archive state (${JSON.stringify(eol)})`, () => {
+      withDecorationEditor(
+        [
+          'Root:',
+          '  ☐ Real',
+          '  ```ts',
+          '  ☐ Example @high',
+          '  Archive:',
+          '  ```',
+          'Other:',
+          '  ☐ Next',
+        ].join(eol),
+        (state) => {
+          state.decorator.update(state.editor);
+          const reads = state.calls.fullText;
+          state.edit(3, 0, state.editor.document.lineAt(3).text.length, '  ✔ Example @due(today)');
+          expect(state.calls.fullText).to.equal(reads + 1);
+          expect(state.utils.statistics.tokens.global.pending).to.equal(2);
+          expect(state.utils.statistics.tokens.global.done).to.equal(0);
+          expectFullParse(state);
+          state.edit(5, 0, 5, '  Still code');
+          expect(state.utils.statistics.tokens.global.pending).to.equal(1);
+          expectFullParse(state);
+        }
+      );
+    });
+
+    it(`rebuilds when inserting a fence and resumes caching after removing it (${JSON.stringify(eol)})`, () => {
+      withDecorationEditor(['Root:', '  Note', '  ☐ Task @high'].join(eol), (state) => {
+        state.decorator.update(state.editor);
+        const reads = state.calls.fullText;
+        state.edit(1, 0, 6, '  ```ts');
+        expect(state.calls.fullText).to.equal(reads + 1);
+        expect(state.utils.statistics.tokens.global.pending).to.equal(0);
+        expectFullParse(state);
+        state.edit(1, 0, 7, '  Note');
+        expectFullParse(state);
+        const afterRepair = state.calls.fullText;
+        state.edit(2, 4, 4, 'New ');
+        expect(state.calls.fullText).to.equal(afterRepair);
+        expectFullParse(state);
+      });
+    });
+  }
+
   for (const marker of ['☐', '✔', '✘', '- [ ]', '- [x]']) {
     it(`falls back when deleting the separator after ${marker}`, () => {
       withDecorationEditor(`Todo:\n  ${marker} \n  Note`, (state) => {
