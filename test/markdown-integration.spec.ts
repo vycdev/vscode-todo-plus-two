@@ -25,6 +25,7 @@ const loadMarkdown = (initial: string, settings = {}) => {
   let content = initial;
   let archiveContent = '# Archive\n\nSaved note.\n';
   const messages: string[] = [];
+  const decorationTypes: any[] = [];
   const transfers: { destination: string; content: string }[] = [];
   class Position {
     constructor(
@@ -121,7 +122,11 @@ const loadMarkdown = (initial: string, settings = {}) => {
       showInformationMessage: (text) => messages.push(text),
       showErrorMessage: (text) => messages.push(text),
       showInputBox: async (_options): Promise<string | undefined> => undefined,
-      createTextEditorDecorationType: () => ({ dispose() {} }),
+      createTextEditorDecorationType: (options) => {
+        const type = { options, dispose() {} };
+        decorationTypes.push(type);
+        return type;
+      },
     },
     workspace: {
       textDocuments: [document],
@@ -234,6 +239,8 @@ const loadMarkdown = (initial: string, settings = {}) => {
       window: vscode.window,
       Document,
       decorator,
+      taskStyles: require('../src/todo/decorators/task-tags'),
+      decorationTypes,
       utils,
       filesView,
       dueView,
@@ -258,6 +265,104 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('applies task-tag rules only to actual Markdown tasks and visible metadata', () => {
+    const state = loadMarkdown(
+      [
+        'Prose @blocked',
+        '- [ ] Literal \\@blocked <!-- @blocked --> `@blocked` @note(@blocked)',
+        '- [ ] Work @blocked <!-- preserve this -->',
+        '```',
+        '- [ ] Example @blocked',
+        '```',
+      ].join('\n'),
+      { 'tags.styles': { blocked: { color: '#ff0000', bold: true } } }
+    );
+    const todos = new state.Document(state.editor).getTodos();
+    const decorations = state.taskStyles.getTaskTagDecorations(todos);
+    expect(todos).to.have.length(2);
+    expect(decorations).to.have.length(1);
+    expect(decorations[0].type.options.color).to.equal('#ff0000');
+    expect(decorations[0].ranges.every((range) => range.start.line === 2)).to.equal(true);
+    const styled = decorations[0].ranges.map((range) => state.document.getText(range)).join('');
+    expect(styled).to.include('Work');
+    expect(styled).not.to.include('@blocked');
+    expect(styled).not.to.include('preserve this');
+    state.taskStyles.disposeTaskTagStyles();
+  }).timeout(10000);
+
+  it('pauses and resumes while preserving escaped tags and hidden timer examples', () => {
+    const hidden = '<!-- @paused @toggle(2026-08-02 10:05:00) -->';
+    const state = loadMarkdown(`- [ ] Work @started(2026-08-02 10:00:00) \\@paused ${hidden}`, {
+      'timekeeping.started.format': 'YYYY-MM-DD HH:mm:ss',
+    });
+    const todo = new state.Document(state.editor).getTodos()[0];
+    todo.toggleTimer(new Date(2026, 7, 2, 10, 30));
+    expect(todo.lineNextText).to.include(`@toggle(2026-08-02 10:30:00) @paused ${hidden}`);
+    expect(todo.lineNextText).to.include('\\@paused');
+    todo.toggleTimer(new Date(2026, 7, 2, 11, 0));
+    expect(todo.lineNextText).to.include(`@toggle(2026-08-02 11:00:00) ${hidden}`);
+    expect(todo.lineNextText).to.include('\\@paused');
+    expect(todo.lineNextText.replace(hidden, '').replace('\\@paused', '')).not.to.include(
+      '@paused'
+    );
+  });
+
+  it('repairs Markdown paused markers from visible timing history through the command', async () => {
+    const state = loadMarkdown(
+      '- [ ] Work @started(2026-08-02 10:00:00) @toggle(2026-08-02 10:30:00) <!-- @paused -->',
+      {
+        'timekeeping.started.format': 'YYYY-MM-DD HH:mm:ss',
+      }
+    );
+    state.select(0);
+    await state.commands.syncPausedTags();
+    expect(state.document.getText()).to.equal(
+      '- [ ] Work @started(2026-08-02 10:00:00) @toggle(2026-08-02 10:30:00) @paused <!-- @paused -->'
+    );
+    state.setText(
+      '- [ ] Work @started(2026-08-02 10:00:00) @note(@toggle(2026-08-02 10:30:00)) @paused'
+    );
+    await state.commands.syncPausedTags();
+    expect(state.document.getText()).not.to.include('@paused');
+    expect(state.document.getText()).to.include('@note(@toggle(2026-08-02 10:30:00))');
+  });
+
+  it('clears paused styling on completion and restores it when reopening paused history', async () => {
+    const state = loadMarkdown(
+      '- [ ] Work @started(2026-08-02 10:00:00) @toggle(2026-08-02 10:30:00) @paused',
+      {
+        'timekeeping.started.format': 'YYYY-MM-DD HH:mm:ss',
+      }
+    );
+    state.select(0);
+    await state.commands.toggleDone();
+    expect(state.document.getText()).to.include('- [x] Work');
+    expect(state.document.getText()).to.include('@lasted(30m)');
+    expect(state.document.getText()).not.to.include('@paused');
+    await state.commands.toggleDone();
+    expect(state.document.getText()).to.include('- [ ] Work');
+    expect(state.document.getText()).to.include('@paused');
+    expect(new state.Document(state.editor).getTodosBox()).to.have.length(1);
+  });
+
+  it('keeps custom strikethrough tags cosmetic for completion and statistics', () => {
+    const state = loadMarkdown('- [ ] Work @obsolete', {
+      'tags.styles': { obsolete: { strikethrough: true } },
+    });
+    const doc = new state.Document(state.editor),
+      items = state.decorator.getItems(doc),
+      original = state.document.getText();
+    const [decoration] = state.taskStyles.getTaskTagDecorations(doc.getTodos());
+    expect(decoration.type.options.textDecoration).to.equal('line-through');
+    expect(items.todosBox).to.have.length(1);
+    expect(items.todosDone).to.have.length(0);
+    expect(items.todosCancelled).to.have.length(0);
+    state.utils.statistics.tokens.updateGlobal(items);
+    expect(state.utils.statistics.tokens.global.pending).to.equal(1);
+    expect(state.document.getText()).to.equal(original);
+    state.taskStyles.disposeTaskTagStyles();
+  });
+
   it('keeps Markdown task completion after an indented code example containing backticks', async () => {
     const line = '[ ] Ship @depends(r';
     const state = loadMarkdown('    ```python\n    literal code\n\n[ ] Setup @id(real)\n' + line);

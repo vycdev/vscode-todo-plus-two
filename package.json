@@ -70,7 +70,8 @@
     "onCommand:todo.editorArchive",
     "onCommand:todo.unarchive",
     "onCommand:todo.editorUnarchive",
-    "onLanguage:markdown"
+    "onLanguage:markdown",
+    "onCommand:todo.syncPausedTags"
   ],
   "contributes": {
     "languages": [
@@ -585,6 +586,111 @@
             "low",
             "today"
           ]
+        },
+        "todo.tags.styles": {
+          "type": "object",
+          "markdownDescription": "Task-text styles selected by literal tags. Higher priority wins per property; the last matching tag wins ties. Built-in rules inherit their appearance from `todo.colors.done`, `todo.colors.cancelled`, `todo.colors.started` and `todo.decorations.done.strikethrough` unless overridden here. Set a rule to `false` to disable it. Tags do not need to be in `todo.tags.names`.",
+          "propertyNames": {
+            "pattern": "^[^@\\s()*~`]+$"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "color": {
+                    "type": "string",
+                    "description": "Task text color"
+                  },
+                  "backgroundColor": {
+                    "type": "string",
+                    "description": "Task text background color"
+                  },
+                  "bold": {
+                    "type": "boolean"
+                  },
+                  "italic": {
+                    "type": "boolean"
+                  },
+                  "strikethrough": {
+                    "type": "boolean"
+                  },
+                  "priority": {
+                    "type": "number",
+                    "default": 0
+                  },
+                  "dark": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "color": {
+                        "type": "string",
+                        "description": "Task text color"
+                      },
+                      "backgroundColor": {
+                        "type": "string",
+                        "description": "Task text background color"
+                      },
+                      "bold": {
+                        "type": "boolean"
+                      },
+                      "italic": {
+                        "type": "boolean"
+                      },
+                      "strikethrough": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "light": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "color": {
+                        "type": "string",
+                        "description": "Task text color"
+                      },
+                      "backgroundColor": {
+                        "type": "string",
+                        "description": "Task text background color"
+                      },
+                      "bold": {
+                        "type": "boolean"
+                      },
+                      "italic": {
+                        "type": "boolean"
+                      },
+                      "strikethrough": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "default": {
+            "done": {
+              "priority": 100
+            },
+            "cancelled": {
+              "priority": 100
+            },
+            "started": {
+              "priority": 10
+            },
+            "paused": {
+              "priority": 20,
+              "color": "#e5d145"
+            }
+          }
         },
         "todo.tags.namesInference": {
           "type": "boolean",
@@ -1115,6 +1221,10 @@
       {
         "command": "todo.toggleTimer",
         "title": "Todo: Toggle Timer"
+      },
+      {
+        "command": "todo.syncPausedTags",
+        "title": "Todo: Sync Paused Tags"
       },
       {
         "command": "todo.toggleStatusBarTimer",
@@ -1787,7 +1897,8 @@
     "compile:watch": "webpack --mode development --watch",
     "test": "mocha -r ts-node/register \"test/**/*.spec.ts\" --exit",
     "format": "prettier --write \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
-    "format:check": "prettier --check \"**/*.{ts,js,json,md,css,scss,html,svg}\""
+    "format:check": "prettier --check \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
+    "test:e2e:tags": "npm run compile && node test/e2e/run.js"
   },
   "bugs": {
     "url": "https://github.com/vycdev/vscode-todo-plus-two/issues"

@@ -20,6 +20,7 @@ const loadExtension = () => {
   const configuration = makeEvent();
   const folders = makeEvent();
   const documents = makeEvent();
+  const closedDocuments = makeEvent();
   const editors = makeEvent();
   const dates = makeEvent();
   const visibleEditors = [
@@ -89,6 +90,7 @@ const loadExtension = () => {
       onDidChangeConfiguration: configuration.subscribe,
       onDidChangeWorkspaceFolders: folders.subscribe,
       onDidChangeTextDocument: documents.subscribe,
+      onDidCloseTextDocument: closedDocuments.subscribe,
     },
     window: {
       onDidChangeActiveTextEditor: editors.subscribe,
@@ -126,6 +128,10 @@ const loadExtension = () => {
       },
     },
     './todo/decorators/changes': { default: { onChanges() {} } },
+    './todo/decorators/task-tags': {
+      disposeTaskTagStyles: () => disposed.push('task-tag-styles'),
+      disposeTaskTagDocument: () => disposed.push('task-tag-document'),
+    },
     './utils': { default: utils },
     './utils/dependency_index': { default: { initialize: initialize('index') } },
     './utils/task-source': {
@@ -160,6 +166,7 @@ const loadExtension = () => {
       configuration,
       folders,
       documents,
+      closedDocuments,
       editors,
       dates,
       files,
@@ -178,7 +185,19 @@ const loadExtension = () => {
 };
 
 describe('Extension lifecycle wiring', () => {
-  it('refreshes background Markdown editors when parser settings change', () => {
+  it('releases task styling resources when a document closes', () => {
+    const state = loadExtension();
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    state.activate(context);
+    try {
+      state.closedDocuments.fire({});
+      expect(state.disposed).to.include('task-tag-document');
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
+    }
+    expect(state.closedDocuments.listeners.size).to.equal(0);
+  });
+  it('refreshes background Markdown editors when parser or tag-style settings change', () => {
     const state = loadExtension();
     const context = { subscriptions: [] as { dispose(): void }[] };
     state.activate(context);
@@ -188,6 +207,8 @@ describe('Extension lifecycle wiring', () => {
         'todo.markdown.sections',
         'todo.symbols.box',
         'todo.archive.name',
+        'todo.tags.styles',
+        'todo.colors.done',
       ]) {
         state.decorationEditors.length = 0;
         state.configuration.fire({
@@ -235,7 +256,7 @@ describe('Extension lifecycle wiring', () => {
       expect(state.provider.generation).to.equal(1);
       expect(state.files.filesData).to.equal(filesData);
       expect(state.provider.filesData).to.equal(embeddedData);
-      expect(state.events).to.deep.equal(['tokens', 'decorations']);
+      expect(state.events).to.deep.equal(['tokens', 'decorations', 'decorations']);
 
       state.events.length = 0;
       state.dates.fire();
@@ -289,6 +310,7 @@ describe('Extension lifecycle wiring', () => {
         'command',
         'log',
         'diagnostics',
+        'task-tag-styles',
         'image-paste',
       ]);
       [state.configuration, state.folders, state.documents, state.editors, state.dates].forEach(

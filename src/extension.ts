@@ -13,6 +13,7 @@ import EmbeddedDiagnostics from './providers/embedded_diagnostics';
 import SymbolsProvider from './providers/symbols';
 import DocumentDecorator from './todo/decorators/document';
 import ChangesDecorator from './todo/decorators/changes';
+import { disposeTaskTagDocument, disposeTaskTagStyles } from './todo/decorators/task-tags';
 import Utils from './utils';
 import DependencyIndex from './utils/dependency_index';
 import ViewEmbedded from './views/embedded';
@@ -134,6 +135,7 @@ const activate = function (context: vscode.ExtensionContext) {
     StatusbarTimer,
     Utils.command,
     Utils.log,
+    { dispose: disposeTaskTagStyles },
     {
       dispose: () => {
         disposed = true;
@@ -167,22 +169,18 @@ const activate = function (context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeConfiguration(updateMarkdownContext),
     vscode.workspace.onDidChangeConfiguration(updateFileCaches),
     vscode.workspace.onDidChangeConfiguration(Utils.statistics.tokens.updateDisabledAll),
-    vscode.workspace.onDidChangeConfiguration((event) => {
-      if (
-        event.affectsConfiguration('todo.markdown') ||
-        event.affectsConfiguration('todo.symbols') ||
-        event.affectsConfiguration('todo.archive.name')
-      ) {
-        vscode.window.visibleTextEditors
-          .filter(
-            (editor) =>
-              editor !== vscode.window.activeTextEditor && editor.document.languageId === 'markdown'
-          )
-          .forEach((editor) => DocumentDecorator.update(editor));
-      }
+    vscode.workspace.onDidChangeConfiguration(() => {
+      vscode.window.visibleTextEditors
+        .filter(
+          (editor) =>
+            editor !== vscode.window.activeTextEditor &&
+            (Utils.editor.isSupported(editor) || editor.document?.languageId === 'markdown')
+        )
+        .forEach((editor) => DocumentDecorator.update(editor));
       DocumentDecorator.update();
     }),
     vscode.workspace.onDidChangeTextDocument(ChangesDecorator.onChanges),
+    vscode.workspace.onDidCloseTextDocument(disposeTaskTagDocument),
     vscode.workspace.onDidChangeTextDocument(updateMarkdownContext),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshEmbeddedDocument(document)),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshDueDocument(document)),

@@ -16,6 +16,7 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
   - **Cancelled**: `✘` (cancelled is only supported via the Unicode symbol)
 - **Custom colors**: all colors can be customized
 - **Custom special tags**: special tags' names and their colors can be customized
+- **Tag-based task styles**: tags can color task text or apply bold, italic, and strikethrough, with configurable priority and tag-order precedence
 - **Archive**: you can move finished todos to a special "Archive" section with a shortcut
 - **Formatting**: you can format text in a markdown-like fashion, we support: **bold**, _italic_, ~~strikethrough~~ and `code`
 - **Image attachments**: paste PNG/JPEG images into saved Todo files on VS Code 1.97 or newer. Images are saved beside the Todo file and inserted as clickable relative file links.
@@ -53,6 +54,7 @@ It adds the following commonly used commands to the command palette:
 'Todo: Toggle Cancelled'; // Toggle todo's cancelled symbol
 'Todo: Toggle Start'; // Toggle a todo as started
 'Todo: Toggle Timer'; // Pause or resume time tracking for the selected started task
+'Todo: Sync Paused Tags'; // Repair @paused markers on selected task lines from their timing history
 'Todo: Toggle Status Bar Timer'; // Toggle the timer in the status bar
 'Todo: Archive'; // Archive finished todos
 'Todo: Unarchive'; // Restore an archived task to its project list (when todo.archive.type is InSameFile)
@@ -173,6 +175,44 @@ Release:
 
 Customize the special-tag names and their matching colors with `todo.tags.names`, `todo.colors.tags.background`, and `todo.colors.tags.foreground`. To highlight the entire task line, set corresponding entries in `todo.colors.tags.lineBackground`. Palette entries match tag names by array position. These labels do not sort tasks or otherwise change task behavior.
 
+### Tag-based task styling
+
+Use `todo.tags.styles` to style task text in Todo files and Markdown notes based on its literal tags. Rules match complete, case-sensitive tag names without the `@` prefix; arguments such as `@review(alex)` match the `review` rule. Tags do not need to appear in `todo.tags.names`. Markdown escapes, inline code, and HTML comments protect their contents from styling rules.
+
+```json
+{
+  "todo.tags.styles": {
+    "blocked": { "color": "#e54545", "bold": true },
+    "review": { "color": "#e5d145", "italic": true },
+    "obsolete": { "strikethrough": true },
+    "hold": {
+      "backgroundColor": "#504020",
+      "dark": { "color": "#ffcc66" },
+      "light": { "color": "#805000" }
+    }
+  }
+}
+```
+
+Each rule supports `color`, `backgroundColor`, `bold`, `italic`, `strikethrough`, `priority`, and `dark`/`light` appearance overrides. Resolve conflicts separately for each property: higher priority wins, and the last matching tag wins ties. Custom rules have priority `0` unless specified. For example, `@blocked @review` gets yellow bold italic text with the rules above; reversing those tags makes the text red.
+
+Built-in rules provide these defaults:
+
+| Tag          | Priority | Default appearance                                           |
+| ------------ | -------- | ------------------------------------------------------------ |
+| `@done`      | 100      | `todo.colors.done` and `todo.decorations.done.strikethrough` |
+| `@cancelled` | 100      | `todo.colors.cancelled`                                      |
+| `@started`   | 10       | `todo.colors.started`                                        |
+| `@paused`    | 20       | Yellow text (`#e5d145`)                                      |
+
+Existing `todo.colors.dark`/`todo.colors.light` overrides also supply the built-in color defaults. Override individual properties in `todo.tags.styles`, or set an entire rule to `false` to disable it, for example `"done": false`. An explicit rule color takes precedence over its legacy color settings. An empty `color` or `backgroundColor` value leaves that property to the syntax theme, including within a `dark` or `light` override. When `todo.colors.enabled` is false, rule colors and backgrounds are disabled while font styles continue to apply.
+
+Task-text styles exclude the tag labels and inline code spans. Special-tag label colors and `todo.colors.tags.lineBackground` remain separate controls. Applying a custom styling tag has no completion or timer effects: `@obsolete` can strike through an unfinished task, and `@hold` can highlight it without pausing time tracking.
+
+Compatibility: only actual tags select these task-text styles. Existing symbol-only `✔`/`✘` tasks and checked Markdown boxes use syntax-theme styling until an `@done`/`@cancelled` tag is added. The extension does not rewrite existing files or force tags when `todo.timekeeping.finished.enabled` is false. Timestamp-free status tags are sufficient for styling.
+
+Timer commands append a single `@paused` marker when pausing and remove it when resuming, unstarting, or finishing. Valid `@started(...)`/`@toggle(...)` history remains authoritative for time tracking; the styling renderer reads `@paused` without interpreting the history. Marker and timer changes are applied together, so undo/redo restores both. To repair markers after manual or external edits, or add markers to existing paused tasks, select task lines and run `Todo: Sync Paused Tags`. The command removes stale/duplicate markers, adds a trailing marker for a paused timer, and clears markers on finished or untimed tasks. Opening or editing a file alone does not rewrite its tags.
+
 ### Group tasks by tag
 
 Set `todo.file.view.groupByTags` to collect tasks from every project and nesting level into tag groups within each file in the Files sidebar:
@@ -291,6 +331,7 @@ Relative entries remain workspace globs. Absolute entries name individual files,
   "todo.colors.dark": { /* "done": "white", ... */ }, // Colors for dark themes
   "todo.colors.light": { /* "done": "black", ... */ }, // Colors for light themes
   "todo.tags.names": ["critical", "high", "low", "today"], // Special tags' names
+  "todo.tags.styles": { "blocked": { "color": "#e54545", "bold": true } }, // Task-text rules; built-in done/cancelled/started/paused rules are included by default
   "todo.tags.namesInference": true, // Infer commonly used tags' names
   "todo.due.soonDays": 7, // Number of days ahead that @due tags are considered due soon
   "todo.archive.name": "Archive", // Name of the special "Archive" section
@@ -381,7 +422,7 @@ The first capture must be `QUE-ES`, not the comment prefix. The second capture c
 
 Dates are formatted using [moment](https://momentjs.com/docs/#/displaying/format).
 
-`Todo: Toggle Timer` pauses and resumes a started task by appending `@toggle(...)` timestamps. Paused time is excluded from the status bar timer and from the final `@lasted(...)` or `@wasted(...)` duration.
+`Todo: Toggle Timer` pauses and resumes a started task by appending `@toggle(...)` timestamps and maintaining an `@paused` styling marker. Paused time is excluded from the status bar timer and from the final `@lasted(...)` or `@wasted(...)` duration.
 
 To contribute embedded markers to VS Code's Problems view, map each marker to an `error`, `warning`, `info`, or `hint` severity with `todo.embedded.problems`. Only configured markers are reported. Diagnostics are populated when Todo+2 is active, for example after opening the Embedded Todos view.
 
@@ -505,6 +546,10 @@ alias todo="ag --color-line-number '1;36' --color-path '1;36' --ignore-case --pr
 If you found a problem, or have a feature request, please open an [issue](https://github.com/vycdev/vscode-todo-plus-two/issues) about it.
 
 You can find more about contributing here: [CONTRIBUTING.md](/CONTRIBUTING.md)
+
+Run `npm run check` for types, unit/integration tests, the development build, and formatting. Run `npm run test:e2e:tags` in a desktop session with Node.js 22 or newer to launch an isolated VS Code Extension Development Host for tag styling. It exercises real task commands, undo/redo, dependencies, archiving, Markdown handling, live settings, and rendered styles in dark and light themes. The runner downloads VS Code through `@vscode/test-electron` and writes a JSON report and screenshots to a temporary artifact directory. The separate `npm run test:e2e` suite covers fenced code notes.
+
+Set `VSCODE_EXECUTABLE_PATH` to reuse a VS Code executable, `VSCODE_TEST_VERSION` to select a version, or `TODO_E2E_ARTIFACT_DIR` to choose where reports and screenshots are saved. Tests use a temporary workspace, profile, and extensions directory.
 
 ## License
 

@@ -10,9 +10,7 @@ import Formatted from './formatted';
 import Project from './project';
 import Tag from './tag';
 import TodoDue from './todo_due';
-import TodoDone from './todo_done';
-import TodoCancelled from './todo_cancelled';
-import TodoStarted from './todo_started';
+import { disposeTaskTagDocument, getTaskTagDecorations, pruneTaskTagDocument } from './task-tags';
 import { applyCustomColors } from './theme-colors';
 import { hasMultilineSyntax, IncrementalDocument } from './incremental-document';
 
@@ -39,7 +37,10 @@ const Document = {
       StatusbarTimer = require('../../statusbars/timer').default;
 
     if (res) {
-      const doc = new DocumentModule(res);
+      const doc = new DocumentModule(res),
+        editors = vscode.window.visibleTextEditors.filter(
+          (editor) => editor.document === doc.textDocument
+        );
 
       if (doc.isSupported()) {
         const text = doc.textDocument.getText();
@@ -56,56 +57,61 @@ const Document = {
           Utils.statistics.tokens.updateProjects(doc.textDocument, items);
         }
 
-        const decorations = Document.getItemsDecorations(items);
+        const decorations = Document.getItemsDecorations(items, doc.textDocument);
 
-        decorations.forEach(({ type, ranges }) => {
-          doc.textEditor.setDecorations(type, ranges);
+        // Decoration types are shared by a document, but their ranges belong to
+        // each editor. Replacing a type must refresh every visible split view.
+        editors.forEach((editor) => {
+          decorations.forEach(({ type, ranges }) => editor.setDecorations(type, ranges));
+          EditorDecorationTypes.set(
+            editor,
+            decorations.map(({ type }) => type)
+          );
+          const cache =
+            typeof doc.textDocument.version === 'number' &&
+            doc.textDocument.languageId === 'todo' &&
+            items.projects &&
+            !hasMultilineSyntax(text) &&
+            Utils.statistics.tokens.createGlobal
+              ? new IncrementalDocument(
+                  editor,
+                  text,
+                  items,
+                  decorations,
+                  (line) => Document.getItems(line),
+                  (line) => Document.getItemsDecorations(line, doc.textDocument, false)
+                )
+              : undefined;
+          Snapshots.set(editor, {
+            document: doc.textDocument,
+            text,
+            version: doc.textDocument.version,
+            cache,
+          });
         });
-        EditorDecorationTypes.set(
-          doc.textEditor,
-          decorations.map(({ type }) => type)
-        );
 
         if (isActive) {
           StatusbarTimer.update(doc, items.todosStarted);
         }
 
-        const cache =
-          typeof doc.textDocument.version === 'number' &&
-          doc.textDocument.languageId === 'todo' &&
-          items.projects &&
-          !hasMultilineSyntax(text) &&
-          Utils.statistics.tokens.createGlobal
-            ? new IncrementalDocument(
-                doc.textEditor,
-                text,
-                items,
-                decorations,
-                (line) => Document.getItems(line),
-                (line) => Document.getItemsDecorations(line)
-              )
-            : undefined;
-        Snapshots.set(doc.textEditor, {
-          document: doc.textDocument,
-          text,
-          version: doc.textDocument.version,
-          cache,
-        });
         if (!isActive) {
           // Background editor decorations may need their own global conditions,
           // but the status bar continues to describe the active document.
           Utils.statistics.tokens.global = previousGlobalTokens;
         }
-      } else if (doc.textEditor) {
-        Snapshots.delete(doc.textEditor);
-        const types = EditorDecorationTypes.get(doc.textEditor) || [];
-        EditorDecorationTypes.delete(doc.textEditor);
-        types.forEach((type) => {
-          try {
-            doc.textEditor.setDecorations(type, []);
-          } catch {
-            // A color refresh may already have disposed the shared type.
-          }
+      } else {
+        disposeTaskTagDocument(doc.textDocument);
+        editors.forEach((editor) => {
+          Snapshots.delete(editor);
+          const types = EditorDecorationTypes.get(editor) || [];
+          EditorDecorationTypes.delete(editor);
+          types.forEach((type) => {
+            try {
+              editor.setDecorations(type, []);
+            } catch {
+              // A color refresh may already have disposed the shared type.
+            }
+          });
         });
       }
     }
@@ -151,6 +157,16 @@ const Document = {
         active = vscode.window.activeTextEditor?.document === doc.textDocument;
       if (result) {
         snapshot.version = doc.textDocument.version;
+        EditorDecorationTypes.set(doc.textEditor, result.types);
+        // A split that has not processed this edit may still use an old type.
+        // Retire it only after every visible cache has released it.
+        const retained = new Set<vscode.TextEditorDecorationType>();
+        vscode.window.visibleTextEditors
+          .filter((editor) => editor.document === doc.textDocument)
+          .forEach((editor) =>
+            (EditorDecorationTypes.get(editor) || []).forEach((type) => retained.add(type))
+          );
+        pruneTaskTagDocument(doc.textDocument, retained);
         if (active && result.timerChanged)
           require('../../statusbars/timer').default.update(doc, result.started());
         if (!active) {
@@ -183,7 +199,7 @@ const Document = {
     };
   },
 
-  getItemsDecorations(items) {
+  getItemsDecorations(items, document?: vscode.TextDocument, pruneStyles: boolean = true) {
     const colorsEnabled = Config.getKey('colors.enabled') !== false;
 
     return _.concat(
@@ -192,9 +208,11 @@ const Document = {
       applyCustomColors(new Tag().getDecorations(items.tags), colorsEnabled),
       applyCustomColors(new TodoDue().getDecorations(items.tagsDue), colorsEnabled),
       new Project().getDecorations(items.projects),
-      applyCustomColors(new TodoStarted().getDecorations(items.todosStarted), colorsEnabled),
-      new TodoDone().getDecorations(items.todosDone),
-      applyCustomColors(new TodoCancelled().getDecorations(items.todosCancelled), colorsEnabled)
+      getTaskTagDecorations(
+        [...items.todosBox, ...items.todosDone, ...items.todosCancelled],
+        document,
+        pruneStyles
+      )
     );
   },
 };

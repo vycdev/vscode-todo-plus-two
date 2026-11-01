@@ -1,7 +1,12 @@
 ### Version 5.4.0
 
+#### Compatibility notes
+
+- Task-text styling now follows literal tags through `todo.tags.styles`. Symbol-only done/cancelled tasks use syntax-theme styling until they have an `@done`/`@cancelled` tag; existing files are not rewritten. Legacy colors and the done-strikethrough preference supply default rule values. Timer commands maintain an `@paused` marker; use `Todo: Sync Paused Tags` to repair markers after manual edits or migrate existing paused tasks. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+
 #### New features
 
+- Added configurable task-text styles selected by tags, with default Done, Cancelled, Started, and Paused rules. Rules support colors, backgrounds, bold, italic, strikethrough, theme overrides, and per-property priority with the last matching tag breaking ties. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Added Edit Task and Toggle Done row actions to the Files and Due sidebars. Edit task text and tags through a prefilled input prompt, or change task status, while keeping the current editor active. Actions support Todo files and Markdown tasks and reject stale tree rows or prompt edits. VS Code may add an inactive tab for unsaved changes. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
 - Added a root favicon using the Todo+2 logo so T3 Code can discover the project's icon. [#284](https://github.com/vycdev/vscode-todo-plus-two/issues/284)
 - Added explicit, nestable `@region` / `@endregion` folding markers for Todo files, including support for the editor's Fold All Regions command. [#92](https://github.com/vycdev/vscode-todo-plus-two/issues/92)
@@ -13,6 +18,11 @@
 
 #### Fixes
 
+- Preserved literal tag text in IDs, dependencies, and other arguments during paused-marker cleanup, and ignored nested timer examples when synchronizing markers. Released obsolete tag-style decoration resources when tags are removed or documents close. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Kept backticks inside tag arguments literal so they cannot hide following task-style or timer tags. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Honored empty task-style color and background overrides for individual themes instead of falling back to the rule's base colors. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Refreshed task styles in every visible split view of the same file after tag edits, and cleared all splits when task support is disabled. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
+- Preserved tag styles on untouched tasks during incremental edits, releasing obsolete decoration types only after all visible split caches stop using them. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Refreshed the Files and Due sidebars after rejecting a stale task action so a retry uses the current document when VS Code has disposed and reopened a background file. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
 - Rejected sidebar prompt edits when Markdown section settings exclude the task while the prompt is open. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
 - Prevented the default embedded-todo regex from freezing the Extension Host on long runs of spaces in comments, affecting both JavaScript scanning and external-search result parsing. [#21](https://github.com/vycdev/vscode-todo-plus-two/issues/21)

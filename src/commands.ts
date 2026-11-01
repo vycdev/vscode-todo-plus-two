@@ -752,6 +752,7 @@ async function toggleDocumentStart(
         if (!timerState || !timerState.active) continue;
 
         fileTodo.addTag(toggleTag);
+        fileTodo.syncPausedTag();
         const todoEdits = fileTodo.makeEdit();
         if (todoEdits) edits.push(...todoEdits);
       }
@@ -807,6 +808,14 @@ function toggleTimer() {
       invalid: 'Only todos can toggle their timer',
       filtered: 'Only started, unfinished todos can toggle their timer',
     },
+  });
+}
+
+function syncPausedTags() {
+  return callTodosMethod({
+    checkValidity: true,
+    method: 'syncPausedTag',
+    errors: { invalid: 'Only todos can synchronize paused tags' },
   });
 }
 
@@ -1377,6 +1386,7 @@ export {
   toggleCancelled,
   toggleStart,
   toggleTimer,
+  syncPausedTags,
   toggleStatusBarTimer,
   archive,
   unarchive,

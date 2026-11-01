@@ -415,8 +415,8 @@ export class IncrementalDocument {
       line.decorations.forEach((_, type) => changedTypes.add(type));
       const next = new Map<TextEditorDecorationType, any[]>();
       for (const { type, ranges } of this.decorateItems(line.items)) {
-        this.types.add(type);
         if (ranges.length) {
+          this.types.add(type);
           next.set(
             type,
             ranges.map((range) => shiftRange(range, -line.lineNumber))
@@ -433,12 +433,14 @@ export class IncrementalDocument {
         for (const range of line.decorations.get(type) || [])
           ranges.push(shiftRange(range, line.lineNumber));
       this.editor.setDecorations(type, ranges);
+      if (!ranges.length) this.types.delete(type);
     });
     statistics.global = this.global;
     statistics.projects = this.projectTokens;
     const timerChanged =
       structural || wasStarted || added.some((line) => line.items.todosStarted.length);
     return {
+      types: Array.from(this.types),
       globalChanged: this.global !== previousGlobal,
       timerChanged,
       started: () => (items || this.collect()).todosStarted,
