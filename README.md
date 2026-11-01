@@ -45,6 +45,8 @@ It adds the following commonly used commands to the command palette:
 ```js
 'Todo: Open'; // Open or create your project's todo file
 'Todo: Open Embedded'; // Open embedded todos
+'Todo: Focus on Tag…'; // Keep matching tasks and their parent context visible in the editor
+'Todo: Clear Focus'; // Unfold the active file and restore normal project/region folding
 'Todo: Toggle Box'; // Toggle todo's box symbol
 'Todo: Toggle Done'; // Toggle todo's done symbol
 'Todo: Toggle Cancelled'; // Toggle todo's cancelled symbol
@@ -129,6 +131,33 @@ Press Enter at the end of a plain numbered item such as `1. First item` to inser
 Numbering preserves the current item's number, indentation, and spacing after the dot. It updates only consecutive numbered lines with the same indentation, stopping at blank lines, headings, other text, or indentation changes. Enter on an empty item removes its marker. Use one cursor at the end of an item; other cursor positions, selections, and multiple cursors keep normal Enter behavior.
 
 These numbered entries remain notes rather than checkbox todos. Configured Todo symbols take precedence: numbering falls back to normal Enter if it would create a Todo using one of those symbols. Use the usual Todo symbols for status, statistics, dependencies, and archiving. Numbering is updated only by Enter, not on open, save, deletion, paste, or reordering. Markdown-language documents and nested list numbering are outside this feature's scope.
+
+### Folding regions
+
+Use standalone `@region` and `@endregion` lines to make a section foldable, even when its contents are not indented:
+
+```todo
+@region
+Release:
+  ☐ Prepare the release
+  @region
+  ☐ Check the changelog
+  ☐ Review the documentation
+  @endregion
+@endregion
+```
+
+Regions can be nested. The opening `@region` line stays visible when folded; the contents and closing `@endregion` line are hidden. Use the editor's folding controls or **Fold All Regions** / **Unfold All Regions** commands. Regions are available with both `auto` and `indentation` editor folding strategies.
+
+Markers must appear alone on their lines, with optional surrounding whitespace. Unmatched markers are ignored by the Todo folding provider. Project folds remain available inside and around regions; if their ranges cross, the explicit region takes precedence. Adding a region does not automatically collapse it on open.
+
+### Focus on a tag
+
+Run **Todo: Focus on Tag…** to pick a tag used on tasks in the active Todo file. The editor keeps matching tasks and their project/parent-task context visible, folding all other lines. Tag names match exactly and case-insensitively: `@critical` includes `@CRITICAL` and `@critical(reason)`, but not `@criticality`. Inline and fenced code examples are ignored. Tags on projects or parent tasks are not inherited by their children.
+
+On first use, the command inserts a single `(folded)` line at the top of the document to anchor the leading fold. This is a normal, undoable text edit and the header remains when you save or clear focus. An existing standalone `@region` on the first line can serve as the header instead. Further uses reuse the header.
+
+Focus refreshes after edits, changes to the editor's indentation settings, and when you return to the file. Undoing or removing the header disables focus. If edits remove all matches, everything below the header is collapsed. Use **Todo: Clear Focus** to unfold the document and restore ordinary project and region folding; previous manual fold states are not restored. Focus is per document for the current session and requires `editor.folding` to be enabled with `editor.foldingStrategy` set to `auto`.
 
 ### Task priorities
 

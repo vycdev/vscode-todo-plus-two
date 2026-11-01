@@ -5,6 +5,8 @@ const withProvider = async (name: string, run: (Provider: any) => Promise<void> 
   const originalLoad = NodeModule._load;
   const subject = require.resolve(`../src/providers/${name}`);
   const previous = require.cache[subject];
+  const configurationPath = require.resolve('../src/utils/editor-configuration');
+  const previousConfiguration = require.cache[configurationPath];
   class Position {
     constructor(
       public line: number,
@@ -30,18 +32,28 @@ const withProvider = async (name: string, run: (Provider: any) => Promise<void> 
     ) {}
   }
   NodeModule._load = (request, parent, isMain) => {
-    if (parent && parent.filename === subject) {
+    if (parent && (parent.filename === subject || parent.filename === configurationPath)) {
       if (request === 'vscode')
         return {
           Position,
           Range,
           DocumentLink,
           FoldingRange,
+          FoldingRangeKind: { Region: 'region' },
+          version: '1.36.0',
+          window: { visibleTextEditors: [] },
           Uri: { parse: (value) => value },
-          workspace: { getConfiguration: () => ({ get: () => 2 }) },
+          workspace: {
+            getConfiguration: (section) => ({ get: () => (section === 'editor' ? 2 : undefined) }),
+          },
         };
       if (request === '../consts')
-        return { default: { symbols: { tag: '@' }, regexes: { project: /^\s*[^:]+:\s*$/m } } };
+        return {
+          default: {
+            symbols: { tag: '@' },
+            regexes: { project: /^\s*[^:]+:\s*$/m, todo: /^\s*[☐✔✘] /gm },
+          },
+        };
       if (request === '../todo/document' || request === '../config') return { default: {} };
       if (request === '../utils/dependency_index')
         return { default: { get: async () => ({ targets: { real: [{}] } }) } };
@@ -50,9 +62,13 @@ const withProvider = async (name: string, run: (Provider: any) => Promise<void> 
   };
   try {
     delete require.cache[subject];
-    await run(require(subject).default);
+    delete require.cache[configurationPath];
+    const loaded = require(subject);
+    await run(name === 'folding' ? loaded.FoldingProvider : loaded.default);
   } finally {
     NodeModule._load = originalLoad;
+    if (previousConfiguration) require.cache[configurationPath] = previousConfiguration;
+    else delete require.cache[configurationPath];
     if (previous) require.cache[subject] = previous;
     else delete require.cache[subject];
   }

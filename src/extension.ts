@@ -6,7 +6,7 @@ import Config from './config';
 import Consts from './consts';
 import CompletionProvider from './providers/completion';
 import DependencyLinkProvider from './providers/dependency_links';
-import FoldingProvider from './providers/folding';
+import { tagFocus } from './tag_focus';
 import { FileLinkProvider } from './providers/file_links';
 import EmbeddedDiagnostics from './providers/embedded_diagnostics';
 import SymbolsProvider from './providers/symbols';
@@ -71,6 +71,7 @@ const activate = function (context: vscode.ExtensionContext) {
   DependencyIndex.initialize(context);
   new EmbeddedDiagnostics(Utils.embedded).initialize(context);
   Utils.init.language(context);
+  tagFocus.initialize(context);
   Utils.statistics.tokens.updateDisabledAll();
 
   const embeddedRefreshTimers = {};
@@ -152,7 +153,6 @@ const activate = function (context: vscode.ExtensionContext) {
       [Consts.languageId, 'markdown'],
       new DependencyLinkProvider()
     ),
-    vscode.languages.registerFoldingRangeProvider(Consts.languageId, new FoldingProvider()),
     vscode.languages.registerDocumentLinkProvider(
       [Consts.languageId, 'markdown'],
       new FileLinkProvider()
