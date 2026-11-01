@@ -11,6 +11,7 @@ import Regex from './regex';
 import { matchesTodoStatus } from './todo-status';
 import { getMarkdownTaskNodes, isMarkdownTaskDocument, isTaskDocument } from './task-source';
 import { maskMarkdownTaskText } from './markdown-task-text';
+import { findClosestRootPath, getFilePathKey } from './file-globs';
 
 /* TYPES */
 
@@ -152,12 +153,21 @@ const DependencyIndex = {
   },
 
   async getTodoDocuments(document?: vscode.TextDocument) {
-    const documents = vscode.workspace.textDocuments
+    let documents = vscode.workspace.textDocuments
       .filter((candidate) => isTaskDocument(candidate))
       .slice();
+    const rootPaths = Folder.getAllRootPaths();
 
     try {
-      const paths = await Files.getFilePaths(Folder.getAllRootPaths());
+      const paths = await Files.getFilePaths(rootPaths);
+      const discovered = new Set(paths.map((filePath) => getFilePathKey(filePath)));
+      documents = documents.filter(
+        (candidate) =>
+          !isMarkdownTaskDocument(candidate) ||
+          candidate.uri.scheme !== 'file' ||
+          !findClosestRootPath(candidate.uri.fsPath, rootPaths) ||
+          discovered.has(getFilePathKey(candidate.uri.fsPath))
+      );
       const fileDocuments = await loadAvailableDocuments(
         paths,
         (filePath) => vscode.workspace.openTextDocument(filePath),

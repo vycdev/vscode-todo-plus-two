@@ -5,10 +5,22 @@ import stringMatches from 'string-matches';
 import * as vscode from 'vscode';
 import Consts from '../consts';
 import Utils from '../utils';
-import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
-import { replaceMarkdownTaskMarker } from '../utils/markdown-tasks';
-import { maskInlineCode, removeTodoStatusTag } from '../utils/todo-status';
-import { maskMarkdownTaskText, transformMarkdownTaskText } from '../utils/markdown-task-text';
+import {
+  getMarkdownTaskNodes,
+  getMarkdownTaskOptions,
+  isMarkdownTaskDocument,
+} from '../utils/task-source';
+import {
+  MarkdownTaskNode,
+  getMarkdownTaskCreation,
+  replaceMarkdownTaskMarker,
+} from '../utils/markdown-tasks';
+import { removeTodoStatusTag } from '../utils/todo-status';
+import {
+  getMarkdownCommentRanges,
+  maskMarkdownTaskText,
+  transformMarkdownTaskText,
+} from '../utils/markdown-task-text';
 import {
   Line,
   Archive,
@@ -161,6 +173,16 @@ class Document {
     return this.getItemAt(Todo, lineNumber, checkValidity);
   }
 
+  getTodoForCreationAt(lineNumber: number) {
+    if (!this.isMarkdown()) return;
+    const creation = getMarkdownTaskCreation(
+      this.textDocument.getText(),
+      lineNumber,
+      getMarkdownTaskOptions()
+    );
+    return creation ? this.getMarkdownItems(Todo, undefined, lineNumber, creation)[0] : undefined;
+  }
+
   getTodosBox() {
     return this.getItems(TodoBox, Consts.regexes.todo).filter((todo) => todo.isBox());
   }
@@ -204,8 +226,13 @@ class Document {
   }
 
   /** Source adapter: domain items keep their real source lines and native edits. */
-  private getMarkdownItems(Item, regex?: RegExp, lineNumber?: number): any[] {
-    const nodes = getMarkdownTaskNodes(this.textDocument);
+  private getMarkdownItems(
+    Item,
+    regex?: RegExp,
+    lineNumber?: number,
+    creation?: { node: MarkdownTaskNode; text: string }
+  ): any[] {
+    const nodes = creation ? [creation.node] : getMarkdownTaskNodes(this.textDocument);
     const todoType = Item === Todo || Item.prototype instanceof Todo;
     if (Item === Comment || Item === Formatted || Item === Line) return [];
     const items = [];
@@ -261,7 +288,8 @@ class Document {
           );
         };
         item.addTag = (tag: string) => {
-          const comment = maskInlineCode(item.lineNextText).indexOf('<!--');
+          const ranges = getMarkdownCommentRanges(item.lineNextText);
+          const comment = ranges.length ? ranges[0].start : -1;
           item.lineNextText =
             comment < 0
               ? `${item.lineNextText.trimEnd()} ${tag}`
@@ -272,12 +300,9 @@ class Document {
         item.isCancelled = () => node.status === 'cancelled';
         item.setSymbolAndState = (symbol, state) => {
           const was = item.getStatus();
-          item.lineNextText = replaceMarkdownTaskMarker(
-            item.lineNextText,
-            node,
-            state,
-            Consts.symbols
-          );
+          item.lineNextText = creation
+            ? creation.text
+            : replaceMarkdownTaskMarker(item.lineNextText, node, state, Consts.symbols);
           if (state === 'done' || state === 'cancelled') item.unfinish();
           item.setStatus(item.makeStatus(state), was);
           if (

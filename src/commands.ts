@@ -100,7 +100,15 @@ async function callTodosMethod(options?, textEditor = vscode.window.activeTextEd
   const version = textEditor.document.version;
 
   const lines = getSelectedLines(textEditor),
-    todos = _.filter(lines.map((line) => doc.getTodoAt(line, options.checkValidity))) as Todo[];
+    todos = _.filter(
+      lines.map(
+        (line) =>
+          doc.getTodoAt(line, options.checkValidity) ||
+          (options.method === 'toggleBox' && isMarkdownTaskDocument(textEditor.document)
+            ? doc.getTodoForCreationAt(line)
+            : undefined)
+      )
+    ) as Todo[];
 
   if (todos.length !== lines.length) vscode.window.showErrorMessage(options.errors.invalid);
 

@@ -7,6 +7,16 @@ import {
 } from '../src/utils/markdown-archive';
 
 describe('Markdown task sources', () => {
+  it('honors Markdown backslash escapes before status tags and comment delimiters', () => {
+    expect(parseMarkdownTasks('[ ] Literal \\@done')[0].status).to.equal('box');
+    expect(parseMarkdownTasks('[ ] Real \\\\@done')[0].status).to.equal('done');
+    expect(parseMarkdownTasks('[ ] Literal \\\\\\@done')[0].status).to.equal('box');
+    expect(parseMarkdownTasks('[ ] Real \\<!-- @done')[0].status).to.equal('done');
+  });
+
+  it('does not treat escaped backticks as code delimiters', () => {
+    expect(parseMarkdownTasks('[ ] Real \\`@done\\`')[0].status).to.equal('done');
+  });
   it('does not let a backtick inside a comment hide its actual closing delimiter', () => {
     const node = parseMarkdownTasks('[ ] Task <!-- ` --> literal` @done')[0];
     expect(node.status).to.equal('done');
@@ -230,6 +240,52 @@ describe('Markdown task sources', () => {
 });
 
 describe('Markdown archive round trips', () => {
+  it('safely serializes project titles that resemble tasks, headings, fences, or comments', () => {
+    for (const title of [
+      '[ ] Milestone',
+      '``` Examples',
+      '## Notes',
+      '**Literal**',
+      '<!-- Label -->',
+      '☐ Team',
+      'a\\b:*label',
+    ]) {
+      const original = `# ${title}\n- [x] Finished\n`;
+      const blocks = collectMarkdownArchiveBlocks(original, {});
+      const archived = insertMarkdownArchiveBlocks(
+        removeMarkdownArchiveBlocks(original, blocks),
+        blocks,
+        {}
+      );
+      const tasks = parseMarkdownTasks(archived).filter((node) => node.kind === 'todo');
+      expect(
+        tasks.map((node) => [node.title, node.status, node.inArchive]),
+        title
+      ).to.deep.equal([['Finished', 'done', true]]);
+      const restoring = collectMarkdownArchiveBlocks(archived, {}, [tasks[0].lineNumber], true);
+      const restored = insertMarkdownArchiveBlocks(
+        removeMarkdownArchiveBlocks(archived, restoring),
+        restoring,
+        {},
+        false
+      );
+      expect(
+        parseMarkdownTasks(restored).find((node) => node.kind === 'todo' && !node.inArchive).parent,
+        title
+      ).to.equal(0);
+    }
+  });
+
+  it('rejects archive destinations that hide inserted tasks in unfinished code blocks', () => {
+    for (const source of ['[x] Done', '# Tasks\n[x] Done']) {
+      const blocks = collectMarkdownArchiveBlocks(source, {});
+      for (const archive of ['# Archive\n```\nUnfinished example', '```\nUnfinished example']) {
+        expect(() => insertMarkdownArchiveBlocks(archive, blocks, {})).to.throw(
+          'Source tasks were kept'
+        );
+      }
+    }
+  });
   it('restores a task below an existing heading inside a list item', () => {
     const content = '# Tasks\n- [ ] Parent\n  ## Part\n  - [x] Child\n- [ ] Sibling';
     const blocks = collectMarkdownArchiveBlocks(content, {});

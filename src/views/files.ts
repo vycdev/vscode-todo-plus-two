@@ -19,6 +19,7 @@ import Placeholder from './items/placeholder';
 import Todo from './items/todo';
 import View from './view';
 import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
+import { transformMarkdownTaskText } from '../utils/markdown-task-text';
 
 /* FILES */
 
@@ -199,7 +200,9 @@ class Files extends View {
           documentVersion: document.version,
         };
         const label =
-          this.config.file.view.showTags === false ? Tags.removeAll(node.title) : node.title;
+          this.config.file.view.showTags === false
+            ? transformMarkdownTaskText(node.title, Tags.removeAll)
+            : node.title;
         const hasChildren = nodes.some(
           (candidate) => candidate.parent === node.lineNumber && visible.has(candidate.lineNumber)
         );

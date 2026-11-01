@@ -23,6 +23,7 @@ const loadMarkdown = (initial: string, settings = {}) => {
     .forEach((key) => _.set(config, key.slice(5), _.cloneDeep(properties[key].default)));
   Object.keys(settings).forEach((key) => _.set(config, key, settings[key]));
   let content = initial;
+  let archiveContent = '# Archive\n\nSaved note.\n';
   const messages: string[] = [];
   const transfers: { destination: string; content: string }[] = [];
   class Position {
@@ -122,6 +123,8 @@ const loadMarkdown = (initial: string, settings = {}) => {
     },
     workspace: {
       textDocuments: [document],
+      openTextDocument: async (filePath: string) =>
+        vscode.workspace.textDocuments.find((candidate) => candidate.uri.fsPath === filePath),
       getConfiguration: () => ({ get: (key) => (key === 'todo' ? config : {}) }),
       applyEdit: async (edit) => {
         const edits = edit.entries.get(uri.toString()) || [];
@@ -183,7 +186,7 @@ const loadMarkdown = (initial: string, settings = {}) => {
       if (resolved === path.join(sourceRoot, 'utils/archive-storage'))
         return {
           archiveToFile: async (destination, source, edits, merge) => {
-            transfers.push({ destination, content: merge('# Archive\n\nSaved note.\n') });
+            transfers.push({ destination, content: merge(archiveContent) });
             const edit = new WorkspaceEdit();
             edit.set(source.uri, edits);
             await vscode.workspace.applyEdit(edit);
@@ -208,6 +211,7 @@ const loadMarkdown = (initial: string, settings = {}) => {
     const Document = require('../src/todo/document').default;
     const decorator = require('../src/todo/decorators/document').default;
     const dependencyIndex = require('../src/utils/dependency_index').default;
+    const getTodoDocuments = dependencyIndex.getTodoDocuments.bind(dependencyIndex);
     dependencyIndex.getTodoDocuments = async () => [document];
     const commands = require('../src/commands');
     const filesView = require('../src/views/files').default;
@@ -223,6 +227,8 @@ const loadMarkdown = (initial: string, settings = {}) => {
       messages,
       commands,
       dependencyIndex,
+      getTodoDocuments,
+      workspace: vscode.workspace,
       Document,
       decorator,
       utils,
@@ -231,6 +237,9 @@ const loadMarkdown = (initial: string, settings = {}) => {
       fileService,
       completion,
       transfers,
+      setArchiveContent: (text: string) => {
+        archiveContent = text;
+      },
       setText: (text) => {
         content = text;
         document.version++;
@@ -246,6 +255,114 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('keeps dependency IDs containing Markdown escape characters portable', async () => {
+    const id = String.raw`path\*glob`;
+    const state = loadMarkdown(`[ ] Setup @id(${id})\n[ ] Ship @depends(${id})`, {
+      'timekeeping.finished.enabled': false,
+    });
+    const index = await state.dependencyIndex.get();
+    expect(Object.keys(index.targets)).to.deep.equal([id]);
+    expect(Object.keys(index.dependencies)).to.deep.equal([id]);
+    state.select(1);
+    await state.commands.toggleDone();
+    expect(state.document.lineAt(1).text).to.equal(`[ ] Ship @depends(${id})`);
+    state.select(0);
+    await state.commands.toggleDone();
+    state.select(1);
+    await state.commands.toggleDone();
+    expect(state.document.lineAt(1).text).to.equal(`[x] Ship @depends(${id})`);
+  });
+  it('keeps escaped metadata literal through dependency checks, completion and archive cleanup', async () => {
+    const literals = '\\@done \\@id(hidden) \\@depends(missing) \\@today';
+    const state = loadMarkdown(`[ ] Real ${literals}`, {
+      'timekeeping.finished.enabled': false,
+      'archive.type': 'InSameFile',
+    });
+    const index = await state.dependencyIndex.get();
+    expect(Object.keys(index.targets)).to.deep.equal([]);
+    expect(Object.keys(index.dependencies)).to.deep.equal([]);
+    state.select(0);
+    await state.commands.toggleDone();
+    expect(state.document.getText()).to.equal(`[x] Real ${literals}`);
+    await state.commands.archive();
+    expect(state.document.getText()).to.include(`[x] Real ${literals}`);
+  });
+
+  it('hides only real tags from Markdown view labels', async () => {
+    const state = loadMarkdown('[ ] Real \\@literal @work', { 'file.view.showTags': false });
+    const items = await state.filesView.getChildren({
+      obj: { filePath: state.document.uri.fsPath, textEditor: state.document },
+    });
+    expect(items[0].label).to.equal('Real \\@literal');
+  });
+  it('drops already-open excluded Markdown files from workspace dependency discovery', async () => {
+    const state = loadMarkdown('[ ] Excluded @id(excluded)');
+    const allowed = {
+      ...state.document,
+      uri: {
+        ...state.document.uri,
+        fsPath: path.resolve('allowed.md'),
+        toString: () => 'file:///allowed.md',
+      },
+      getText: () => '[x] Allowed @id(allowed)',
+      lineAt: (lineNumber) => ({
+        ...state.document.lineAt(lineNumber),
+        text: '[x] Allowed @id(allowed)',
+      }),
+    };
+    state.workspace.textDocuments.push(allowed);
+    state.utils.folder.getAllRootPaths = () => [process.cwd()];
+    state.utils.files.getFilePaths = async () => [allowed.uri.fsPath];
+    state.dependencyIndex.getTodoDocuments = state.getTodoDocuments;
+    expect(Object.keys((await state.dependencyIndex.get()).targets)).to.deep.equal(['allowed']);
+    state.utils.files.getFilePaths = async () => [];
+    expect(Object.keys((await state.dependencyIndex.get()).targets)).to.deep.equal([]);
+    expect(Object.keys((await state.dependencyIndex.get(state.document)).targets)).to.deep.equal([
+      'excluded',
+    ]);
+  });
+  it('creates and restores checkboxes through the explicit Toggle Box command', async () => {
+    const state = loadMarkdown('# Note\nSome prose\n  12. List item', {
+      'timekeeping.created.enabled': false,
+    });
+    state.select(1);
+    await state.commands.toggleBox();
+    expect(state.document.lineAt(1).text).to.equal('- [ ] Some prose');
+    state.select(2);
+    await state.commands.toggleBox();
+    expect(state.document.lineAt(2).text).to.equal('  12. [ ] List item');
+    await state.commands.toggleBox();
+    expect(state.document.lineAt(2).text).to.equal('  12. List item');
+    await state.commands.toggleBox();
+    expect(state.document.lineAt(2).text).to.equal('  12. [ ] List item');
+  });
+
+  it('does not create boxes in code, comments, quotes, front matter, or outside selected sections', async () => {
+    const original =
+      '---\ntitle: Note\n---\n# Note\nOutside\n```\nExample\n```\n<!--\nHidden\n-->\n> Quoted\n## Tasks\nInside';
+    const state = loadMarkdown(original, {
+      'markdown.scope': 'sections',
+      'timekeeping.created.enabled': false,
+    });
+    for (const line of [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11]) {
+      state.select(line);
+      await state.commands.toggleBox();
+      expect(state.document.getText()).to.equal(original);
+    }
+    state.select(13);
+    await state.commands.toggleBox();
+    expect(state.document.lineAt(13).text).to.equal('- [ ] Inside');
+  });
+
+  it('keeps source tasks when a separate archive cannot expose the inserted tasks', async () => {
+    const original = '- [x] Done';
+    const state = loadMarkdown(original, { 'archive.type': 'InSeparateFile' });
+    state.setArchiveContent('# Archive\n```\nUnfinished example');
+    await state.commands.archive();
+    expect(state.document.getText()).to.equal(original);
+    expect(state.transfers).to.have.length(0);
+    expect(state.messages[0]).to.include('Source tasks were kept');
+  });
   it('ignores HTML-comment metadata across status, dependencies, estimates, due dates and completions', async () => {
     const hidden =
       '<!-- @done @id(hidden) @depends(missing) @est(8h) @due(2026-11-01) @started(2026-11-01 10:00) -->';

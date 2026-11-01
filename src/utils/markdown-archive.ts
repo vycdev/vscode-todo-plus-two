@@ -1,4 +1,9 @@
-import { MarkdownTaskNode, MarkdownTaskOptions, parseMarkdownTasks } from './markdown-tasks';
+import {
+  MarkdownTaskNode,
+  MarkdownTaskOptions,
+  parseMarkdownTasks,
+  quoteMarkdownProjectTitle,
+} from './markdown-tasks';
 import { splitLines } from './line-splitting';
 
 export interface MarkdownArchiveBlock {
@@ -6,6 +11,7 @@ export interface MarkdownArchiveBlock {
   end: number;
   path: string[];
   lines: string[];
+  taskCount: number;
 }
 
 const samePath = (left: string[], right: string[]) =>
@@ -79,6 +85,9 @@ export const collectMarkdownArchiveBlocks = (
       end: task.endLine,
       path: pathOf(task, nodes),
       lines: lines.slice(task.lineNumber, task.endLine),
+      taskCount: tasks.filter(
+        (node) => node.lineNumber >= task.lineNumber && node.lineNumber < task.endLine
+      ).length,
     }));
 };
 
@@ -105,6 +114,7 @@ export const insertMarkdownArchiveBlocks = (
   let lines = content ? splitLines(content) : [];
   const parse = () =>
     parseMarkdownTasks(lines.join(eol), { ...options, scope: 'all', includeEmptyProjects: true });
+  const originalTaskCount = parse().filter((node) => node.kind === 'todo').length;
   if (intoArchive && !parse().some((node) => node.archiveRoot)) {
     while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
     if (lines.length) lines.push('');
@@ -142,6 +152,18 @@ export const insertMarkdownArchiveBlocks = (
       lines.splice(insertAt, 0, header);
       nodes = parse();
       target = nodes.find((node) => node.lineNumber === insertAt);
+      const validTarget = () =>
+        target &&
+        target.kind === 'project' &&
+        target.inArchive === intoArchive &&
+        samePath(pathOf(target, nodes).concat(target.title), names);
+      if (!validTarget() && !recreateHeading) {
+        lines[insertAt] = `${prefix}${quoteMarkdownProjectTitle(block.path[depth])}:`;
+        nodes = parse();
+        target = nodes.find((node) => node.lineNumber === insertAt);
+      }
+      if (!validTarget())
+        throw new Error('Unable to create the Markdown archive project. Source tasks were kept');
     }
     let insertAt = target
       ? target.endLine
@@ -152,5 +174,11 @@ export const insertMarkdownArchiveBlocks = (
     const prefix = childPrefix(target, lines);
     lines.splice(insertAt, 0, ...reindent(block.lines, prefix));
   });
+  if (
+    parse().filter((node) => node.kind === 'todo').length !==
+    originalTaskCount + blocks.reduce((count, block) => count + block.taskCount, 0)
+  ) {
+    throw new Error('The Markdown archive could not retain every task. Source tasks were kept');
+  }
   return lines.join(eol);
 };

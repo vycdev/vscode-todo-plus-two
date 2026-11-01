@@ -9,6 +9,10 @@
 - Kept Markdown task discovery and hierarchy correct around indented fence examples, HTML comments, headings inside list items, and custom bracketed symbols. Hidden comment metadata no longer changes task status, dependencies, due dates, estimates, or timers.
 - Refreshed the Files tree for unsaved task edits and cleared editor decorations when Markdown task support is disabled.
 - Preserved multiline comments and relative code indentation when archiving Markdown tasks, and recreated missing section headings when unarchiving in section-only mode.
+- Escaped Markdown archive group labels that resemble task or block syntax, and validated archive merges before removing source tasks.
+- Enabled the explicit Toggle Box command to create and restore Markdown checkboxes on eligible prose and list items.
+- Removed previously loaded Markdown notes from workspace dependency discovery when discovery settings exclude them.
+- Kept escaped Markdown tags literal during task actions and archive cleanup while preserving plain-text dependency IDs.
 - Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
 
 ### Version 5.3.0

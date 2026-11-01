@@ -32,6 +32,12 @@ const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$
 const indentWidth = (line: string) =>
   (line.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '    ').length;
 const headingTitle = (text: string) => text.replace(/[ \t]+#+[ \t]*$/, '').trim();
+const projectTitle = (text: string) =>
+  /^\*\*[\s\S]*\*\*$/.test(text) ? text.slice(2, -2).replace(/\\([!-/:-@[-`{-~])/g, '$1') : text;
+
+/** Literal project labels remain readable even when their text resembles syntax. */
+export const quoteMarkdownProjectTitle = (title: string): string =>
+  `**${title.replace(/[!-/:-@[-`{-~]/g, '\\$&')}**`;
 
 /** Parse task-bearing Markdown blocks, retaining coordinates in the original source. */
 export const parseMarkdownTasks = (
@@ -255,7 +261,7 @@ export const parseMarkdownTasks = (
         endLine: lines.length,
         level: parent ? parent.level + 1 : 0,
         parent: parent && parent.lineNumber,
-        title: (project || list)[1],
+        title: project ? projectTitle(project[1]) : list[1],
         indent,
         contentIndent: list
           ? raw.slice(0, raw.indexOf(list[1])).replace(/\t/g, '    ').length
@@ -303,17 +309,41 @@ export const replaceMarkdownTaskMarker = (
   state: 'box' | 'done' | 'cancelled' | 'other',
   symbols: MarkdownTaskOptions['symbols'] = {}
 ) => {
+  if (state === 'other') {
+    return line.slice(0, task.markerStart) + line.slice(task.markerEnd).replace(/^[ \t]+/, '');
+  }
   const marker =
-    state === 'other'
-      ? ''
-      : task.style === 'checkbox'
-        ? state === 'done'
-          ? '[x]'
-          : '[ ]'
-        : state === 'done'
-          ? symbols.done || '✔'
-          : state === 'cancelled'
-            ? symbols.cancelled || '✘'
-            : symbols.box || '☐';
+    task.style === 'checkbox'
+      ? state === 'done'
+        ? '[x]'
+        : '[ ]'
+      : state === 'done'
+        ? symbols.done || '✔'
+        : state === 'cancelled'
+          ? symbols.cancelled || '✘'
+          : symbols.box || '☐';
   return line.slice(0, task.markerStart) + marker + line.slice(task.markerEnd);
+};
+
+/** Explicit box creation is allowed only where the resulting task can be parsed. */
+export const getMarkdownTaskCreation = (
+  content: string,
+  lineNumber: number,
+  options: MarkdownTaskOptions
+): { node: MarkdownTaskNode; text: string } | undefined => {
+  const lines = splitLines(content);
+  const raw = lines[lineNumber];
+  if (raw === undefined || /^[ \t]*(?:>|#{1,6}\s|`{3,}|~{3,}|<!--|(?:---|\.\.\.)\s*$)/.test(raw))
+    return;
+  const list = raw.match(/^([ \t]*(?:[-+*]|\d+[.)])[ \t]+)(.*)$/);
+  const indentation = (raw.match(/^[ \t]*/) || [''])[0];
+  const text = list
+    ? `${list[1]}[ ] ${list[2]}`
+    : `${indentation}- [ ] ${raw.slice(indentation.length)}`;
+  lines[lineNumber] = text;
+  const node = parseMarkdownTasks(
+    lines.join(content.includes('\r\n') ? '\r\n' : '\n'),
+    options
+  ).find((candidate) => candidate.kind === 'todo' && candidate.lineNumber === lineNumber);
+  return node ? { node: { ...node, status: undefined }, text } : undefined;
 };
