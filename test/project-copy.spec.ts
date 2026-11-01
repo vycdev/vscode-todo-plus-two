@@ -4,6 +4,11 @@ import { renderProjectCopy } from '../src/utils/project-copy';
 const pkg = require('../package.json');
 
 describe('Project copy', () => {
+  it('does not truncate a copied fence at an outdented code line', () => {
+    const text = ['Work:', '  ```ts', 'Archive:', '  ```', 'Next:'];
+    const lines = text.map((text) => ({ text, level: text.startsWith('  ') ? 1 : 0 }));
+    expect(renderProjectCopy(lines, 0, '(0)', 5)).to.equal('Work: (0)\n  ```ts\nArchive:\n  ```');
+  });
   const firstProjectHeaderEnd = 'First:'.length;
   const lines = [
     { text: 'First: @high', level: 0 },

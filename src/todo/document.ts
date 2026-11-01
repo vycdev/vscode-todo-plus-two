@@ -5,6 +5,7 @@ import stringMatches from 'string-matches';
 import * as vscode from 'vscode';
 import Consts from '../consts';
 import Utils from '../utils';
+import { getCodeBlocks, parseCodeBlocks } from '../utils/code-blocks';
 import {
   getMarkdownTaskNodes,
   getMarkdownTaskOptions,
@@ -79,7 +80,9 @@ class Document {
     regex: RegExp
   ) {
     if (this.isMarkdown()) return this.getMarkdownItems(Item, regex);
-    const matchText = _.isString(this.text) ? this.text : this.textDocument.getText(),
+    const matchText = _.isString(this.text)
+        ? parseCodeBlocks(this.text).maskedText
+        : getCodeBlocks(this.textDocument).maskedText,
       matches = stringMatches(matchText, regex);
 
     return matches.map((match) => {
@@ -116,6 +119,8 @@ class Document {
       return item;
     }
     const line = this.textDocument.lineAt(lineNumber);
+
+    if (Item !== Line && getCodeBlocks(this.textDocument).byLine.has(lineNumber)) return;
 
     if (checkValidity && !Item.is(line.text)) return;
 

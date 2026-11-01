@@ -256,6 +256,15 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('keeps Markdown task completion after an indented code example containing backticks', async () => {
+    const line = '[ ] Ship @depends(r';
+    const state = loadMarkdown('    ```python\n    literal code\n\n[ ] Setup @id(real)\n' + line);
+    const items = await state.completion.provideCompletionItems(state.document, {
+      line: 4,
+      character: line.length,
+    });
+    expect(items.map((item) => item.label)).to.deep.equal(['real']);
+  });
   it('keeps archived source unchanged when the original parent path is ambiguous', async () => {
     const state = loadMarkdown(
       '# Tasks\n- [ ] Parent @started(2026-01-01 10:00)\n- [ ] Parent @started(2026-02-01 10:00)\n  - [x] Child',

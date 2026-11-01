@@ -46,6 +46,21 @@ const vscodeStub = {
 };
 
 describe('Dependency index task data flow', () => {
+  it('ignores IDs and references in fenced task examples', async () => {
+    const DependencyIndex = loadDependencyIndex(vscodeStub);
+    const lines = ['```ts', '☐ example @id(fake) @depends(fake)', '```', '☐ real @id(real)'];
+    const document = {
+      languageId: 'todo',
+      uri: { toString: () => 'file:///workspace/TODO', fsPath: '/workspace/TODO' },
+      lineCount: lines.length,
+      lineAt: (line: number) => ({ text: lines[line] }),
+    } as any;
+    vscodeStub.workspace.textDocuments = [document];
+    const index = await DependencyIndex.get(document);
+    expect(Object.keys(index.targets)).to.deep.equal(['real']);
+    expect(Object.keys(index.dependencies)).to.deep.equal([]);
+    expect(index.targets.real[0].lineNumber).to.equal(3);
+  });
   it('indexes IDs that collide with Object prototype properties', async () => {
     const DependencyIndex = loadDependencyIndex(vscodeStub),
       ids = ['__proto__', 'constructor', 'toString'],

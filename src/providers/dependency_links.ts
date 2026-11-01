@@ -5,6 +5,7 @@ import DependencyIndex from '../utils/dependency_index';
 import { DependencyReference, getDependencies } from '../utils/dependencies';
 import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
 import { maskMarkdownTaskText } from '../utils/markdown-task-text';
+import { getCodeBlocks } from '../utils/code-blocks';
 
 /* DEPENDENCY LINKS */
 
@@ -43,7 +44,9 @@ class DependencyLinkProvider implements vscode.DocumentLinkProvider {
       ? getMarkdownTaskNodes(document)
       : undefined;
 
+    const code = markdownNodes ? undefined : getCodeBlocks(document);
     for (let lineNumber = 0; lineNumber < document.lineCount; lineNumber++) {
+      if (code && code.byLine.has(lineNumber)) continue;
       if (
         markdownNodes &&
         !markdownNodes.some((node) => node.kind === 'todo' && node.lineNumber === lineNumber)
