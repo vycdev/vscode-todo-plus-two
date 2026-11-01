@@ -85,7 +85,7 @@ describe('Embedded workspace path aliases', () => {
     remove(fixture);
   });
 
-  const setup = (name: string, rootPaths = [alias]) => {
+  const setup = (name: string, rootPaths = [alias], existingDocument?) => {
     const properties = require('../package.json').contributes.configuration.properties;
     const config = {
       followSymlinks: false,
@@ -95,12 +95,33 @@ describe('Embedded workspace path aliases', () => {
     const events: { [name: string]: (event: { fsPath: string }) => void } = {};
     const dataChanges: (string | undefined)[] = [];
     let refreshes = 0;
-    const document = {
+    const polls = new Map<string, () => void>();
+    const watched: {
+      pattern: any;
+      disposed: boolean;
+      handlers: { [name: string]: (event) => void };
+    }[] = [];
+    const document = existingDocument || {
       uri: { scheme: 'file', fsPath: path.join(workspace, 'index.html') },
+      isDirty: true,
       getText: () => content,
     };
     const stubs = {
+      fs: {
+        ...fs,
+        watchFile: (filePath, _options, listener) => polls.set(filePath, listener),
+        unwatchFile: (filePath, listener) => {
+          expect(polls.get(filePath)).to.equal(listener);
+          polls.delete(filePath);
+        },
+      },
       vscode: {
+        RelativePattern: class {
+          constructor(
+            public base: string,
+            public pattern: string
+          ) {}
+        },
         EventEmitter: class {
           event = () => ({ dispose() {} });
           fire(filePath?: string) {
@@ -111,12 +132,22 @@ describe('Embedded workspace path aliases', () => {
         ProgressLocation: { Window: 1 },
         workspace: {
           textDocuments: [document],
-          createFileSystemWatcher: () => ({
-            onDidCreate: (listener) => (events.create = listener),
-            onDidChange: (listener) => (events.change = listener),
-            onDidDelete: (listener) => (events.delete = listener),
-            dispose() {},
-          }),
+          createFileSystemWatcher: (pattern) => {
+            const record = { pattern, disposed: false, handlers: {} };
+            watched.push(record);
+            const listen = (name, listener) => {
+              events[name] = listener;
+              record.handlers[name] = listener;
+            };
+            return {
+              onDidCreate: (listener) => listen('create', listener),
+              onDidChange: (listener) => listen('change', listener),
+              onDidDelete: (listener) => listen('delete', listener),
+              dispose: () => {
+                record.disposed = true;
+              },
+            };
+          },
         },
         window: {
           activeTextEditor: { document },
@@ -177,6 +208,8 @@ describe('Embedded workspace path aliases', () => {
       notify: (event: string, filePath: string) => events[event]({ fsPath: filePath }),
       dataChanges,
       refreshes: () => refreshes,
+      polls,
+      watched,
     };
   };
 
@@ -187,6 +220,24 @@ describe('Embedded workspace path aliases', () => {
     );
 
   ['js', 'ag'].forEach((name) => {
+    it(`keeps a dirty alias-URI buffer out of the new target in the ${name} provider`, async () => {
+      const { document, setContent } = setup(name);
+      document.uri.fsPath = path.join(alias, 'index.html');
+      setContent('<!--TODO Unsaved A buffer-->');
+      await provider.get();
+      retargetAlias();
+      setContent('<!--TODO Stale A edit-->');
+      provider.updateDocumentData(document);
+      await provider.get();
+      expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+      expect(provider.getTodos(false, false, false, false, true)).to.equal(undefined);
+
+      provider.dispose();
+      setup(name, [alias], document);
+      await provider.get();
+      expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+    });
+
     it(`rescans the ${name} provider after a workspace alias changes targets`, async () => {
       fs.writeFileSync(path.join(workspace, 'index.html'), '<!--TODO First root-->');
       const { document, setContent, dataChanges, refreshes } = setup(name);
@@ -277,6 +328,80 @@ describe('Embedded workspace path aliases', () => {
       process.platform === 'win32' ? 'junction' : 'dir'
     );
   };
+
+  it('rebinds an alias buffer only after a clean reload agrees with the new target', async () => {
+    const { document, setContent } = setup('js');
+    document.uri.fsPath = path.join(alias, 'index.html');
+    setContent('<!--TODO Old A buffer-->');
+    await provider.get();
+    retargetAlias();
+    document.isDirty = false;
+    await provider.get();
+    expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['Second root']);
+
+    setContent('<!--TODO Second root-->');
+    provider.updateDocumentData(document);
+    document.isDirty = true;
+    setContent('<!--TODO New B edit-->');
+    provider.updateDocumentData(document);
+    expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['New B edit']);
+  });
+
+  it('polls alias identity and rebinds physical watches without an editor event', async () => {
+    const { document, setContent, notify, polls, watched } = setup('js');
+    await provider.get();
+    expect(polls.has(alias)).to.equal(true);
+    expect(watched.some((watch) => watch.pattern.base === workspace)).to.equal(true);
+    const staleDelete = watched[0].handlers.delete;
+    retargetAlias();
+    const previousWatches = watched.slice();
+    polls.get(alias)();
+    expect(previousWatches.every((watch) => watch.disposed)).to.equal(true);
+    expect(polls.size).to.equal(0);
+    await provider.get();
+    const other = path.join(fixture, 'other', 'workspace');
+    expect(watched.some((watch) => !watch.disposed && watch.pattern.base === other)).to.equal(true);
+
+    document.uri.fsPath = path.join(other, 'index.html');
+    setContent('<!--TODO Fresh B filesystem update-->');
+    notify('change', document.uri.fsPath);
+    staleDelete({ fsPath: path.join(alias, 'index.html') });
+    await provider.dataRefreshQueue;
+    expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal([
+      'Fresh B filesystem update',
+    ]);
+    provider.dispose();
+    expect(polls.size).to.equal(0);
+    expect(watched.every((watch) => watch.disposed)).to.equal(true);
+  });
+
+  it('keeps the newer edit when it arrives during an initial aliased scan', async () => {
+    const { document, setContent } = setup('js');
+    setContent('<!--TODO Before pending scan-->');
+    let started: () => void;
+    let release: () => void;
+    const reading = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const pendingRead = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const read = provider.getFileData.bind(provider);
+    provider.getFileData = async (filePath) => {
+      const data = await read(filePath);
+      started();
+      await pendingRead;
+      return data;
+    };
+    const pending = provider.get();
+    await reading;
+    setContent('<!--TODO Newer edit-->');
+    provider.updateDocumentData(document);
+    release();
+    await pending;
+    expect(getCachedTodos().map((todo) => todo.message.trim())).to.deep.equal(['Newer edit']);
+    expect(Object.keys(provider.filesData)).to.have.length(1);
+  });
 
   it('detects a changed alias target when requesting cached results', async () => {
     fs.writeFileSync(path.join(workspace, 'index.html'), '<!--TODO First root-->');

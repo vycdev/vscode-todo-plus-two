@@ -22,13 +22,14 @@ class AG extends Abstract {
   static bin = 'ag';
 
   async getFilePaths(rootPaths) {
-    return discoverFiles(
+    const filePaths = await discoverFiles(
       rootPaths,
       this.include || [],
       this.exclude || [],
       !!Config.getKey('followSymlinks'),
       getWorkspaceExcludeRules
     );
+    return filePaths.map((filePath) => filePath.replace(/\\/g, '/'));
   }
 
   execa(filePaths) {
@@ -100,6 +101,7 @@ class AG extends Abstract {
     if (this.disposed || generation !== this.watcherGeneration) return;
 
     ackmate.forEach(({ filePath, line: rawLine, lineNr }) => {
+      filePath = filePath.replace(/\\/g, '/');
       const line = _.trimStart(rawLine),
         matches = parseEmbeddedMatches(line, Consts.regexes.todoEmbedded);
 

@@ -40,13 +40,14 @@ class JS extends Abstract {
     }
   }
   async getFilePaths(rootPaths) {
-    return discoverFiles(
+    const filePaths = await discoverFiles(
       rootPaths,
       this.include || [],
       this.exclude || [],
       !!Config.getKey('followSymlinks'),
       getWorkspaceExcludeRules
     );
+    return filePaths.map((filePath) => filePath.replace(/\\/g, '/'));
   }
 
   async initFilesData(

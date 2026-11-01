@@ -32,6 +32,8 @@ export const createWorkspacePathResolver = (rootPaths: string[]) => {
 
   return {
     rootPaths: rootPaths.slice(),
+    getAliases: () =>
+      roots.filter((root) => getFilePathKey(root.rootPath) !== getFilePathKey(root.realPath)),
     refresh(): boolean {
       let changed = false;
 
