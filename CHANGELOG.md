@@ -21,6 +21,7 @@
 - Preserved ID and dependency tags separated from another tag by punctuation while keeping reference examples inside tag arguments literal.
 - Bounded section-only Markdown task discovery by enclosing list items, including parents outside selected sections, so commands and dependencies do not include following sibling tasks.
 - Restored archived Markdown children to their original parent after its timekeeping or completion-cleanup tags change, retaining IDs and other labels when matching parent paths.
+- Kept archived Markdown tasks in place when their parent path is ambiguous, while allowing unique deeper destinations below repeated ancestor headings.
 - Kept discovered task-file paths consistent with watcher paths on Windows, preventing duplicate or stale file entries after saves and deletions.
 
 ### Version 5.3.0

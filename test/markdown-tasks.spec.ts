@@ -276,6 +276,52 @@ describe('Markdown task sources', () => {
 });
 
 describe('Markdown archive round trips', () => {
+  it('uses a unique deeper destination below repeated ancestor headings', () => {
+    const content = '# Group\n## First\n- [ ] Keeper\n# Group\n## Second\n- [x] Child';
+    const blocks = collectMarkdownArchiveBlocks(content, {});
+    const archived = insertMarkdownArchiveBlocks(
+      removeMarkdownArchiveBlocks(content, blocks),
+      blocks,
+      {}
+    );
+    const task = parseMarkdownTasks(archived).find(
+      (node) => node.kind === 'todo' && node.inArchive
+    );
+    const restoring = collectMarkdownArchiveBlocks(archived, {}, [task.lineNumber], true);
+    const restored = insertMarkdownArchiveBlocks(
+      removeMarkdownArchiveBlocks(archived, restoring),
+      restoring,
+      {},
+      false
+    );
+    const child = parseMarkdownTasks(restored).find((node) => node.title === 'Child');
+    expect(child.parent).to.equal(4);
+    expect(child.inArchive).to.equal(false);
+  });
+
+  it('rejects ambiguous parent paths instead of restoring to the first matching task', () => {
+    const content =
+      '# Tasks\n- [ ] Parent @started(2026-01-01 10:00)\n- [ ] Parent @started(2026-02-01 10:00)\n  - [x] Child';
+    const blocks = collectMarkdownArchiveBlocks(content, {});
+    const archived = insertMarkdownArchiveBlocks(
+      removeMarkdownArchiveBlocks(content, blocks),
+      blocks,
+      {}
+    );
+    const task = parseMarkdownTasks(archived).find(
+      (node) => node.kind === 'todo' && node.inArchive
+    );
+    const restoring = collectMarkdownArchiveBlocks(archived, {}, [task.lineNumber], true);
+    expect(() =>
+      insertMarkdownArchiveBlocks(
+        removeMarkdownArchiveBlocks(archived, restoring),
+        restoring,
+        {},
+        false
+      )
+    ).to.throw('Multiple Markdown parents');
+  });
+
   it('restores a nested task after its original parent gains timekeeping tags', () => {
     const content = '# Tasks\n- [ ] Parent @id(parent)\n  - [x] Child\n- [ ] Parent @id(other)';
     const blocks = collectMarkdownArchiveBlocks(content, {});

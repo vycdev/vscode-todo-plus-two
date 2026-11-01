@@ -157,14 +157,29 @@ export const insertMarkdownArchiveBlocks = (
     let nodes = parse();
     let target = intoArchive ? nodes.find((node) => node.archiveRoot) : undefined;
     const archive = nodes.find((node) => node.archiveRoot);
-    for (let depth = 0; depth < block.path.length; depth++) {
-      const names = block.path.slice(0, depth + 1);
-      const found = nodes.find(
+    const matchingParents = (names: string[]) =>
+      nodes.filter(
         (node) =>
           !node.archiveRoot &&
           node.inArchive === intoArchive &&
           samePath(pathOf(node, nodes, options).concat(pathTitle(node, options)), names)
       );
+    if (!intoArchive) {
+      // A repeated heading can still have a unique destination farther down
+      // the path. Check the deepest existing parent before creating anything.
+      for (let depth = block.path.length; depth > 0; depth--) {
+        const parents = matchingParents(block.path.slice(0, depth));
+        if (!parents.length) continue;
+        if (parents.length > 1)
+          throw new Error(
+            'Multiple Markdown parents match the archived path. Use distinct parent labels; archived tasks were kept'
+          );
+        break;
+      }
+    }
+    for (let depth = 0; depth < block.path.length; depth++) {
+      const names = block.path.slice(0, depth + 1);
+      const found = matchingParents(names)[0];
       if (found) {
         target = found;
         continue;

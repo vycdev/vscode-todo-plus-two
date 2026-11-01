@@ -255,6 +255,22 @@ const loadMarkdown = (initial: string, settings = {}) => {
 };
 
 describe('Markdown task integration', () => {
+  it('keeps archived source unchanged when the original parent path is ambiguous', async () => {
+    const state = loadMarkdown(
+      '# Tasks\n- [ ] Parent @started(2026-01-01 10:00)\n- [ ] Parent @started(2026-02-01 10:00)\n  - [x] Child',
+      { 'archive.type': 'InSameFile' }
+    );
+    await state.commands.archive();
+    const original = state.document.getText();
+    const child = new state.Document(state.editor)
+      .getTodosDone()
+      .find((todo) => todo.markdownNode.inArchive);
+    state.select(child.lineNumber);
+    await state.commands.unarchive();
+    expect(state.document.getText()).to.equal(original);
+    expect(state.messages[0]).to.include('Multiple Markdown parents');
+  });
+
   it('restores a child to its original parent after completion cleans the parent tags', async () => {
     const state = loadMarkdown(
       '# Tasks\n- [ ] Parent @id(parent) @today @cleanup\n  - [x] Child\n- [ ] Parent @id(other)',
