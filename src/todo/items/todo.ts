@@ -321,6 +321,7 @@ class Todo extends Item {
   /* IS */
 
   isBox() {
+    if (/^[^\S\n]*-\s+\[[xX]\]\s/.test(this.text)) return false;
     return matchesTodoStatus(this.text, Consts.regexes.todoBox);
   }
 

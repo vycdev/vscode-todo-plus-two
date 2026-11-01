@@ -12,7 +12,7 @@ const makeEvent = () => {
   };
 };
 
-const loadExtension = () => {
+const loadExtension = (plannedEnabled = false) => {
   const NodeModule = require('module');
   const originalLoad = NodeModule._load;
   const modulePath = require.resolve('../src/extension');
@@ -23,6 +23,9 @@ const loadExtension = () => {
   const closedDocuments = makeEvent();
   const editors = makeEvent();
   const dates = makeEvent();
+  const visible = makeEvent();
+  const focus = makeEvent();
+  const plannedEditors = [];
   const visibleEditors = [
     { supported: true, document: { languageId: 'markdown' } },
     { supported: false, document: { languageId: 'plaintext' } },
@@ -95,6 +98,8 @@ const loadExtension = () => {
     window: {
       onDidChangeActiveTextEditor: editors.subscribe,
       onDidChangeTextEditorSelection: editors.subscribe,
+      onDidChangeVisibleTextEditors: visible.subscribe,
+      onDidChangeWindowState: focus.subscribe,
       visibleTextEditors: visibleEditors,
     },
     languages: {
@@ -111,7 +116,7 @@ const loadExtension = () => {
     './config': {
       default: {
         get: () => ({ embedded: { view: {} }, file: { view: {} } }),
-        getKey: () => 'InSameFile',
+        getKey: (key) => (key === 'planned.enabled' ? plannedEnabled : 'InSameFile'),
         check() {},
       },
     },
@@ -124,6 +129,10 @@ const loadExtension = () => {
         update: (editor?) => {
           events.push('decorations');
           decorationEditors.push(editor);
+        },
+        updatePlanned: (editor) => {
+          events.push('planned-decorations');
+          plannedEditors.push(editor);
         },
       },
     },
@@ -169,6 +178,9 @@ const loadExtension = () => {
       closedDocuments,
       editors,
       dates,
+      visible,
+      focus,
+      plannedEditors,
       files,
       embedded,
       provider,
@@ -185,6 +197,33 @@ const loadExtension = () => {
 };
 
 describe('Extension lifecycle wiring', () => {
+  it('refreshes planned highlights in all visible Todo editors on focus, visibility, and edits', () => {
+    const state = loadExtension(true);
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    state.activate(context);
+    state.visibleEditors.push({ supported: true, document: { languageId: 'todo' } });
+
+    try {
+      for (const fire of [
+        () => state.focus.fire({ focused: true }),
+        () => state.visible.fire(),
+        () =>
+          state.documents.fire({ document: { languageId: 'todo', uri: { scheme: 'untitled' } } }),
+      ]) {
+        state.plannedEditors.length = 0;
+        fire();
+        expect(state.plannedEditors).to.deep.equal(
+          state.visibleEditors.filter((editor) => editor.supported)
+        );
+      }
+      state.plannedEditors.length = 0;
+      state.focus.fire({ focused: false });
+      expect(state.plannedEditors).to.deep.equal([]);
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
+    }
+  });
+
   it('releases task styling resources when a document closes', () => {
     const state = loadExtension();
     const context = { subscriptions: [] as { dispose(): void }[] };
@@ -313,9 +352,15 @@ describe('Extension lifecycle wiring', () => {
         'task-tag-styles',
         'image-paste',
       ]);
-      [state.configuration, state.folders, state.documents, state.editors, state.dates].forEach(
-        (event) => expect(event.listeners.size).to.equal(0)
-      );
+      [
+        state.configuration,
+        state.folders,
+        state.documents,
+        state.editors,
+        state.dates,
+        state.visible,
+        state.focus,
+      ].forEach((event) => expect(event.listeners.size).to.equal(0));
       timers.forEach((callback) => callback());
       expect(state.events).to.deep.equal([]);
       expect(state.embedded.provider).to.equal(undefined);

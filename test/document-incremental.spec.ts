@@ -52,6 +52,27 @@ const expectFullParse = (state) => {
 };
 
 describe('Incremental Todo decorations and statistics', () => {
+  it('keeps minute-refreshed planned ranges after a structural edit without losing the cache', () => {
+    withDecorationEditor('Todo:\n  ☐ Clock @planned(00:00-23:59)\n  ☐ Other @high', (state) => {
+      state.config.planned.enabled = true;
+      state.decorator.update(state.editor);
+      const type = [...state.decorations.entries()].find(
+        ([type, ranges]) =>
+          ranges.length > 0 &&
+          type.options.fontWeight === 'bold' &&
+          type.options.color === state.config.colors.planned
+      )[0];
+      expect(state.decorations.get(type)).to.have.length(1);
+      const end = new Date();
+      end.setHours(23, 59, 0, 0);
+      state.decorator.updatePlanned(state.editor, end);
+      expect(state.decorations.get(type)).to.deep.equal([]);
+      const reads = state.calls.fullText;
+      state.edit(2, 0, 100, '  ☐ Other @low\n  ☐ Added');
+      expect(state.decorations.get(type)).to.deep.equal([]);
+      expect(state.calls.fullText).to.equal(reads);
+    });
+  });
   it('updates both split editors and preserves each editor cache', () => {
     withDecorationEditor('Todo:\n  ☐ First @high', (state) => {
       const secondDecorations = new Map();

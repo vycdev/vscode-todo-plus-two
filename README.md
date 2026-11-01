@@ -286,6 +286,22 @@ Relative entries remain workspace globs. Absolute entries name individual files,
 
 `todo.file.exclude`, enabled `files.exclude` rules, and `todo.followSymlinks` still apply. Exclusions match workspace-relative paths inside a workspace and full paths outside it. Missing or unreadable files are skipped without hiding other Todo files.
 
+### Planned work windows
+
+Enable `todo.planned.enabled` to highlight `@planned(...)` tags while it is time to work on an unfinished task in a Todo file or an enabled Markdown task section:
+
+```todo
+☐ Daily focus @planned(10am-1pm)
+☐ Split session @planned(1pm-3pm, 4pm-5pm)
+☐ Release preparation @planned(2026-11-02 15:00-17:00, 18:00-19:00)
+```
+
+Undated windows repeat daily. An optional `YYYY-MM-DD` date applies to every comma-separated window in that tag. You can use multiple `@planned(...)` tags on one task. Times accept `am`/`pm` (including minutes, such as `10:30am`) or 24-hour `HH:mm`, independently of your timekeeping formats. All windows use your computer's local date and time, include their start, and exclude their end.
+
+The active tag is bold and uses `todo.colors.planned`, with optional `todo.colors.dark.planned` and `todo.colors.light.planned` overrides. It refreshes every minute, after edits, and when returning to the window. Disabling `todo.colors.enabled` also disables this highlighting. Done/cancelled tasks, tags inside inline code, and invalid tags are ignored. A bare `@planned` remains an ordinary label.
+
+Windows must start and end on the same day; overnight windows, weekday recurrence, date-only tags, natural-language dates, and dates inherited from project headings are not supported. Scheduling leaves task status and timers unchanged. Use `@due(...)` for deadlines and the Due sidebar; planned windows do not appear there.
+
 ## Settings
 
 ```js
@@ -323,6 +339,7 @@ Relative entries remain workspace globs. Absolute entries name individual files,
   "todo.colors.due.today": "#f92672", // @due tag color for tasks due today
   "todo.colors.due.soon": "#e5d145", // @due tag color for tasks due soon
   "todo.colors.due.later": "#a6e22e", // @due tag color for future tasks
+  "todo.colors.planned": "#4fc1ff", // Active @planned tag color
   "todo.colors.tags.background": ["#e54545", "#e59f45", "#e5d145", "#ae81ff"], // Special tags' background colors
   "todo.colors.tags.foreground": ["#000000", "#000000", "#000000", "#000000"], // Special tags' foreground colors
   "todo.colors.tags.lineBackground": [], // Whole-line background colors for special tags, matched by todo.tags.names index; the first colored tag wins (include "started" in todo.tags.names to highlight @started)
@@ -334,6 +351,7 @@ Relative entries remain workspace globs. Absolute entries name individual files,
   "todo.tags.styles": { "blocked": { "color": "#e54545", "bold": true } }, // Task-text rules; built-in done/cancelled/started/paused rules are included by default
   "todo.tags.namesInference": true, // Infer commonly used tags' names
   "todo.due.soonDays": 7, // Number of days ahead that @due tags are considered due soon
+  "todo.planned.enabled": false, // Highlight @planned tags during local-time work windows
   "todo.archive.name": "Archive", // Name of the special "Archive" section
   "todo.archive.remove.emptyProjects": true, // Remove projects without todos
   "todo.archive.remove.emptyLines": 1, // Remove extra empty lines, keeping no more than this many consecutive empty lines

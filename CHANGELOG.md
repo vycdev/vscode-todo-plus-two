@@ -6,6 +6,8 @@
 
 #### New features
 
+- Added opt-in `@planned(...)` work windows with daily or dated time ranges, multiple sessions, and automatic active-tag highlighting. Enable `todo.planned.enabled` and customize the active color with `todo.colors.planned`. [#82](https://github.com/vycdev/vscode-todo-plus-two/issues/82)
+
 - Added configurable task-text styles selected by tags, with default Done, Cancelled, Started, and Paused rules. Rules support colors, backgrounds, bold, italic, strikethrough, theme overrides, and per-property priority with the last matching tag breaking ties. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)
 - Added Edit Task and Toggle Done row actions to the Files and Due sidebars. Edit task text and tags through a prefilled input prompt, or change task status, while keeping the current editor active. Actions support Todo files and Markdown tasks and reject stale tree rows or prompt edits. VS Code may add an inactive tab for unsaved changes. [#25](https://github.com/vycdev/vscode-todo-plus-two/issues/25)
 - Added a root favicon using the Todo+2 logo so T3 Code can discover the project's icon. [#284](https://github.com/vycdev/vscode-todo-plus-two/issues/284)
@@ -17,6 +19,10 @@
 - Added PNG/JPEG image paste in saved local Todo files on VS Code 1.97 or newer. Images are stored in a sibling `<filename>.assets` folder and inserted as clickable relative links, with undo/redo and existing-file protection. Non-empty clipboard text keeps its normal paste behavior without waiting for image reads or showing image errors; images can also be selected with Paste As. [#6](https://github.com/vycdev/vscode-todo-plus-two/issues/6)
 
 #### Fixes
+
+- Kept checked Markdown tasks out of pending-task results when `-` is the configured todo box symbol.
+- Preserved `@due(...)` urgency colors when refreshing planned work windows.
+- Rejected malformed planned windows containing inline code in their arguments.
 
 - Replaced the Todo activity bar's standalone checkmark with a checklist icon to make the Todo views easier to recognize. [#53](https://github.com/vycdev/vscode-todo-plus-two/issues/53)
 - Preserved literal tag text in IDs, dependencies, and other arguments during paused-marker cleanup, and ignored nested timer examples when synchronizing markers. Released obsolete tag-style decoration resources when tags are removed or documents close. [#4](https://github.com/vycdev/vscode-todo-plus-two/issues/4)

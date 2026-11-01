@@ -10,6 +10,7 @@ import Formatted from './formatted';
 import Project from './project';
 import Tag from './tag';
 import TodoDue from './todo_due';
+import { getPlannedDecorations } from './todo_planned';
 import { disposeTaskTagDocument, getTaskTagDecorations, pruneTaskTagDocument } from './task-tags';
 import { applyCustomColors } from './theme-colors';
 import { hasMultilineSyntax, IncrementalDocument } from './incremental-document';
@@ -184,6 +185,28 @@ const Document = {
 
   /* ITEMS */
 
+  updatePlanned(res: vscode.TextEditor = vscode.window.activeTextEditor, now: Date = new Date()) {
+    if (!res || !Utils.editor.isSupported(res)) return;
+    const doc = new DocumentModule(res);
+    const colorsEnabled = Config.getKey('colors.enabled') !== false;
+    const enabled = Config.getKey('planned.enabled') === true && colorsEnabled;
+    const planned = applyCustomColors(
+      getPlannedDecorations(enabled ? doc.getTodosBox() : [], now),
+      colorsEnabled
+    );
+    const due = applyCustomColors(new TodoDue().getDecorations(doc.getTagsDue()), colorsEnabled);
+    const foregroundRanges = _.concat(planned[0].ranges, ...due.map(({ ranges }) => ranges));
+    const tags = applyCustomColors(
+      new Tag().getDecorations(doc.getTags(), foregroundRanges),
+      colorsEnabled
+    );
+    const decorations = [...tags, ...due, ...planned];
+    decorations.forEach(({ type, ranges }) => res.setDecorations(type, ranges));
+    const snapshot = Snapshots.get(res);
+    if (snapshot?.document === doc.textDocument && snapshot.version === doc.textDocument.version)
+      snapshot.cache?.replaceDecorations(decorations);
+  },
+
   getItems(doc: DocumentModule) {
     return {
       archive: doc.getArchive(),
@@ -201,12 +224,16 @@ const Document = {
 
   getItemsDecorations(items, document?: vscode.TextDocument, pruneStyles: boolean = true) {
     const colorsEnabled = Config.getKey('colors.enabled') !== false;
+    const planned = applyCustomColors(getPlannedDecorations(items.todosBox), colorsEnabled);
+    const due = applyCustomColors(new TodoDue().getDecorations(items.tagsDue), colorsEnabled);
+    const foregroundRanges = _.concat(planned[0].ranges, ...due.map(({ ranges }) => ranges));
 
     return _.concat(
       applyCustomColors(new Comment().getDecorations(items.comments), colorsEnabled),
       applyCustomColors(new Formatted().getDecorations(items.formatted), colorsEnabled),
-      applyCustomColors(new Tag().getDecorations(items.tags), colorsEnabled),
-      applyCustomColors(new TodoDue().getDecorations(items.tagsDue), colorsEnabled),
+      applyCustomColors(new Tag().getDecorations(items.tags, foregroundRanges), colorsEnabled),
+      due,
+      planned,
       new Project().getDecorations(items.projects),
       getTaskTagDecorations(
         [...items.todosBox, ...items.todosDone, ...items.todosCancelled],
