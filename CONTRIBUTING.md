@@ -11,7 +11,7 @@ This document explains how to set up the project locally, install prerequisites,
 - (Optional) `vsce` if you want to package/publish the extension locally:
 
 ```powershell
-npm install -g vsce
+npm install -g @vscode/vsce
 ```
 
 ## Install dependencies
@@ -64,8 +64,8 @@ npm run compile
 # Build and watch for changes while you edit
 npm run compile:watch
 
-# Publish
-npm run publish
+# Production build (also runs automatically when packaging)
+npm run vscode:prepublish
 ```
 
 Note: the `compile:watch` command is handy while debugging; it keeps `out/` updated automatically.
@@ -111,6 +111,46 @@ code --install-extension .\vscode-todo-plus-two-<version>.vsix
 ```
 
 Replace `<version>` with the actual package filename produced by `vsce package`.
+
+## Preparing and publishing a release
+
+Release preparation happens on a `feat/` branch based on the latest `origin/develop`.
+Open the preparation PR against `develop` and squash merge it after review.
+
+1. Compare all changes since the latest published GitHub release and tag, including
+   entries accidentally added beneath an older version in `CHANGELOG.md`. Keep
+   published release notes unchanged and put every unreleased change in the new
+   version's section.
+2. Update `package.json` and both root version fields in `package-lock.json`.
+   Review README compatibility notes, settings, commands, and screenshots.
+3. Run `npm ci` and `npm run check`. Run the Extension Host suites in a desktop
+   session when validating release behavior: `npm run test:e2e` and
+   `npm run test:e2e:tags`.
+4. Build the candidate with `vsce package --githubBranch v<version>` so packaged
+   README links refer to the intended release tag. Packaging runs the production
+   build through `vscode:prepublish`. Inspect the VSIX as a ZIP: verify its version,
+   bundle, grammars, licenses, icons, and README images; exclude source, tests,
+   dependencies, source maps, and local Git metadata. Install and smoke-test the
+   actual VSIX in an isolated VS Code profile. Record its SHA-256 checksum.
+
+The following are separate publication steps for a maintainer after approving the
+candidate; preparing the release does not perform them. The 5.3.0 release used a
+`develop` to `master` promotion with a merge commit, preserving shared history.
+Repeat that promotion after the preparation PR is merged and checks pass, then:
+
+1. Check out and pull `master`; verify it contains the reviewed release changes
+   and the intended package version. If anything changed after candidate
+   validation, rebuild and retest the VSIX.
+2. Create and push `v<version>` on that stable commit.
+3. Publish the approved artifact to the VS Code Marketplace with
+   `vsce publish --packagePath <path-to-approved.vsix>`. This publishes the exact
+   inspected bytes. `npm run publish` is the existing alternative that rebuilds
+   and publishes from the current checkout; neither command publishes to npm.
+4. Create the GitHub release for the same tag, attach the approved VSIX, and use
+   the new changelog section for its highlights and migration notes.
+
+There is no automatic tag or Marketplace publishing workflow in this repository;
+the GitHub Actions workflow runs validation on `develop` and its pull requests.
 
 ## How to contribute (recommended workflow)
 

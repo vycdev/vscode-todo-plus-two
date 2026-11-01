@@ -1,10 +1,15 @@
 **/*.map
+.git
+.git/**
 .gitignore
 .vscode-test/**
 .vscode/**
 out/test/**
 resources/*.gif
 resources/*.psd
+resources/**/*.psd
+resources/benchmarks/**
+resources/test.todo
 src/**
 scripts/**
 syntax/code-languages.json

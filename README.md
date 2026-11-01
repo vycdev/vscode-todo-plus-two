@@ -31,7 +31,7 @@ ext install vycdev.vscode-todo-plus-two
 
 The core extension supports VS Code 1.36+. Embedded drag-and-drop requires 1.66+, moving views into Explorer requires 1.46+, and image paste requires 1.97+. Older supported versions keep the remaining features and embedded Move Up/Down actions.
 
-This README describes the current `develop` branch, including upcoming 5.4 features; the Marketplace release may differ. See [CHANGELOG.md](CHANGELOG.md) for release and migration notes. In particular, `Todo: Toggle Timer` now pauses/resumes the selected task; `Todo: Toggle Status Bar Timer` controls visibility. Statistics conditions use restricted expressions rather than arbitrary JavaScript. Task-text styles follow literal tags, so existing symbol-only completed tasks use syntax-theme styling until tagged.
+This README documents Todo+2 5.4.0. See [CHANGELOG.md](CHANGELOG.md#version-540) for release and migration notes. In particular, task-text styles now follow literal tags, so existing symbol-only completed tasks use syntax-theme styling until tagged. Markdown task discovery and numbered-list continuation are enabled by default; planned work windows are opt-in. When upgrading from 5.2 or earlier, `Todo: Toggle Timer` pauses/resumes the selected task, while `Todo: Toggle Status Bar Timer` controls visibility, and statistics conditions use restricted expressions rather than arbitrary JavaScript.
 
 ## Getting started
 
