@@ -30,6 +30,28 @@ describe('Task tag grouping', () => {
     ).to.deep.equal(['note', 'low', 'tag-a']);
   });
 
+  it('finds adjacent tags after a closed argument without consuming their boundary', () => {
+    for (const markdown of [false, true]) {
+      expect(getTaskTagNames('Task @note(value)@low', markdown)).to.deep.equal(['note', 'low']);
+    }
+  });
+
+  it('keeps backticks inside tag arguments from hiding following tags', () => {
+    for (const markdown of [false, true]) {
+      expect(getTaskTagNames('Task @id(`) @low @depends(`)', markdown)).to.deep.equal([
+        'id',
+        'low',
+        'depends',
+      ]);
+    }
+  });
+
+  it('keeps Todo tag rules distinct from Markdown escapes and HTML comments', () => {
+    const text = 'Task \\@low <!-- @high -->';
+    expect(getTaskTagNames(text)).to.deep.equal(['low', 'high']);
+    expect(getTaskTagNames(text, true)).to.deep.equal([]);
+  });
+
   it('keeps source order and uses Other for tasks without a selected tag', () => {
     const tasks = [
       { text: 'First', tagNames: ['low', 'low', 'tag-a'] },

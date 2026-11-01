@@ -2,7 +2,7 @@
 
 #### New features
 
-- Added opt-in tag grouping in the Files sidebar with `todo.file.view.groupByTags`, including Todo files and Markdown notes, per-group counts, original project context, and an Other group for tasks without a selected tag. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
+- Added opt-in tag grouping in the Files sidebar with `todo.file.view.groupByTags`, including Todo files and Markdown notes, per-group counts, original project and parent-task context, and an Other group for tasks without a selected tag. [#14](https://github.com/vycdev/vscode-todo-plus-two/issues/14)
 - Added task management in Markdown notes without changing their language mode. Standard Markdown checklists, bare checkboxes, and Todo+ symbols appear in the Files and Due views with heading, project, and nested-task grouping. Tasks support native checkbox edits, tags and completions, dependencies, statistics, timers, automatic parent completion, and archiving/unarchiving. Code examples, quoted content, front matter, and HTML comments are excluded. Configure discovery and optional task-section scoping with `todo.markdown.*`. [#256](https://github.com/vycdev/vscode-todo-plus-two/issues/256)
 
 #### Fixes

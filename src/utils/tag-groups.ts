@@ -1,22 +1,17 @@
 import Tags from './tags';
-import { getMarkdownTaskTags } from './markdown-task-text';
-import { maskInlineCode } from './todo-status';
+import { getMarkdownTaskTags, getTodoTaskTags } from './markdown-task-text';
 
 export const normalizeTagGroupNames = (names: string[] = []): string[] =>
   Tags.normalizeNames(Array.isArray(names) ? names.map((name) => String(name).trim()) : []);
 
 /** Match outer tag names, keeping arguments and inline examples out of groups. */
 export const getTaskTagNames = (text: string, markdown = false): string[] => {
-  const tags = markdown
-    ? getMarkdownTaskTags(text).map((tag) => tag.text)
-    : (maskInlineCode(text).match(/(?:^|[^a-zA-Z0-9`])(@[^\s*~(`]+(?:\([^\r\n)]*\))?)/g) || []).map(
-        (tag) => tag.slice(tag.indexOf('@'))
-      );
+  const tags = markdown ? getMarkdownTaskTags(text) : getTodoTaskTags(text);
 
   return Array.from(
     new Set(
       tags
-        .map((tag) =>
+        .map(({ text: tag }) =>
           tag
             .slice(1)
             .replace(/\([^)]*\)$/, '')

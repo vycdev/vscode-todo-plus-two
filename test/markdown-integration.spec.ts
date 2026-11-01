@@ -971,7 +971,7 @@ describe('Files view tag grouping', () => {
     ]);
     const low = await state.filesView.getChildren(groups[0]);
     expect(low[0].label).to.equal('Finished @low(review)');
-    expect(low[0].description).to.equal('✓ · Todos @low');
+    expect(low[0].description).to.equal('✓ · Todos @low / Parent @high');
     const other = await state.filesView.getChildren(groups[2]);
     expect(other[0].obj.lineNr).to.equal(2);
   });
@@ -1081,6 +1081,36 @@ describe('Files view tag grouping', () => {
     await state.commands.viewToggleDone(tasks[0]);
     expect(state.document.lineAt(1).text).to.equal('☐ Ship @low @depends(dep)');
     expect(state.messages[0]).to.include('unresolved dependencies');
+  });
+
+  it('keeps nested tasks when the filter matches a finished parent task', async () => {
+    for (const language of ['todo', 'markdown']) {
+      const state = loadMarkdown(
+        language === 'todo'
+          ? 'Project:\n  ✔ Release\n    ☐ Child @low'
+          : '# Project\n- [x] Release\n  - [ ] Child @low',
+        { 'file.view.groupByTags': ['low'], 'file.view.showFinished': false }
+      );
+      state.document.languageId = language;
+      state.filesView.filter = 'Release';
+      const groups = await state.filesView.getChildren(root(state));
+      expect(groups.map((group) => group.label)).to.deep.equal(['@low (1)']);
+      const tasks = await state.filesView.getChildren(groups[0]);
+      expect(tasks[0].label).to.include('Child @low');
+      expect(tasks[0].description).to.equal(
+        language === 'todo' ? 'Project: / ✔ Release' : 'Project / Release'
+      );
+    }
+  });
+
+  it('preserves escaped Markdown tags in grouped source paths when tags are hidden', async () => {
+    const state = loadMarkdown('# Project \\@literal @real\n- [ ] Task @low', {
+      'file.view.groupByTags': ['low'],
+      'file.view.showTags': false,
+    });
+    const groups = await state.filesView.getChildren(root(state));
+    const tasks = await state.filesView.getChildren(groups[0]);
+    expect(tasks[0].description).to.equal('Project \\@literal');
   });
 
   it('keeps grouped actions on the source task and refuses stale rows', async () => {

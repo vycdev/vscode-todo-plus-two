@@ -188,7 +188,7 @@ class Files extends View {
     const markdown = isMarkdownTaskDocument(document);
     const nodes = markdown ? getMarkdownTaskNodes(document) : [];
     const byLine = new Map(nodes.map((node) => [node.lineNumber, node]));
-    const projects: Array<{ level: number; title: string }> = [];
+    const ancestors: Array<{ level: number; title: string }> = [];
     const tasks: GroupedTask[] = [];
 
     for (let lineNr = 0; lineNr < document.lineCount; lineNr++) {
@@ -206,16 +206,18 @@ class Files extends View {
         path = [];
         let parent = byLine.get(node.parent);
         while (parent) {
-          if (parent.kind === 'project') path.unshift(parent.title);
+          path.unshift(parent.title);
           parent = byLine.get(parent.parent);
         }
       } else {
         if (!line.text.trim()) continue;
         const level = Utils.ast.getLevel(document, line.text);
-        while (projects.length && projects[projects.length - 1].level >= level) projects.pop();
-        path = projects.map((project) => project.title);
-        if (matchesTodoStatus(line.text, Consts.regexes.project)) projects.push({ level, title });
-        if (!matchesTodoStatus(line.text, Consts.regexes.todo)) continue;
+        while (ancestors.length && ancestors[ancestors.length - 1].level >= level) ancestors.pop();
+        path = ancestors.map((parent) => parent.title);
+        const isTodo = matchesTodoStatus(line.text, Consts.regexes.todo);
+        if (isTodo || matchesTodoStatus(line.text, Consts.regexes.project))
+          ancestors.push({ level, title });
+        if (!isTodo) continue;
         finished = this.isFinishedTodo(line.text);
       }
       if (!this.showFinished && finished) continue;
@@ -231,14 +233,14 @@ class Files extends View {
       });
     }
 
+    const getLabel = (text: string) =>
+      this.config.file.view.showTags === false
+        ? markdown
+          ? transformMarkdownTaskText(text, Tags.removeAll)
+          : Tags.removeAll(text)
+        : text;
     const groups = groupTasksByTags(tasks, groupNames).map((group) => {
       const todos = group.tasks.map((task) => {
-        const label =
-          this.config.file.view.showTags === false
-            ? markdown
-              ? transformMarkdownTaskText(task.title, Tags.removeAll)
-              : Tags.removeAll(task.title)
-            : task.title;
         const todo = new Todo(
           {
             filePath: obj.filePath,
@@ -247,14 +249,10 @@ class Files extends View {
             lineNr: task.lineNr,
             documentVersion: document.version,
           },
-          label
+          getLabel(task.title)
         );
-        const projectPath = task.path
-          .map((title) =>
-            this.config.file.view.showTags === false ? Tags.removeAll(title) : title
-          )
-          .join(' / ');
-        todo.description = [task.statusLabel, projectPath].filter(Boolean).join(' · ');
+        const sourcePath = task.path.map(getLabel).join(' / ');
+        todo.description = [task.statusLabel, sourcePath].filter(Boolean).join(' · ');
         todo.tooltip = [task.line.text, obj.relativePath || obj.filePath, ...task.path].join('\n');
         return todo;
       });
