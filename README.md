@@ -18,6 +18,7 @@ This extension is a continuation of the original Todo+ extension by [Fabio Spamp
 - **Custom special tags**: special tags' names and their colors can be customized
 - **Archive**: you can move finished todos to a special "Archive" section with a shortcut
 - **Formatting**: you can format text in a markdown-like fashion, we support: **bold**, _italic_, ~~strikethrough~~ and `code`
+- **Image attachments**: paste PNG/JPEG images into saved Todo files on VS Code 1.97 or newer. Images are saved beside the Todo file and inserted as clickable relative file links.
 - **Go To Symbol**: you can easily move between projects by using the `Go to Symbol in File...` command
 - **Timekeeping**: you can mark todos as started and track elapsed time until completion
 - **Timer**: a timer can be displayed in the statusbar for started todos
@@ -464,6 +465,16 @@ work in project text, status bar text and status bar tooltips.
 ### Timekeeping & Timer
 
 ![Timekeeping & Timer](resources/demo/timer.gif)
+
+## Image attachments
+
+On VS Code 1.97 or newer, copy a screenshot or PNG/JPEG image and paste it into a saved file using the **Todo** language mode. The image is saved with a unique filename in `<Todo filename>.assets` beside the Todo file. For example, pasting into `tasks.todo` inserts `<file://./tasks.todo.assets/image-<id>.png>`. Angle brackets keep the link clickable when pasted next to existing text. Ctrl/Cmd-click the link to open the image in VS Code.
+
+If the clipboard also contains non-empty text, normal text paste takes precedence. Use **Paste As...** and select **Paste Image Attachment** to insert the image instead. Multiple images produce space-separated links; pasting at multiple cursors inserts the same links at each cursor. Save an untitled file before pasting an image. This feature requires a local filesystem document; older VS Code versions retain their existing paste behavior.
+
+Image creation and link insertion use VS Code's paste edit so they participate in undo/redo together. Existing images are never overwritten, and a failed image write keeps selected text intact. Attachments stay in their original assets folder when archiving; links are updated when tasks move into a workspace-root archive. Keep the Todo file and its assets folder together when moving or sharing them manually, and keep original assets folders when sharing archives. Symlinked destinations require `todo.followSymlinks` to be enabled.
+
+Todo files display attachment links as text. The HTML and Markdown export commands currently export these links as text as well.
 
 ## Hints
 
