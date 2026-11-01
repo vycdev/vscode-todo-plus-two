@@ -7,7 +7,7 @@ import Config from '../../../config';
 import EmbeddedView from '../../../views/embedded';
 import Folder from '../../folder';
 import Consts from '../../../consts';
-import { getFilePathKey, hasConditionalExcludeGlobs, isFileIncluded } from '../../file-globs';
+import { hasConditionalExcludeGlobs, isFileIncluded } from '../../file-globs';
 import { getWorkspaceExcludeRules } from '../../workspace-excludes';
 import { getFollowingContext } from '../context';
 import { updateEmbeddedDocumentCache } from '../document-cache';
@@ -16,6 +16,7 @@ import { splitLines } from '../../line-splitting';
 import { isLiquidFilePath, parseLiquidBlockCommentMatches } from '../liquid-comments';
 import { parseEmbeddedMatches } from '../regex';
 import { isAllowedFilePath } from '../../file-discovery';
+import { createWorkspacePathResolver } from '../../workspace-paths';
 
 /* ABSTRACT */
 
@@ -32,6 +33,7 @@ class Abstract {
   watchers: vscode.FileSystemWatcher[] = [];
   private watcherCleanup: (() => void)[] = [];
   private watcherGeneration = 0;
+  private workspacePaths: ReturnType<typeof createWorkspacePathResolver>;
   onDidChangeDataEvent = new vscode.EventEmitter<string | undefined>();
   onDidChangeData = this.onDidChangeDataEvent.event;
 
@@ -118,7 +120,7 @@ class Abstract {
     const generation = this.watcherGeneration;
     /* HELPERS */
 
-    const pathNormalizer = (filePath) => filePath.replace(/\\/g, '/');
+    const pathNormalizer = (filePath) => this.getCachedFilePath(filePath);
 
     /* HANDLERS */
 
@@ -224,6 +226,7 @@ class Abstract {
   unwatchPaths() {
     this.watcherGeneration += 1;
     this.configSignature = undefined;
+    this.workspacePaths = undefined;
     this.watcherCleanup.forEach((cleanup) => cleanup());
     this.watcherCleanup = [];
     this.watchers.forEach((watcher) => watcher.dispose());
@@ -259,13 +262,24 @@ class Abstract {
   }
 
   getCachedFilePath(filePath: string) {
-    if (!this.filesData) return filePath;
-
-    const normalized = getFilePathKey(filePath);
+    const paths = this.getWorkspacePaths();
+    const key = paths.getKey(filePath);
 
     return (
-      Object.keys(this.filesData).find((key) => getFilePathKey(key) === normalized) || filePath
+      Object.keys(this.filesData || {}).find((cached) => paths.getKey(cached) === key) ||
+      paths.getWorkspacePaths(filePath).find((candidate) => this.isIncluded(candidate)) ||
+      filePath
     );
+  }
+
+  private getWorkspacePaths() {
+    const rootPaths = this.rootPaths || Folder.getAllRootPaths();
+
+    if (!this.workspacePaths || !_.isEqual(this.workspacePaths.rootPaths, rootPaths)) {
+      this.workspacePaths = createWorkspacePathResolver(rootPaths);
+    }
+
+    return this.workspacePaths;
   }
 
   parseContent(filePath: string, content: string) {
@@ -344,27 +358,26 @@ class Abstract {
   updateDocumentData(textDocument: vscode.TextDocument) {
     if (this.disposed || !this.filesData || textDocument.uri.scheme !== 'file') return;
 
-    const filePath = textDocument.uri.fsPath.replace(/\\/g, '/');
+    const filePath = this.getCachedFilePath(textDocument.uri.fsPath);
 
     if (!this.isIncluded(filePath)) return;
 
-    const cachedFilePath = this.getCachedFilePath(filePath),
-      data = this.parseContent(cachedFilePath, textDocument.getText());
+    const data = this.parseContent(filePath, textDocument.getText());
 
-    this.fileDataRevisions[cachedFilePath] = (this.fileDataRevisions[cachedFilePath] || 0) + 1;
+    this.fileDataRevisions[filePath] = (this.fileDataRevisions[filePath] || 0) + 1;
 
-    if (!updateEmbeddedDocumentCache(this.filesData, this.nonEmptyFiles, cachedFilePath, data))
-      return;
+    if (!updateEmbeddedDocumentCache(this.filesData, this.nonEmptyFiles, filePath, data)) return;
 
-    this.onDidChangeDataEvent.fire(cachedFilePath);
+    this.onDidChangeDataEvent.fire(filePath);
 
-    return cachedFilePath;
+    return filePath;
   }
 
   protected getOpenDocument(filePath: string) {
-    const key = getFilePathKey(filePath);
+    const paths = this.getWorkspacePaths();
+    const key = paths.getKey(filePath);
     return vscode.workspace.textDocuments.find(
-      (document) => document.uri.scheme === 'file' && getFilePathKey(document.uri.fsPath) === key
+      (document) => document.uri.scheme === 'file' && paths.getKey(document.uri.fsPath) === key
     );
   }
 
@@ -398,12 +411,13 @@ class Abstract {
       filePaths = Array.from(this.nonEmptyFiles),
       activeFilePath = vscode.window.activeTextEditor
         ? vscode.window.activeTextEditor.document.uri.fsPath
-        : '';
+        : '',
+      paths = onlyActiveFile ? this.getWorkspacePaths() : undefined;
 
     // Note: Comment visibility is controlled in the Files view only. Embedded items are always TODO-like.
 
     filePaths.forEach((filePath) => {
-      if (onlyActiveFile && getFilePathKey(filePath) !== getFilePathKey(activeFilePath)) return;
+      if (onlyActiveFile && paths.getKey(filePath) !== paths.getKey(activeFilePath)) return;
 
       const data = this.filesData[filePath];
 

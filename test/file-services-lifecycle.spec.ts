@@ -1,4 +1,7 @@
 import { expect } from 'chai';
+import * as fs from 'fs';
+import * as path from 'path';
+import { findClosestRootPath } from '../src/utils/file-globs';
 
 const loadService = (moduleName: string, extraStubs = {}) => {
   const NodeModule = require('module');
@@ -48,6 +51,193 @@ const loadService = (moduleName: string, extraStubs = {}) => {
     else delete require.cache[modulePath];
   }
 };
+
+describe('Embedded workspace path aliases', () => {
+  let fixture: string;
+  let workspace: string;
+  let alias: string;
+  let provider;
+
+  beforeEach(() => {
+    fixture = fs.realpathSync(fs.mkdtempSync(path.join(process.cwd(), '.embedded-paths-')));
+    workspace = path.join(fixture, 'real', 'workspace');
+    fs.mkdirSync(workspace, { recursive: true });
+    fs.symlinkSync(
+      path.dirname(workspace),
+      path.join(fixture, 'alias'),
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+    alias = path.join(fixture, 'alias', 'workspace');
+    fs.writeFileSync(path.join(workspace, 'index.html'), '<html>No markers</html>');
+  });
+
+  afterEach(() => {
+    if (provider) provider.dispose();
+    provider = undefined;
+    const remove = (filePath: string) => {
+      if (fs.lstatSync(filePath).isDirectory() && !fs.lstatSync(filePath).isSymbolicLink()) {
+        fs.readdirSync(filePath).forEach((entry) => remove(path.join(filePath, entry)));
+        fs.rmdirSync(filePath);
+      } else {
+        fs.unlinkSync(filePath);
+      }
+    };
+    remove(fixture);
+  });
+
+  const setup = (name: string, rootPaths = [alias]) => {
+    const properties = require('../package.json').contributes.configuration.properties;
+    const config = {
+      followSymlinks: false,
+      embedded: { include: ['**/*.html'], exclude: ['**/ignored/**'], batchSize: 50 },
+    };
+    let content = '<html>No markers</html>';
+    let changed: (event: { fsPath: string }) => void;
+    const document = {
+      uri: { scheme: 'file', fsPath: path.join(workspace, 'index.html') },
+      getText: () => content,
+    };
+    const stubs = {
+      vscode: {
+        EventEmitter: class {
+          event = () => ({ dispose() {} });
+          fire() {}
+          dispose() {}
+        },
+        ProgressLocation: { Window: 1 },
+        workspace: {
+          textDocuments: [document],
+          createFileSystemWatcher: () => ({
+            onDidCreate() {},
+            onDidChange: (listener) => (changed = listener),
+            onDidDelete() {},
+            dispose() {},
+          }),
+        },
+        window: {
+          activeTextEditor: { document },
+          withProgress: (_options, callback) => callback({ report() {} }),
+        },
+      },
+      '../../../config': {
+        default: {
+          get: () => config,
+          getKey: (key) => (key === 'followSymlinks' ? config.followSymlinks : undefined),
+        },
+      },
+      '../../../consts': {
+        default: {
+          regexes: {
+            todoEmbedded: new RegExp(
+              properties['todo.embedded.regex'].default,
+              properties['todo.embedded.regexFlags'].default
+            ),
+          },
+        },
+      },
+      '../../../views/embedded': { default: { refresh() {}, refreshFile() {} } },
+      '../../workspace-excludes': { getWorkspaceExcludeRules: () => ({}) },
+      '../../folder': {
+        default: {
+          getAllRootPaths: () => rootPaths,
+          getRootPath: (filePath) => findClosestRootPath(filePath, rootPaths),
+          parsePath: (filePath) => ({
+            root: 'workspace',
+            rootPath: alias,
+            relativePath: path.relative(alias, filePath),
+          }),
+        },
+      },
+    };
+    const Abstract = loadService('../src/utils/embedded/providers/abstract', stubs);
+    const Provider = loadService(`../src/utils/embedded/providers/${name}`, {
+      ...stubs,
+      './abstract': { default: Abstract },
+    });
+    provider = new Provider();
+    if (name === 'ag') provider.getAckmate = async () => [];
+
+    return {
+      document,
+      setContent: (value: string) => (content = value),
+      changeOnDisk: () => changed({ fsPath: document.uri.fsPath }),
+    };
+  };
+
+  ['js', 'ag'].forEach((name) => {
+    it(`reads unsaved HTML before the initial ${name} scan through a workspace alias`, async () => {
+      const { setContent } = setup(name);
+      setContent('<!--TODO Use grid style-->');
+
+      await provider.get();
+
+      const filePath = Object.keys(provider.filesData)[0];
+      expect(Object.keys(provider.filesData).map(path.normalize)).to.deep.equal([
+        path.join(alias, 'index.html'),
+      ]);
+      expect(provider.filesData[filePath][0].message.trim()).to.equal('Use grid style');
+    });
+
+    it(`adds, edits, and removes the first unsaved HTML todo after a ${name} scan`, async () => {
+      const { document, setContent, changeOnDisk } = setup(name);
+      await provider.get();
+      expect(Object.keys(provider.filesData)).to.deep.equal([]);
+
+      const filePath = path.join(alias, 'index.html').replace(/\\/g, '/');
+      setContent('<!--TODO Use grid style-->');
+      expect(provider.updateDocumentData(document)).to.equal(filePath);
+      expect(Object.keys(provider.filesData)).to.deep.equal([filePath]);
+      expect(provider.getTodos(false, false, false, false, true)['']['']['']).to.have.length(1);
+
+      setContent('<!--TODO Updated without saving-->');
+      provider.updateDocumentData(document);
+      changeOnDisk();
+      await provider.dataRefreshQueue;
+      expect(Object.keys(provider.filesData)).to.deep.equal([filePath]);
+      expect(provider.filesData[filePath][0].message.trim()).to.equal('Updated without saving');
+
+      setContent('<html>No markers</html>');
+      provider.updateDocumentData(document);
+      expect(Object.keys(provider.filesData)).to.deep.equal([]);
+      expect(provider.nonEmptyFiles.size).to.equal(0);
+    });
+  });
+
+  it('keeps one cache entry when an aliased root overlaps a canonical nested root', async () => {
+    const nested = path.join(workspace, 'nested');
+    fs.mkdirSync(nested);
+    fs.writeFileSync(path.join(nested, 'index.html'), '<html>No markers</html>');
+    const { document, setContent } = setup('js', [alias, nested]);
+    document.uri.fsPath = path.join(nested, 'index.html');
+    setContent('<!--TODO Use grid style-->');
+    await provider.get();
+    provider.updateDocumentData(document);
+
+    expect(Object.keys(provider.filesData).map(path.normalize)).to.deep.equal([
+      path.join(alias, 'nested', 'index.html'),
+    ]);
+  });
+
+  it('still excludes filtered files and symlinks below the workspace root', async () => {
+    fs.mkdirSync(path.join(workspace, 'ignored'));
+    const ignored = path.join(workspace, 'ignored', 'hidden.html');
+    fs.writeFileSync(ignored, '<!--TODO Hidden-->');
+    fs.symlinkSync(
+      workspace,
+      path.join(workspace, 'linked'),
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+    const { document, setContent } = setup('js');
+    await provider.get();
+    setContent('<!--TODO Hidden-->');
+
+    document.uri.fsPath = ignored;
+    expect(provider.updateDocumentData(document)).to.equal(undefined);
+    document.uri.fsPath = path.join(alias, 'linked', 'index.html');
+    expect(provider.updateDocumentData(document)).to.equal(undefined);
+    expect(Object.keys(provider.filesData)).to.deep.equal([]);
+  });
+});
 
 describe('File service concurrency', () => {
   it('groups folders named after object properties without changing prototypes', () => {

@@ -195,6 +195,7 @@ A large release: nearly 30 new features and well over a hundred fixes since 5.2.
 ##### Embedded todos
 
 - Serialized file scans and provider initialization, preserved unsaved editor content, and cancelled watcher callbacks, refresh timers, and provider work during disposal.
+- Fixed unsaved embedded todos being missed when workspace and editor paths use different aliases for the same workspace, including macOS `/var` and `/private/var` paths. [#8](https://github.com/vycdev/vscode-todo-plus-two/issues/8)
 - Serialized embedded view file refreshes so overlapping filesystem and editor updates cannot duplicate search results.
 - Bounded external-search command lengths, retained partial search results, and parsed multiple `ag` matches on one line. Invalid or empty-match embedded regex settings no longer crash or freeze the extension.
 - Fixed embedded todo parsing so plain `--` in a todo message no longer truncates the embedded view entry. [#33](https://github.com/vycdev/vscode-todo-plus-two/issues/33)
