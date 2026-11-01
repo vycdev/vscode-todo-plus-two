@@ -1,0 +1,20 @@
+{
+  "platform": "darwin",
+  "vscode": "1.144.0",
+  "theme": "Dark Modern",
+  "capturedAt": "2026-11-01T13:15:44.163Z",
+  "bundleSha256": "0cfe0f95a9275a8f7991a644a5c91b30d22377cae546368b84275e5fa2dae3b7",
+  "captures": [
+    "syntax.png",
+    "activity_bar_views.png",
+    "sidebar-actions.png",
+    "tag-groups.png",
+    "tag-focus.png",
+    "regions.png",
+    "embedded-ordering.png",
+    "timer-running.png",
+    "timer-paused.png",
+    "image-attachment.png"
+  ],
+  "status": "passed"
+}
