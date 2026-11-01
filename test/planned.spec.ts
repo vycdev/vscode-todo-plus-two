@@ -116,4 +116,19 @@ describe('Planned work windows', () => {
       expect(getActivePlannedTags(`☐ Work @planned(${value})`, at(11))).to.deep.equal([], value);
     }
   });
+
+  it('keeps nested planned examples literal inside other tag arguments', () => {
+    const text = '☐ Explain @note(@planned(10am-1pm)) @planned(10am-1pm)';
+    expect(getActivePlannedTags(text, at(11))).to.deep.equal([
+      { start: text.lastIndexOf('@planned'), end: text.length },
+    ]);
+  });
+
+  it('respects escaped tags and HTML comments in Markdown tasks', () => {
+    const text =
+      '- [ ] Work \\@planned(10am-1pm) <!-- @planned(10am-1pm) --> `@planned(10am-1pm)` @planned(10am-1pm)';
+    expect(getActivePlannedTags(text, at(11), true)).to.deep.equal([
+      { start: text.lastIndexOf('@planned'), end: text.length },
+    ]);
+  });
 });

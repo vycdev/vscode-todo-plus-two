@@ -9,6 +9,8 @@ import Item from './items/item';
 import Placeholder from './items/placeholder';
 import Todo from './items/todo';
 import View from './view';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
+import { getMarkdownTaskTags } from '../utils/markdown-task-text';
 
 class DueView extends View {
   id = 'todo.views.3due';
@@ -63,8 +65,28 @@ class DueView extends View {
         lines.push(data.textEditor.lineAt(lineNumber).text);
       }
 
+      const markdownNodes = isMarkdownTaskDocument(data.textEditor)
+        ? getMarkdownTaskNodes(data.textEditor)
+        : undefined;
+      const dueLines = markdownNodes
+        ? lines.map((line, lineNumber) => {
+            const node = markdownNodes.find(
+              (candidate) =>
+                candidate.kind === 'todo' &&
+                candidate.lineNumber === lineNumber &&
+                candidate.status === 'box' &&
+                !candidate.inArchive
+            );
+            return node
+              ? `☐ ${getMarkdownTaskTags(node.title)
+                  .filter((tag) => /^@due\(/i.test(tag.text))
+                  .map((tag) => tag.text)
+                  .join(' ')}`
+              : '';
+          })
+        : lines;
       getDueTaskLines(
-        lines,
+        dueLines,
         Consts.regexes.todo,
         Consts.regexes.todoFinished,
         today,
@@ -77,10 +99,11 @@ class DueView extends View {
             lineNr: task.lineNumber,
             relativePath: data.relativePath,
             textEditor: data.textEditor,
+            documentVersion: data.textEditor.version,
           },
-          todo = new Todo(obj, _.trimStart(task.text));
+          todo = new Todo(obj, _.trimStart(markdownNodes ? line.text : task.text));
 
-        todo.tooltip = `${task.text}\n${data.relativePath}`;
+        todo.tooltip = `${markdownNodes ? line.text : task.text}\n${data.relativePath}`;
 
         if (!groups[task.dateKey]) groups[task.dateKey] = { date: task.date, todos: [] };
         groups[task.dateKey].todos.push(todo);

@@ -1,6 +1,7 @@
 import { expect } from 'chai';
+import { parseCodeBlocks } from '../src/utils/code-blocks';
 
-const loadArchive = () => {
+const loadArchive = (errors: string[] = []) => {
   const NodeModule = require('module'),
     originalLoad = NodeModule._load,
     archivePath = require.resolve('../src/utils/archive'),
@@ -10,7 +11,12 @@ const loadArchive = () => {
     isProject = (line: string) => /^\s*[^:]+:\s*$/.test(line),
     isTodo = (line: string) => /^\s*[☐✔]/.test(line),
     editor = { getIndentation: () => undefined },
-    vscode = { window: { visibleTextEditors: [] } };
+    vscode = {
+      window: {
+        visibleTextEditors: [],
+        showErrorMessage: (message: string) => errors.push(message),
+      },
+    };
 
   NodeModule._load = function (request, parent, isMain) {
     if (parent && (parent.filename === archivePath || parent.filename === astPath)) {
@@ -58,6 +64,7 @@ const loadArchive = () => {
 const transform = (content: string) => {
   const Archive = loadArchive(),
     lines = content.split('\n').map((text, lineNumber) => ({ text, lineNumber })),
+    code = parseCodeBlocks(content),
     doc = {
       textDocument: {
         version: 1,
@@ -66,9 +73,13 @@ const transform = (content: string) => {
         lineAt: (lineNumber) => lines[lineNumber],
       },
       getTodosFinished: () =>
-        lines.filter((line) => /^\s*✔/.test(line.text)).map((line) => ({ line })),
+        lines
+          .filter((line) => !code.byLine.has(line.lineNumber) && /^\s*✔/.test(line.text))
+          .map((line) => ({ line })),
       getProjects: () =>
-        lines.filter((line) => /^\s*[^:]+:\s*$/.test(line.text)).map((line) => ({ line })),
+        lines
+          .filter((line) => !code.byLine.has(line.lineNumber) && /^\s*[^:]+:\s*$/.test(line.text))
+          .map((line) => ({ line })),
     },
     data = { remove: [], insert: {} };
 
@@ -80,6 +91,31 @@ const transform = (content: string) => {
 };
 
 describe('Archive transformations', () => {
+  it('leaves the document untouched when a fence is unfinished', async () => {
+    const errors = [];
+    const Archive = loadArchive(errors);
+    await Archive.run({ textDocument: { getText: () => '✔ Finished\n```ts\ncode' } });
+    expect(errors).to.deep.equal(['Close fenced code blocks before archiving tasks']);
+  });
+  it('keeps projects containing standalone fenced notes in place', () => {
+    const data = transform('Work:\n  ```ts\nArchive:\n  ```\nDone:\n  ✔ Finished');
+    expect(data.remove.map((line) => line.lineNumber)).to.deep.equal([5, 4]);
+  });
+  it('moves attached fences intact, including blank lines and task/project-shaped payload', () => {
+    const block = [
+      '  ✔ Finished',
+      '',
+      '  ```ts',
+      'Archive:',
+      '',
+      '',
+      '✔ example @project(literal)',
+      '  ```',
+    ].join('\n');
+    const data = transform('Work:\n' + block + '\n  ☐ Pending');
+    expect(data.remove.map((line) => line.lineNumber)).to.deep.equal([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(data.insert[1]).to.deep.equal({ text: block, projects: ['Work'] });
+  });
   it('keeps finished task comments in one block with their relative indentation', () => {
     const data = transform('Work:\n  ✔ Finished\n    Attached note\n  ☐ Pending');
 

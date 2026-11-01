@@ -6,6 +6,18 @@ function escapeRegExp(str: string) {
   return str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
 }
 
+/** Outer tag arguments contain literal metadata, not additional active tags. */
+export const getTagArgumentRanges = (text: string): { start: number; end: number }[] => {
+  const masked = maskInlineCode(text, true),
+    regex = /(?<![a-zA-Z0-9@])@[^\s*~(`@]+\([^\r\n)]*\)/g,
+    ranges: { start: number; end: number }[] = [];
+  let match: RegExpExecArray;
+  while ((match = regex.exec(masked))) {
+    ranges.push({ start: match.index + match[0].indexOf('(') + 1, end: regex.lastIndex - 1 });
+  }
+  return ranges;
+};
+
 const Tags = {
   normalizeNames(tags: string[] = []): string[] {
     const values = Array.isArray(tags) ? tags : [tags];
@@ -27,7 +39,8 @@ const Tags = {
 
     if (!names.length) return text;
 
-    const masked = maskInlineCode(text),
+    const masked = maskInlineCode(text, true),
+      argumentsRanges = getTagArgumentRanges(text),
       regex = new RegExp(
         `(^|[^a-zA-Z0-9])@(?:${names
           .map((name) => escapeRegExp(name))
@@ -37,7 +50,12 @@ const Tags = {
 
     return text
       .replace(regex, (match, prefix, offset) => {
-        if (masked[offset + prefix.length] === ' ') return match;
+        const start = offset + prefix.length;
+        if (
+          masked[start] === ' ' ||
+          argumentsRanges.some((range) => start >= range.start && start < range.end)
+        )
+          return match;
 
         return prefix && /\S/.test(prefix) ? prefix : '';
       })
@@ -46,7 +64,7 @@ const Tags = {
 
   removeAll(text: string) {
     const regex = /(^|[^a-zA-Z0-9])(@[^\s*~(`]+)(\([^)]*\))?/gm,
-      masked = maskInlineCode(text);
+      masked = maskInlineCode(text, true);
 
     return text
       .replace(regex, (match, prefix, tagName, _argument, offset, source) => {

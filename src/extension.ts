@@ -6,12 +6,14 @@ import Config from './config';
 import Consts from './consts';
 import CompletionProvider from './providers/completion';
 import DependencyLinkProvider from './providers/dependency_links';
-import FoldingProvider from './providers/folding';
+import { tagFocus } from './tag_focus';
 import { FileLinkProvider } from './providers/file_links';
+import { registerImagePasteProvider } from './providers/image_paste';
 import EmbeddedDiagnostics from './providers/embedded_diagnostics';
 import SymbolsProvider from './providers/symbols';
 import DocumentDecorator from './todo/decorators/document';
 import ChangesDecorator from './todo/decorators/changes';
+import { disposeTaskTagDocument, disposeTaskTagStyles } from './todo/decorators/task-tags';
 import Utils from './utils';
 import DependencyIndex from './utils/dependency_index';
 import { createPlannedRefresh } from './utils/planned-refresh';
@@ -20,6 +22,7 @@ import ViewFiles from './views/files';
 import { Due } from './views/due';
 import StatusbarStatistics from './statusbars/statistics';
 import StatusbarTimer from './statusbars/timer';
+import { getMarkdownTaskNodes, isMarkdownTaskDocument } from './utils/task-source';
 
 /* ACTIVATE */
 
@@ -34,6 +37,20 @@ const activate = function (context: vscode.ExtensionContext) {
 
   Config.check(config);
   updateUnarchiveContext();
+  const updateMarkdownContext = () => {
+    const editor = vscode.window.activeTextEditor;
+    const enabled = !!editor && isMarkdownTaskDocument(editor.document);
+    vscode.commands.executeCommand('setContext', 'todo-markdown-active', enabled);
+    vscode.commands.executeCommand(
+      'setContext',
+      'todo-markdown-task',
+      enabled &&
+        getMarkdownTaskNodes(editor.document).some(
+          (node) => node.kind === 'todo' && node.lineNumber === editor.selection.active.line
+        )
+    );
+  };
+  updateMarkdownContext();
 
   ViewEmbedded.expanded = config.embedded.view.expanded;
 
@@ -52,10 +69,12 @@ const activate = function (context: vscode.ExtensionContext) {
   vscode.commands.executeCommand('setContext', 'todo-files-open-button', true);
 
   Utils.context = context;
+  ViewEmbedded.initializeOrder(context.workspaceState);
   Utils.folder.initRootsRe();
   DependencyIndex.initialize(context);
   new EmbeddedDiagnostics(Utils.embedded).initialize(context);
   Utils.init.language(context);
+  tagFocus.initialize(context);
   Utils.statistics.tokens.updateDisabledAll();
 
   const plannedRefresh = createPlannedRefresh(
@@ -74,7 +93,7 @@ const activate = function (context: vscode.ExtensionContext) {
     clearTimeout(dueRefreshTimer);
     dueRefreshTimer = setTimeout(() => {
       Due.refresh();
-      ViewFiles.refreshActivityBarBadge();
+      ViewFiles.refresh();
     }, 250);
   };
   const refreshDueDocument = (document: vscode.TextDocument) => {
@@ -85,6 +104,7 @@ const activate = function (context: vscode.ExtensionContext) {
 
     if (
       document.languageId === Consts.languageId ||
+      isMarkdownTaskDocument(document) ||
       (filesData && filesData.hasOwnProperty(filePath))
     ) {
       dueRefresh();
@@ -125,6 +145,7 @@ const activate = function (context: vscode.ExtensionContext) {
     Utils.command,
     Utils.log,
     plannedRefresh,
+    { dispose: disposeTaskTagStyles },
     {
       dispose: () => {
         disposed = true;
@@ -137,29 +158,49 @@ const activate = function (context: vscode.ExtensionContext) {
       },
     },
     vscode.languages.registerCompletionItemProvider(
-      Consts.languageId,
+      [Consts.languageId, 'markdown'],
       new CompletionProvider(),
       ...CompletionProvider.triggerCharacters
     ),
-    vscode.languages.registerDocumentLinkProvider(Consts.languageId, new DependencyLinkProvider()),
-    vscode.languages.registerFoldingRangeProvider(Consts.languageId, new FoldingProvider()),
-    vscode.languages.registerDocumentLinkProvider(Consts.languageId, new FileLinkProvider()),
+    vscode.languages.registerDocumentLinkProvider(
+      [Consts.languageId, 'markdown'],
+      new DependencyLinkProvider()
+    ),
+    vscode.languages.registerDocumentLinkProvider(
+      [Consts.languageId, 'markdown'],
+      new FileLinkProvider()
+    ),
     vscode.languages.registerDocumentSymbolProvider(Consts.languageId, new SymbolsProvider()),
     vscode.window.onDidChangeActiveTextEditor(() => DocumentDecorator.update()),
+    vscode.window.onDidChangeActiveTextEditor(updateMarkdownContext),
+    vscode.window.onDidChangeTextEditorSelection(updateMarkdownContext),
     vscode.workspace.onDidChangeConfiguration(Consts.update),
     vscode.workspace.onDidChangeConfiguration(updateUnarchiveContext),
+    vscode.workspace.onDidChangeConfiguration(updateMarkdownContext),
     vscode.workspace.onDidChangeConfiguration(updateFileCaches),
     vscode.workspace.onDidChangeConfiguration(Utils.statistics.tokens.updateDisabledAll),
-    vscode.workspace.onDidChangeConfiguration(() => DocumentDecorator.update()),
+    vscode.workspace.onDidChangeConfiguration(() => {
+      vscode.window.visibleTextEditors
+        .filter(
+          (editor) =>
+            editor !== vscode.window.activeTextEditor &&
+            (Utils.editor.isSupported(editor) || editor.document?.languageId === 'markdown')
+        )
+        .forEach((editor) => DocumentDecorator.update(editor));
+      DocumentDecorator.update();
+    }),
+    vscode.workspace.onDidChangeTextDocument(ChangesDecorator.onChanges),
     vscode.workspace.onDidChangeConfiguration(() => plannedRefresh.refresh()),
     vscode.window.onDidChangeVisibleTextEditors(() => plannedRefresh.refresh()),
     vscode.window.onDidChangeWindowState(({ focused }) => {
       if (focused) plannedRefresh.refresh();
     }),
-    vscode.workspace.onDidChangeTextDocument(ChangesDecorator.onChanges),
     vscode.workspace.onDidChangeTextDocument(({ document }) => {
-      if (document.languageId === Consts.languageId) plannedRefresh.refresh();
+      if (document.languageId === Consts.languageId || isMarkdownTaskDocument(document))
+        plannedRefresh.refresh();
     }),
+    vscode.workspace.onDidCloseTextDocument(disposeTaskTagDocument),
+    vscode.workspace.onDidChangeTextDocument(updateMarkdownContext),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshEmbeddedDocument(document)),
     vscode.workspace.onDidChangeTextDocument(({ document }) => refreshDueDocument(document)),
     Due.onDidChangeDate(() => {
@@ -174,6 +215,9 @@ const activate = function (context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeWorkspaceFolders(Utils.folder.initRootsRe),
     vscode.workspace.onDidChangeWorkspaceFolders(() => ViewFiles.refresh())
   );
+
+  const imagePaste = registerImagePasteProvider();
+  if (imagePaste) context.subscriptions.push(imagePaste);
 
   Utils.init.views(context);
 

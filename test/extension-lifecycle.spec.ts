@@ -20,12 +20,17 @@ const loadExtension = (plannedEnabled = false) => {
   const configuration = makeEvent();
   const folders = makeEvent();
   const documents = makeEvent();
+  const closedDocuments = makeEvent();
   const editors = makeEvent();
   const dates = makeEvent();
   const visible = makeEvent();
   const focus = makeEvent();
-  const visibleEditors = [{ supported: true }, { supported: false }];
   const plannedEditors = [];
+  const visibleEditors = [
+    { supported: true, document: { languageId: 'markdown' } },
+    { supported: false, document: { languageId: 'plaintext' } },
+  ];
+  const decorationEditors = [];
   const events: string[] = [];
   const disposed: string[] = [];
   const disposable = (name: string) => ({ dispose: () => disposed.push(name) });
@@ -88,9 +93,11 @@ const loadExtension = (plannedEnabled = false) => {
       onDidChangeConfiguration: configuration.subscribe,
       onDidChangeWorkspaceFolders: folders.subscribe,
       onDidChangeTextDocument: documents.subscribe,
+      onDidCloseTextDocument: closedDocuments.subscribe,
     },
     window: {
       onDidChangeActiveTextEditor: editors.subscribe,
+      onDidChangeTextEditorSelection: editors.subscribe,
       onDidChangeVisibleTextEditors: visible.subscribe,
       onDidChangeWindowState: focus.subscribe,
       visibleTextEditors: visibleEditors,
@@ -105,6 +112,7 @@ const loadExtension = (plannedEnabled = false) => {
   const mocks = {
     vscode,
     './commands': { registerCommands: initialize('commands') },
+    './tag_focus': { tagFocus: { initialize: initialize('folding') } },
     './config': {
       default: {
         get: () => ({ embedded: { view: {} }, file: { view: {} } }),
@@ -114,10 +122,14 @@ const loadExtension = (plannedEnabled = false) => {
     },
     './consts': { default: { languageId: 'todo', update() {} } },
     './providers/file_links': { FileLinkProvider: Provider },
+    './providers/image_paste': { registerImagePasteProvider: () => disposable('image-paste') },
     './providers/embedded_diagnostics': { default: Diagnostics },
     './todo/decorators/document': {
       default: {
-        update: () => events.push('decorations'),
+        update: (editor?) => {
+          events.push('decorations');
+          decorationEditors.push(editor);
+        },
         updatePlanned: (editor) => {
           events.push('planned-decorations');
           plannedEditors.push(editor);
@@ -125,10 +137,22 @@ const loadExtension = (plannedEnabled = false) => {
       },
     },
     './todo/decorators/changes': { default: { onChanges() {} } },
+    './todo/decorators/task-tags': {
+      disposeTaskTagStyles: () => disposed.push('task-tag-styles'),
+      disposeTaskTagDocument: () => disposed.push('task-tag-document'),
+    },
     './utils': { default: utils },
     './utils/dependency_index': { default: { initialize: initialize('index') } },
-    './views/embedded': { default: { refreshFile: () => events.push('embedded-view') } },
-    './views/files': { default: { refresh() {}, refreshActivityBarBadge() {} } },
+    './utils/task-source': {
+      isMarkdownTaskDocument: (document) => document && document.languageId === 'markdown',
+      getMarkdownTaskNodes: () => [],
+    },
+    './views/embedded': {
+      default: { initializeOrder() {}, refreshFile: () => events.push('embedded-view') },
+    },
+    './views/files': {
+      default: { refresh: () => events.push('files-view'), refreshActivityBarBadge() {} },
+    },
     './views/due': {
       Due: { refresh: () => events.push('due-view'), onDidChangeDate: dates.subscribe },
     },
@@ -151,17 +175,19 @@ const loadExtension = (plannedEnabled = false) => {
       configuration,
       folders,
       documents,
+      closedDocuments,
       editors,
       dates,
       visible,
       focus,
-      visibleEditors,
       plannedEditors,
       files,
       embedded,
       provider,
       events,
       disposed,
+      decorationEditors,
+      visibleEditors,
     };
   } finally {
     NodeModule._load = originalLoad;
@@ -171,6 +197,90 @@ const loadExtension = (plannedEnabled = false) => {
 };
 
 describe('Extension lifecycle wiring', () => {
+  it('refreshes planned highlights in all visible Todo editors on focus, visibility, and edits', () => {
+    const state = loadExtension(true);
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    state.activate(context);
+    state.visibleEditors.push({ supported: true, document: { languageId: 'todo' } });
+
+    try {
+      for (const fire of [
+        () => state.focus.fire({ focused: true }),
+        () => state.visible.fire(),
+        () =>
+          state.documents.fire({ document: { languageId: 'todo', uri: { scheme: 'untitled' } } }),
+      ]) {
+        state.plannedEditors.length = 0;
+        fire();
+        expect(state.plannedEditors).to.deep.equal(
+          state.visibleEditors.filter((editor) => editor.supported)
+        );
+      }
+      state.plannedEditors.length = 0;
+      state.focus.fire({ focused: false });
+      expect(state.plannedEditors).to.deep.equal([]);
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
+    }
+  });
+
+  it('releases task styling resources when a document closes', () => {
+    const state = loadExtension();
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    state.activate(context);
+    try {
+      state.closedDocuments.fire({});
+      expect(state.disposed).to.include('task-tag-document');
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
+    }
+    expect(state.closedDocuments.listeners.size).to.equal(0);
+  });
+  it('refreshes background Markdown editors when parser or tag-style settings change', () => {
+    const state = loadExtension();
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    state.activate(context);
+    try {
+      for (const setting of [
+        'todo.markdown.scope',
+        'todo.markdown.sections',
+        'todo.symbols.box',
+        'todo.archive.name',
+        'todo.tags.styles',
+        'todo.colors.done',
+      ]) {
+        state.decorationEditors.length = 0;
+        state.configuration.fire({
+          affectsConfiguration: (key) => setting === key || setting.startsWith(key + '.'),
+        });
+        expect(state.decorationEditors, setting).to.deep.equal([
+          state.visibleEditors[0],
+          undefined,
+        ]);
+      }
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
+    }
+  });
+
+  it('refreshes the Files tree after unsaved task changes', async () => {
+    const state = loadExtension();
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    state.activate(context);
+    state.events.length = 0;
+    try {
+      state.documents.fire({
+        document: {
+          uri: { scheme: 'file', fsPath: '/workspace/notes.md' },
+          languageId: 'markdown',
+        },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(state.events).to.include.members(['due-view', 'files-view']);
+    } finally {
+      context.subscriptions.forEach((subscription) => subscription.dispose());
+    }
+  });
   it('invalidates file generations with bound callbacks and refreshes tokens before decorations', () => {
     const state = loadExtension();
     const context = { subscriptions: [] as { dispose(): void }[] };
@@ -185,7 +295,7 @@ describe('Extension lifecycle wiring', () => {
       expect(state.provider.generation).to.equal(1);
       expect(state.files.filesData).to.equal(filesData);
       expect(state.provider.filesData).to.equal(embeddedData);
-      expect(state.events).to.deep.equal(['tokens', 'decorations']);
+      expect(state.events).to.deep.equal(['tokens', 'decorations', 'decorations']);
 
       state.events.length = 0;
       state.dates.fire();
@@ -226,8 +336,6 @@ describe('Extension lifecycle wiring', () => {
         document: { uri: { scheme: 'file', fsPath: '/workspace/tasks.todo' }, languageId: 'todo' },
       });
       expect(timers.size).to.equal(2);
-      expect(state.events).to.deep.equal([]);
-      state.events.length = 0;
 
       context.subscriptions.forEach((subscription) => subscription.dispose());
       cleaned = true;
@@ -241,6 +349,8 @@ describe('Extension lifecycle wiring', () => {
         'command',
         'log',
         'diagnostics',
+        'task-tag-styles',
+        'image-paste',
       ]);
       [
         state.configuration,
@@ -261,30 +371,39 @@ describe('Extension lifecycle wiring', () => {
     }
   });
 
-  it('refreshes planned highlights in all visible Todo editors on focus, visibility, and edits', () => {
-    const state = loadExtension(true);
+  it('refreshes the Files and Due views for unsaved edits to a loaded external document', () => {
+    const state = loadExtension();
     const context = { subscriptions: [] as { dispose(): void }[] };
-    state.activate(context);
-    state.visibleEditors.push({ supported: true });
+    const externalPath = '/personal/global.todo';
+    state.files.filesData[externalPath] = { saved: true };
+    const timers = new Map<object, () => void>();
+    const originalSetTimeout = global.setTimeout;
+    const originalClearTimeout = global.clearTimeout;
+    global.setTimeout = ((callback) => {
+      const handle = {};
+      timers.set(handle, callback);
+      return handle;
+    }) as any;
+    global.clearTimeout = ((handle) => timers.delete(handle)) as any;
 
     try {
-      for (const fire of [
-        () => state.focus.fire({ focused: true }),
-        () => state.visible.fire(),
-        () =>
-          state.documents.fire({ document: { languageId: 'todo', uri: { scheme: 'untitled' } } }),
-      ]) {
-        state.plannedEditors.length = 0;
-        fire();
-        expect(state.plannedEditors).to.deep.equal(
-          state.visibleEditors.filter((editor) => editor.supported)
-        );
-      }
-      state.plannedEditors.length = 0;
-      state.focus.fire({ focused: false });
-      expect(state.plannedEditors).to.deep.equal([]);
+      state.activate(context);
+      state.events.length = 0;
+      const event = {
+        document: { uri: { scheme: 'file', fsPath: externalPath }, languageId: 'plaintext' },
+      };
+      state.documents.fire(event);
+      state.documents.fire(event);
+      timers.forEach((callback) => callback());
+      expect(state.events.filter((event) => event.endsWith('-view'))).to.deep.equal([
+        'embedded-view',
+        'due-view',
+        'files-view',
+      ]);
     } finally {
       context.subscriptions.forEach((subscription) => subscription.dispose());
+      global.setTimeout = originalSetTimeout;
+      global.clearTimeout = originalClearTimeout;
     }
   });
 });

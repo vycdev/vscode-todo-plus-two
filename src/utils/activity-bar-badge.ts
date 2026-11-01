@@ -1,4 +1,5 @@
 import { matchesTodoStatus } from './todo-status';
+import { getCodeBlocks } from './code-blocks';
 
 interface TextLineLike {
   text: string;
@@ -25,8 +26,10 @@ export const countPendingTodos = (filesData, pendingPattern: RegExp): number => 
     const data = filesData[filePath] as TodoFileData;
 
     if (!data || !data.textEditor) return count;
+    const code = getCodeBlocks(data.textEditor);
 
     for (let lineNumber = 0; lineNumber < data.textEditor.lineCount; lineNumber++) {
+      if (code.byLine.has(lineNumber)) continue;
       if (matchesTodoStatus(data.textEditor.lineAt(lineNumber).text, pendingPattern)) count++;
     }
 

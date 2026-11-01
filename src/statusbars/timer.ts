@@ -75,10 +75,10 @@ class Timer {
     return true;
   }
 
-  update(doc?: Document) {
+  update(doc?: Document, startedTodos?: ReturnType<Document['getTodosBoxStarted']>) {
     this._updateLayout();
     this.config = Config.get();
-    this.updateData(doc);
+    this.updateData(doc, startedTodos);
     this.updateVisibility();
     this.updateTimer();
 
@@ -90,13 +90,18 @@ class Timer {
     this.updateText();
   }
 
-  updateData(doc?: Document) {
+  updateData(doc?: Document, startedTodos?: ReturnType<Document['getTodosBoxStarted']>) {
     const startedFormat = this.config.timekeeping.started.format,
       timestampOffset = startedFormat.indexOf('s') >= 0 ? 0 : Date.now() % 60000,
       todo =
         doc &&
-        doc.getTodosBoxStarted().find((candidate) => {
-          const state = getTimerState(candidate.text, startedFormat, new Date(), timestampOffset);
+        (startedTodos || doc.getTodosBoxStarted()).find((candidate) => {
+          const state = getTimerState(
+            candidate.getTimekeepingText ? candidate.getTimekeepingText() : candidate.text,
+            startedFormat,
+            new Date(),
+            timestampOffset
+          );
 
           return Boolean(state && state.active);
         });
@@ -114,6 +119,7 @@ class Timer {
         filePath: doc.textDocument.uri.fsPath,
         line: todo.line,
         text: todo.text,
+        timerText: todo.getTimekeepingText ? todo.getTimekeepingText() : todo.text,
         startedTag,
         startedFormat,
         // Preserve sub-minute precision while the task is edited or moved.
@@ -125,7 +131,7 @@ class Timer {
       if (estTag) {
         // Resolve calendar estimates from the preserved start time before subtracting elapsed time.
         const state = getTimerState(
-            todo.text,
+            this.data.timerText,
             startedFormat,
             new Date(),
             this.data.timestampOffset
@@ -157,7 +163,7 @@ class Timer {
 
   updateText() {
     const state = getTimerState(
-      this.data.text,
+      this.data.timerText || this.data.text,
       this.data.startedFormat,
       new Date(),
       this.data.timestampOffset

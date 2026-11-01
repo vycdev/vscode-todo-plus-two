@@ -1,3 +1,5 @@
+import { parseCodeBlocks } from './code-blocks';
+
 export interface ProjectCopyLine {
   text: string;
   level: number;
@@ -24,10 +26,13 @@ export const renderProjectCopy = (
   if (!lines[projectLine]) return '';
 
   const projectLevel = lines[projectLine].level;
+  const code = parseCodeBlocks(lines.map((line) => line.text).join('\n'));
   let end = lines.length;
 
   if (!includeRemainingDocument) {
     for (let index = projectLine + 1; index < lines.length; index++) {
+      const block = code.byLine.get(index);
+      if (block && index !== block.startLine) continue;
       if (lines[index].text.trim() && lines[index].level <= projectLevel) {
         end = index;
         break;

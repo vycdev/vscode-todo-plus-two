@@ -13,14 +13,14 @@ const getDecorationType = cachedDecorationType(() => ({
 }));
 
 export const getPlannedDecorations = (
-  todos: { text: string; range: Range }[],
+  todos: { text: string; range: Range; markdownNode?: object }[],
   now: Date = new Date()
 ) => {
   const ranges: Range[] = [];
 
   if (Config.getKey('planned.enabled') === true) {
     todos.forEach((todo) => {
-      getActivePlannedTags(todo.text, now).forEach(({ start, end }) => {
+      getActivePlannedTags(todo.text, now, !!todo.markdownNode).forEach(({ start, end }) => {
         ranges.push(
           new Range(
             todo.range.start.line,

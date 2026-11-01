@@ -6,7 +6,7 @@ import Config from '../config';
 import Consts from '../consts';
 import { Comment, Project, Tag, TodoBox, TodoDone, TodoCancelled } from '../todo/items';
 import AST from './ast';
-import { getEstimateDuration } from './estimate';
+import { getEstimateDuration, isFixedEstimateDuration } from './estimate';
 import { evaluateStatisticsCondition } from './statistics-condition';
 import { getStatisticsLines, getStatisticsScopeEnd } from './statistics-lines';
 import { renderStatisticsTemplate } from './statistics-template';
@@ -71,10 +71,7 @@ const Statistics = {
 
       // Calendar and natural-language estimates depend on the reference time.
       // Cache only explicit durations, which cannot go stale as time passes.
-      const fixedDuration =
-        /^\s*(?:\d+(?:\.\d+)?\s*(?:m[dw]|ms|[smhdwy]|milliseconds?|seconds?|minutes?|hours?|days?|weeks?|years?)\s*)+$/i.test(
-          time
-        );
+      const fixedDuration = isFixedEstimateDuration(time);
       if (fixedDuration && Statistics.timeTags.estimates[cacheKey] !== undefined)
         return Statistics.timeTags.estimates[cacheKey];
 
@@ -169,14 +166,22 @@ const Statistics = {
     },
 
     updateGlobal(items) {
-      if (items.archive && Config.getKey('statistics.statusbar.ignoreArchive')) {
+      Statistics.tokens.global = Statistics.tokens.createGlobal(items);
+    },
+
+    createGlobal(items, ignoreArchive = Config.getKey('statistics.statusbar.ignoreArchive')) {
+      if (items.archive && ignoreArchive) {
         // Keeping only items before the archive
 
         items = _.reduce(
           items,
           (acc, value, key) => {
             const newValue = _.isArray(value)
-              ? value.filter((item) => item.lineNumber < items.archive.lineNumber)
+              ? value.filter((item) =>
+                  item.markdownNode
+                    ? !item.markdownNode.inArchive
+                    : item.lineNumber < items.archive.lineNumber
+                )
               : value;
 
             acc[key] = newValue;
@@ -242,18 +247,23 @@ const Statistics = {
 
       if (taggedTodo) tokens.taggedTodos.push(taggedTodo);
 
-      Statistics.tokens.global = tokens;
+      return tokens;
     },
 
     projects: {},
 
-    updateProjects(textDocument: vscode.TextDocument, items) {
+    updateProjects(textDocument: vscode.TextDocument, items, reusable = new Map()) {
       Statistics.tokens.projects = {};
 
       if (!items.projects) return;
 
       const lines = getStatisticsLines(items),
         archiveLineNumber = items.archive && items.archive.lineNumber;
+
+      items.projects.forEach((project) => {
+        if (reusable.has(project))
+          Statistics.tokens.projects[project.lineNumber] = reusable.get(project);
+      });
 
       items.projects.forEach((project) => {
         Statistics.tokens.updateProject(
@@ -279,7 +289,8 @@ const Statistics = {
       project.level = project.level || AST.getLevel(textDocument, project.line.text);
 
       const tokens = new Tokens(),
-        includeRemainingDocument = project.lineNumber === archiveLineNumber,
+        includeRemainingDocument =
+          !project.markdownNode && project.lineNumber === archiveLineNumber,
         scopeEnd = getStatisticsScopeEnd(
           lines,
           lineNr,

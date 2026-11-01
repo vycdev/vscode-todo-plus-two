@@ -25,8 +25,9 @@ class JS extends Abstract {
     total?: number,
     doneRef?: { count: number }
   ) {
+    const generation = this.watcherGeneration;
     for (let i = 0; i < items.length; i += batchSize) {
-      if (this.disposed) return;
+      if (this.disposed || generation !== this.watcherGeneration) return;
       const batch = items.slice(i, i + batchSize);
       await Promise.all(batch.map((it) => fn(it)));
       if (progress && total && doneRef) {
@@ -39,20 +40,24 @@ class JS extends Abstract {
     }
   }
   async getFilePaths(rootPaths) {
-    return discoverFiles(
+    const filePaths = await discoverFiles(
       rootPaths,
       this.include || [],
       this.exclude || [],
       !!Config.getKey('followSymlinks'),
       getWorkspaceExcludeRules
     );
+    return filePaths.map((filePath) => filePath.replace(/\\/g, '/'));
   }
 
   async initFilesData(
     rootPaths,
     progress?: vscode.Progress<{ message?: string; increment?: number }>
   ) {
+    const generation = this.watcherGeneration;
     const filePaths = await this.getFilePaths(rootPaths);
+
+    if (this.disposed || generation !== this.watcherGeneration) return;
 
     this.filesData = {};
 
@@ -64,12 +69,17 @@ class JS extends Abstract {
       async (filePath: string) => {
         const revision = this.fileDataRevisions[filePath] || 0;
         const data = await this.getFileData(filePath);
-        if (this.disposed || revision !== (this.fileDataRevisions[filePath] || 0)) return;
+        if (
+          this.disposed ||
+          generation !== this.watcherGeneration ||
+          revision !== (this.fileDataRevisions[filePath] || 0)
+        )
+          return;
         if (data && data.length) {
-          this.filesData[filePath] = data;
+          this.setFileData(filePath, data);
           this.nonEmptyFiles.add(filePath);
         } else {
-          delete this.filesData[filePath];
+          this.deleteFileData(filePath);
           this.nonEmptyFiles.delete(filePath);
         }
       },
@@ -82,6 +92,8 @@ class JS extends Abstract {
   async updateFilesData(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
     if (_.isEmpty(this.filesData)) return;
 
+    const generation = this.watcherGeneration;
+
     const pending = Object.keys(this.filesData).filter((fp) => !this.filesData[fp]);
     if (!pending.length) return;
 
@@ -93,12 +105,17 @@ class JS extends Abstract {
       async (filePath: string) => {
         const revision = this.fileDataRevisions[filePath] || 0;
         const data = await this.getFileData(filePath);
-        if (this.disposed || revision !== (this.fileDataRevisions[filePath] || 0)) return;
+        if (
+          this.disposed ||
+          generation !== this.watcherGeneration ||
+          revision !== (this.fileDataRevisions[filePath] || 0)
+        )
+          return;
         if (data && data.length) {
-          this.filesData[filePath] = data;
+          this.setFileData(filePath, data);
           this.nonEmptyFiles.add(filePath);
         } else {
-          delete this.filesData[filePath];
+          this.deleteFileData(filePath);
           this.nonEmptyFiles.delete(filePath);
         }
       },

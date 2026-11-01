@@ -1,4 +1,4 @@
-import { maskInlineCode } from './todo-status';
+import { getMarkdownTaskTags, getTodoTaskTags } from './markdown-task-text';
 
 export interface PlannedWindow {
   date?: string;
@@ -68,29 +68,24 @@ export const parsePlanned = (value: string): PlannedWindow[] => {
 
 export const getActivePlannedTags = (
   text: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  markdown: boolean = false
 ): { start: number; end: number }[] => {
-  const maskedText = maskInlineCode(text);
-  const pattern = /@planned\(([^\r\n)]*)\)/gi;
+  const tags = markdown ? getMarkdownTaskTags(text) : getTodoTaskTags(text);
   const today = `${now.getFullYear().toString().padStart(4, '0')}-${(now.getMonth() + 1)
     .toString()
     .padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
   const minute = now.getHours() * 60 + now.getMinutes();
   const ranges: { start: number; end: number }[] = [];
-  let match: RegExpExecArray;
-
-  while ((match = pattern.exec(maskedText))) {
-    if (match.index && /[a-zA-Z0-9`]/.test(maskedText[match.index - 1])) continue;
-
-    // Mask code only to locate tags. Parse the original argument so an inline
-    // code span cannot become valid whitespace inside a malformed window.
-    const value = text.slice(match.index + '@planned('.length, match.index + match[0].length - 1);
-    const active = parsePlanned(value).some(
+  for (const tag of tags) {
+    const match = /^@planned\(([^\r\n)]*)\)$/i.exec(tag.text);
+    if (!match) continue;
+    const active = parsePlanned(match[1]).some(
       (window) =>
         (!window.date || window.date === today) && minute >= window.start && minute < window.end
     );
 
-    if (active) ranges.push({ start: match.index, end: match.index + match[0].length });
+    if (active) ranges.push({ start: tag.start, end: tag.end });
   }
 
   return ranges;

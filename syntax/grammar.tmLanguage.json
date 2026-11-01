@@ -4,6 +4,7 @@
   "scopeName": "text.todo",
   "fileTypes": ["TODO", "todolist.txt", "todo", "todos", "task", "tasks", "taskpaper"],
   "patterns": [
+    { "include": "#fenced" },
     { "include": "#done" },
     { "include": "#cancelled" },
     { "include": "#started" },
@@ -12,6 +13,7 @@
     { "include": "#comment" }
   ],
   "repository": {
+    "fenced": { "patterns": [{ "include": "text.todo.fenced" }] },
     "cancelled": {
       "begin": "^(?=\\s*(?:✘\\s|(?:☐|-\\s+\\[ \\])\\s(?:(?:[^`\\r\\n]|(`+)(?!`)(?:(?!(?<!`)\\1(?!`))[^\\r\\n])*(?<!`)\\1(?!`)|(`+)(?!`)(?![^\\r\\n]*(?<!`)\\2(?!`))))*?(?<![A-Za-z0-9])@cancelled(?:\\([^)]*\\))?(?![A-Za-z0-9])))",
       "end": "$",

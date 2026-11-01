@@ -16,6 +16,9 @@
     "onView:todo.views.2embedded",
     "onView:todo.views.3due",
     "onCommand:todo.open",
+    "onCommand:todo.focusTag",
+    "onCommand:todo.clearFocus",
+    "onCommand:todo.numberedListEnter",
     "onCommand:todo.openEmbedded",
     "onCommand:todo.toggleBox",
     "onCommand:todo.toggleDone",
@@ -50,8 +53,12 @@
     "onCommand:todo.viewEmbeddedClearFilter",
     "onCommand:todo.viewEmbeddedShowAllFiles",
     "onCommand:todo.viewEmbeddedShowActiveFile",
+    "onCommand:todo.viewEmbeddedMoveUp",
+    "onCommand:todo.viewEmbeddedMoveDown",
+    "onCommand:todo.viewEmbeddedResetOrder",
     "onCommand:todo.viewOpenFile",
     "onCommand:todo.viewRevealTodo",
+    "onCommand:todo.viewEditTodo",
     "onCommand:todo.viewToggleBox",
     "onCommand:todo.viewToggleDone",
     "onCommand:todo.viewToggleCancelled",
@@ -62,7 +69,9 @@
     "onCommand:todo.editorToggleStart",
     "onCommand:todo.editorArchive",
     "onCommand:todo.unarchive",
-    "onCommand:todo.editorUnarchive"
+    "onCommand:todo.editorUnarchive",
+    "onLanguage:markdown",
+    "onCommand:todo.syncPausedTags"
   ],
   "contributes": {
     "languages": [
@@ -91,9 +100,68 @@
     ],
     "grammars": [
       {
+        "scopeName": "text.todo.fenced",
+        "path": "./syntax/fenced-code.tmLanguage.json"
+      },
+      {
         "language": "todo",
         "scopeName": "text.todo",
-        "path": "./syntax/grammar.tmLanguage.json"
+        "path": "./syntax/grammar.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block": "plaintext",
+          "markup.raw.block.todo": "plaintext",
+          "meta.embedded.block.shellscript": "shellscript",
+          "meta.embedded.block.ini": "ini",
+          "meta.embedded.block.c": "c",
+          "meta.embedded.block.bat": "bat",
+          "meta.embedded.block.csharp": "csharp",
+          "meta.embedded.block.bibtex": "bibtex",
+          "meta.embedded.block.yaml": "yaml",
+          "meta.embedded.block.cpp": "cpp",
+          "meta.embedded.block.xml": "xml",
+          "meta.embedded.block.coffeescript": "coffeescript",
+          "meta.embedded.block.css": "css",
+          "meta.embedded.block.java": "java",
+          "meta.embedded.block.clojure": "clojure",
+          "meta.embedded.block.javascript": "javascript",
+          "meta.embedded.block.dart": "dart",
+          "meta.embedded.block.diff": "diff",
+          "meta.embedded.block.dockerfile": "dockerfile",
+          "meta.embedded.block.python": "python",
+          "meta.embedded.block.json": "json",
+          "meta.embedded.block.fsharp": "fsharp",
+          "meta.embedded.block.go": "go",
+          "meta.embedded.block.groovy": "groovy",
+          "meta.embedded.block.hlsl": "hlsl",
+          "meta.embedded.block.html": "html",
+          "meta.embedded.block.php": "php",
+          "meta.embedded.block.handlebars": "handlebars",
+          "meta.embedded.block.jsonc": "jsonc",
+          "meta.embedded.block.julia": "julia",
+          "meta.embedded.block.less": "less",
+          "meta.embedded.block.lua": "lua",
+          "meta.embedded.block.makefile": "makefile",
+          "meta.embedded.block.markdown": "markdown",
+          "meta.embedded.block.ruby": "ruby",
+          "meta.embedded.block.objective-c": "objective-c",
+          "meta.embedded.block.objective-cpp": "objective-cpp",
+          "meta.embedded.block.sql": "sql",
+          "meta.embedded.block.perl": "perl",
+          "meta.embedded.block.powershell": "powershell",
+          "meta.embedded.block.jade": "jade",
+          "meta.embedded.block.r": "r",
+          "meta.embedded.block.raku": "raku",
+          "meta.embedded.block.rust": "rust",
+          "meta.embedded.block.scss": "scss",
+          "meta.embedded.block.swift": "swift",
+          "meta.embedded.block.typescriptreact": "typescriptreact",
+          "meta.embedded.block.latex": "latex",
+          "meta.embedded.block.typescript": "typescript",
+          "meta.embedded.block.vb": "vb",
+          "meta.embedded.block.wat": "wat",
+          "meta.embedded.block.xsl": "xsl",
+          "meta.embedded.block.javascriptreact": "javascriptreact"
+        }
       }
     ],
     "configurationDefaults": {
@@ -121,7 +189,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Globs to use for including files",
+          "description": "Workspace-relative globs or absolute paths to individual Todo files. Add absolute paths in User settings to show global files across projects. Absolute paths are literal, not globs.",
           "default": [
             "**/TODO",
             "**/TODOS",
@@ -174,6 +242,14 @@
           "description": "Start the tree in an expanded state",
           "default": true
         },
+        "todo.file.view.groupByTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Group tasks within each file by these case-sensitive tag names, in this order. Tasks with none of these tags appear under Other. An empty array preserves the project hierarchy. Grouped mode shows task rows only",
+          "default": []
+        },
         "todo.file.view.showFinished": {
           "type": "boolean",
           "description": "Show done and cancelled tasks in the Todo files view",
@@ -198,6 +274,11 @@
           "type": "boolean",
           "description": "Automatically insert a new todo box when Enter is pressed at the end of a non-empty todo",
           "default": false
+        },
+        "todo.autoRenumber": {
+          "type": "boolean",
+          "description": "Continue plain numbered lists and renumber following items when pressing Enter at the end of an item in Todo files",
+          "default": true
         },
         "todo.autoCompleteParents": {
           "type": "boolean",
@@ -517,6 +598,111 @@
             "today"
           ]
         },
+        "todo.tags.styles": {
+          "type": "object",
+          "markdownDescription": "Task-text styles selected by literal tags. Higher priority wins per property; the last matching tag wins ties. Built-in rules inherit their appearance from `todo.colors.done`, `todo.colors.cancelled`, `todo.colors.started` and `todo.decorations.done.strikethrough` unless overridden here. Set a rule to `false` to disable it. Tags do not need to be in `todo.tags.names`.",
+          "propertyNames": {
+            "pattern": "^[^@\\s()*~`]+$"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "color": {
+                    "type": "string",
+                    "description": "Task text color"
+                  },
+                  "backgroundColor": {
+                    "type": "string",
+                    "description": "Task text background color"
+                  },
+                  "bold": {
+                    "type": "boolean"
+                  },
+                  "italic": {
+                    "type": "boolean"
+                  },
+                  "strikethrough": {
+                    "type": "boolean"
+                  },
+                  "priority": {
+                    "type": "number",
+                    "default": 0
+                  },
+                  "dark": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "color": {
+                        "type": "string",
+                        "description": "Task text color"
+                      },
+                      "backgroundColor": {
+                        "type": "string",
+                        "description": "Task text background color"
+                      },
+                      "bold": {
+                        "type": "boolean"
+                      },
+                      "italic": {
+                        "type": "boolean"
+                      },
+                      "strikethrough": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "light": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "color": {
+                        "type": "string",
+                        "description": "Task text color"
+                      },
+                      "backgroundColor": {
+                        "type": "string",
+                        "description": "Task text background color"
+                      },
+                      "bold": {
+                        "type": "boolean"
+                      },
+                      "italic": {
+                        "type": "boolean"
+                      },
+                      "strikethrough": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "default": {
+            "done": {
+              "priority": 100
+            },
+            "cancelled": {
+              "priority": 100
+            },
+            "started": {
+              "priority": 10
+            },
+            "paused": {
+              "priority": 20,
+              "color": "#e5d145"
+            }
+          }
+        },
         "todo.tags.namesInference": {
           "type": "boolean",
           "description": "Infer commonly used tags' names",
@@ -783,7 +969,7 @@
         "todo.embedded.regex": {
           "type": "string",
           "description": "Regex used for finding embedded todos, requires double escaping",
-          "default": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *\\{%-? *endcomment *-?%\\}| *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|((?: +[^\\n@]*?)(?= *(?:\\{%-? *endcomment *-?%\\}|-->|\\*/|!}|--}}|}}|[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))"
+          "default": "(?:<!-- *)?(?:#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!|\\{%-? *comment *-?%\\}) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)(?:\\s*\\([^)]+\\))?:?(?!\\w)(?: *\\{%-? *endcomment *-?%\\}| *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|((?: (?:[^ \\n@]| +(?! ))*?)(?= *(?:\\{%-? *endcomment *-?%\\}|-->|\\*/|!}|--}}|}}|[^:]//|/\\*+|<!--|@|\\{!|\\{\\{!--|\\{\\{!))|(?: +[^@\\n]+)?))"
         },
         "todo.embedded.regexFlags": {
           "type": "string",
@@ -935,9 +1121,10 @@
           "type": "string",
           "enum": [
             "line",
-            "label"
+            "label",
+            "manual"
           ],
-          "description": "Sort todos either by label or by source line number",
+          "description": "Sort todos by source line number, label, or a manual order saved in this workspace. In manual mode, drag a row onto a sibling (VS Code 1.66+) or use Move Up and Move Down to reorder groups, files, and todos",
           "default": "line"
         },
         "todo.embedded.view.groupByRoot": {
@@ -970,10 +1157,59 @@
           "minimum": 1,
           "description": "Batch size when loading todo files metadata and refreshing.",
           "default": 50
+        },
+        "todo.markdown.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Todo tasks in Markdown notes while keeping Markdown editing and preview."
+        },
+        "todo.markdown.include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.md",
+            "**/*.markdown"
+          ],
+          "description": "Markdown note globs to scan for tasks. Todo file excludes and workspace files.exclude also apply."
+        },
+        "todo.markdown.scope": {
+          "type": "string",
+          "enum": [
+            "all",
+            "sections"
+          ],
+          "default": "all",
+          "description": "Find tasks throughout Markdown notes, or only below configured task section headings."
+        },
+        "todo.markdown.sections": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "Todo",
+            "Todos",
+            "Tasks"
+          ],
+          "description": "Case-insensitive Markdown heading names used when todo.markdown.scope is sections."
         }
       }
     },
     "commands": [
+      {
+        "command": "todo.focusTag",
+        "title": "Todo: Focus on Tag…"
+      },
+      {
+        "command": "todo.clearFocus",
+        "title": "Todo: Clear Focus"
+      },
+      {
+        "command": "todo.numberedListEnter",
+        "title": "Todo: Continue Numbered List"
+      },
       {
         "command": "todo.open",
         "title": "Todo: Open"
@@ -1001,6 +1237,10 @@
       {
         "command": "todo.toggleTimer",
         "title": "Todo: Toggle Timer"
+      },
+      {
+        "command": "todo.syncPausedTags",
+        "title": "Todo: Sync Paused Tags"
       },
       {
         "command": "todo.toggleStatusBarTimer",
@@ -1171,6 +1411,19 @@
         }
       },
       {
+        "command": "todo.viewEmbeddedMoveUp",
+        "title": "Move Up"
+      },
+      {
+        "command": "todo.viewEmbeddedMoveDown",
+        "title": "Move Down"
+      },
+      {
+        "command": "todo.viewEmbeddedResetOrder",
+        "title": "Reset Manual Order",
+        "category": "Todo"
+      },
+      {
         "command": "todo.viewOpenFile",
         "title": "Open"
       },
@@ -1179,12 +1432,24 @@
         "title": "Open"
       },
       {
+        "command": "todo.viewEditTodo",
+        "title": "Edit Task",
+        "icon": {
+          "light": "resources/icons/edit_light.svg",
+          "dark": "resources/icons/edit_dark.svg"
+        }
+      },
+      {
         "command": "todo.viewToggleBox",
         "title": "Toggle Box"
       },
       {
         "command": "todo.viewToggleDone",
-        "title": "Toggle Done"
+        "title": "Toggle Done",
+        "icon": {
+          "light": "resources/icons/done_light.svg",
+          "dark": "resources/icons/done_dark.svg"
+        }
       },
       {
         "command": "todo.viewToggleCancelled",
@@ -1221,57 +1486,62 @@
     ],
     "keybindings": [
       {
+        "command": "todo.numberedListEnter",
+        "key": "Enter",
+        "when": "editorTextFocus && editorLangId == todo && !editorReadonly && !isComposing && config.todo.autoRenumber && !suggestWidgetVisible && !inSnippetMode && !editorHasSelection && !editorHasMultipleSelections"
+      },
+      {
         "command": "todo.toggleBox",
         "key": "Ctrl+Enter",
         "mac": "Cmd+Enter",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.toggleBox",
         "key": "Alt+Enter",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.toggleDone",
         "key": "Alt+d",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.toggleCancelled",
         "key": "Alt+c",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.toggleStart",
         "key": "Alt+s",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.toggleTimer",
         "key": "Alt+t",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.archive",
         "key": "Shift+Ctrl+a",
         "mac": "Shift+Cmd+a",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.unarchive",
         "key": "Shift+Ctrl+u",
         "mac": "Shift+Cmd+u",
-        "when": "editorTextFocus && editorLangId == todo && todo-unarchive-enabled == true"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task)) && todo-unarchive-enabled == true"
       },
       {
         "command": "todo.openDependencyAtCursor",
         "key": "f12",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       },
       {
         "command": "todo.renameDependencyId",
         "key": "f2",
-        "when": "editorTextFocus && editorLangId == todo"
+        "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-task))"
       }
     ],
     "views": {
@@ -1302,48 +1572,60 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "todo.toggleBox",
+          "command": "todo.focusTag",
           "when": "editorLangId == todo"
+        },
+        {
+          "command": "todo.clearFocus",
+          "when": "editorLangId == todo && todo-tag-focused == true"
+        },
+        {
+          "command": "todo.numberedListEnter",
+          "when": "false"
+        },
+        {
+          "command": "todo.toggleBox",
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.toggleCancelled",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.toggleDone",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.toggleStart",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.toggleTimer",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.archive",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.copyProjectWithStatistics",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.unarchive",
-          "when": "editorLangId == todo && todo-unarchive-enabled == true"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active)) && todo-unarchive-enabled == true"
         },
         {
           "command": "todo.addDependency",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.findDependents",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.renameDependencyId",
-          "when": "editorLangId == todo"
+          "when": "(editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.openDependency",
@@ -1398,11 +1680,23 @@
           "when": "false"
         },
         {
+          "command": "todo.viewEmbeddedMoveUp",
+          "when": "false"
+        },
+        {
+          "command": "todo.viewEmbeddedMoveDown",
+          "when": "false"
+        },
+        {
           "command": "todo.viewOpenFile",
           "when": "false"
         },
         {
           "command": "todo.viewRevealTodo",
+          "when": "false"
+        },
+        {
+          "command": "todo.viewEditTodo",
           "when": "false"
         },
         {
@@ -1450,32 +1744,32 @@
         {
           "command": "todo.editorToggleBox",
           "group": "todo@1",
-          "when": "editorTextFocus && editorLangId == todo"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.editorToggleDone",
           "group": "todo@2",
-          "when": "editorTextFocus && editorLangId == todo"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.editorToggleCancelled",
           "group": "todo@3",
-          "when": "editorTextFocus && editorLangId == todo"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.editorToggleStart",
           "group": "todo@4",
-          "when": "editorTextFocus && editorLangId == todo"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.editorArchive",
           "group": "todo@5",
-          "when": "editorTextFocus && editorLangId == todo"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active))"
         },
         {
           "command": "todo.editorUnarchive",
           "group": "todo@6",
-          "when": "editorTextFocus && editorLangId == todo && todo-unarchive-enabled == true"
+          "when": "editorTextFocus && (editorLangId == todo || (editorLangId == markdown && todo-markdown-active)) && todo-unarchive-enabled == true"
         }
       ],
       "view/title": [
@@ -1543,9 +1837,24 @@
           "command": "todo.viewEmbeddedShowActiveFile",
           "when": "view == todo.views.2embedded && todo-embedded-all == true",
           "group": "navigation@1"
+        },
+        {
+          "command": "todo.viewEmbeddedResetOrder",
+          "when": "view == todo.views.2embedded && config.todo.embedded.view.sort == manual",
+          "group": "2_sort"
         }
       ],
       "view/item/context": [
+        {
+          "command": "todo.viewEmbeddedMoveUp",
+          "when": "view == todo.views.2embedded && config.todo.embedded.view.sort == manual && todo-embedded-filtered == false && todo-embedded-all == true && viewItem =~ /^(group|file|todo)$/",
+          "group": "2_sort@1"
+        },
+        {
+          "command": "todo.viewEmbeddedMoveDown",
+          "when": "view == todo.views.2embedded && config.todo.embedded.view.sort == manual && todo-embedded-filtered == false && todo-embedded-all == true && viewItem =~ /^(group|file|todo)$/",
+          "group": "2_sort@2"
+        },
         {
           "command": "todo.viewOpenFile",
           "when": "view =~ /todo\\.views/ && viewItem == file"
@@ -1574,11 +1883,28 @@
           "command": "todo.viewToggleStart",
           "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
           "group": "1_status@4"
+        },
+        {
+          "command": "todo.viewEditTodo",
+          "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
+          "group": "navigation@2"
+        },
+        {
+          "command": "todo.viewEditTodo",
+          "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
+          "group": "inline@1"
+        },
+        {
+          "command": "todo.viewToggleDone",
+          "when": "view =~ /todo\\.views\\.(1files|3due)/ && viewItem == todo",
+          "group": "inline@2"
         }
       ]
     }
   },
   "scripts": {
+    "test:e2e": "npm run compile && node scripts/run-e2e.js",
+    "generate:code-grammar": "node scripts/generate-code-grammar.js",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test && npm run compile && npm run format:check",
     "vscode:prepublish": "npm run typecheck && rimraf out && webpack --mode production",
@@ -1587,7 +1913,8 @@
     "compile:watch": "webpack --mode development --watch",
     "test": "mocha -r ts-node/register \"test/**/*.spec.ts\" --exit",
     "format": "prettier --write \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
-    "format:check": "prettier --check \"**/*.{ts,js,json,md,css,scss,html,svg}\""
+    "format:check": "prettier --check \"**/*.{ts,js,json,md,css,scss,html,svg}\"",
+    "test:e2e:tags": "npm run compile && node test/e2e/run.js"
   },
   "bugs": {
     "url": "https://github.com/vycdev/vscode-todo-plus-two/issues"
@@ -1635,12 +1962,14 @@
     "to-time": "^1.0.2"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.150",
-    "@types/node": "^13.13.4",
     "@types/chai": "^5.2.3",
+    "@types/lodash": "^4.14.150",
     "@types/mocha": "^10.0.10",
+    "@types/node": "^13.13.4",
     "@types/vscode": "1.36.0",
+    "@vscode/test-electron": "3.1.0",
     "chai": "^6.2.1",
+    "js-yaml": "4.3.2",
     "markdown-it": "^14.1.0",
     "mocha": "^11.7.5",
     "prettier": "^3.6.2",
@@ -1648,6 +1977,8 @@
     "ts-loader": "^5.2.1",
     "ts-node": "^10.9.2",
     "typescript": "5.9.3",
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.3.2",
     "webpack": "^4.20.2",
     "webpack-cli": "^3.1.2"
   }

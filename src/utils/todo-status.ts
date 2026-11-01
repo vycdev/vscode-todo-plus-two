@@ -1,10 +1,24 @@
 /* INLINE CODE */
 
-export const maskInlineCode = (text: string): string => {
-  const masked = text.split('');
+export const getInlineCodeRanges = (
+  text: string,
+  literalTagArguments: boolean = false
+): { start: number; end: number }[] => {
+  const ranges: { start: number; end: number }[] = [];
   let cursor = 0;
 
   while (cursor < text.length) {
+    if (
+      literalTagArguments &&
+      text[cursor] === '@' &&
+      (cursor === 0 || !/[a-zA-Z0-9@]/.test(text[cursor - 1]))
+    ) {
+      const tag = /^@[^\s*~(`@]+\([^\r\n)]*\)/.exec(text.slice(cursor));
+      if (tag) {
+        cursor += tag[0].length;
+        continue;
+      }
+    }
     if (text[cursor] !== '`') {
       cursor++;
       continue;
@@ -36,11 +50,18 @@ export const maskInlineCode = (text: string): string => {
 
     if (closingEnd < 0) continue;
 
-    for (let index = openingStart; index < closingEnd; index++) masked[index] = ' ';
-
+    ranges.push({ start: openingStart, end: closingEnd });
     cursor = closingEnd;
   }
 
+  return ranges;
+};
+
+export const maskInlineCode = (text: string, literalTagArguments: boolean = false): string => {
+  const masked = text.split('');
+  getInlineCodeRanges(text, literalTagArguments).forEach(({ start, end }) => {
+    for (let index = start; index < end; index++) masked[index] = ' ';
+  });
   return masked.join('');
 };
 
@@ -52,10 +73,14 @@ export const matchesTodoStatus = (text: string, pattern: RegExp): boolean => {
   return pattern.test(maskInlineCode(text));
 };
 
-export const removeTodoStatusTag = (text: string, pattern: RegExp): string => {
+export const removeTodoStatusTag = (
+  text: string,
+  pattern: RegExp,
+  mask = maskInlineCode
+): string => {
   pattern.lastIndex = 0;
 
-  const match = pattern.exec(maskInlineCode(text));
+  const match = pattern.exec(mask(text));
 
   if (!match) return text;
 

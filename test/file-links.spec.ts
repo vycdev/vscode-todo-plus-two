@@ -1,6 +1,10 @@
 import { expect } from 'chai';
 import * as path from 'path';
-import { findRelativeFileLinks } from '../src/utils/file-links';
+import {
+  findRelativeFileLinks,
+  makeRelativeFileLink,
+  rebaseRelativeFileLinks,
+} from '../src/utils/file-links';
 
 describe('Relative file links', () => {
   const workspacePath = path.resolve(path.sep, 'workspace'),
@@ -106,5 +110,66 @@ describe('Relative file links', () => {
   it('ignores query and fragment syntax that cannot be resolved as file paths', () => {
     expect(findRelativeFileLinks('file://./app.ts?raw=1', documentPath)).to.deep.equal([]);
     expect(findRelativeFileLinks('file://./app.ts#L10', documentPath)).to.deep.equal([]);
+  });
+
+  it('encodes generated image links with spaces, delimiters, percent signs, and Unicode', () => {
+    const target = path.join(workspacePath, 'todos', "tasks (#1) !'%.todo.assets", '图.png');
+    const text = makeRelativeFileLink(documentPath, target);
+    expect(text).to.include('tasks%20%28%231%29%20%21%27%25.todo.assets/');
+    expect(findRelativeFileLinks(text, documentPath)[0].targetPath).to.equal(target);
+  });
+
+  it('keeps relative attachment targets when a task moves to a workspace-root archive', () => {
+    const archivePath = path.join(workspacePath, 'ARCHIVE.TODO');
+    const text =
+      '✔ Done file://./project.todo.assets/image.png\n  Note (file://../shared/my%20image.jpg).';
+    const rebased = rebaseRelativeFileLinks(text, documentPath, archivePath);
+    expect(rebased).to.equal(
+      '✔ Done file://./todos/project.todo.assets/image.png\n  Note (file://./shared/my%20image.jpg).'
+    );
+    expect(
+      findRelativeFileLinks(rebased, archivePath).map((link) => link.targetPath)
+    ).to.deep.equal(findRelativeFileLinks(text, documentPath).map((link) => link.targetPath));
+  });
+
+  it('preserves link spelling for archives in the same directory', () => {
+    const text = '✔ Done FILE://./project.todo.assets/image.png';
+    expect(
+      rebaseRelativeFileLinks(
+        text,
+        documentPath,
+        path.join(path.dirname(documentPath), 'ARCHIVE.project.todo')
+      )
+    ).to.equal(text);
+  });
+
+  it('keeps fenced code examples literal while rebasing surrounding attachments', () => {
+    const archivePath = path.join(workspacePath, 'ARCHIVE.TODO');
+    const text = [
+      '✔ Done <file://./project.todo.assets/image.png>',
+      '  ```text',
+      '  file://./literal-example.png',
+      '  ```',
+      '  Note file://./note.png',
+    ].join('\r\n');
+    const rebased = rebaseRelativeFileLinks(text, documentPath, archivePath);
+    expect(rebased).to.equal(
+      [
+        '✔ Done <file://./todos/project.todo.assets/image.png>',
+        '  ```text',
+        '  file://./literal-example.png',
+        '  ```',
+        '  Note file://./todos/note.png',
+      ].join('\r\n')
+    );
+  });
+
+  it('rebases parent-directory links and leaves unsupported link syntax unchanged', () => {
+    const archivePath = path.join(workspacePath, 'archives', 'ARCHIVE.TODO');
+    const text = 'file://../shared/image.png file://./bad%ZZ.png https://example.test/image.png';
+    const rebased = rebaseRelativeFileLinks(text, documentPath, archivePath);
+    expect(rebased).to.equal(
+      'file://../shared/image.png file://./bad%ZZ.png https://example.test/image.png'
+    );
   });
 });
