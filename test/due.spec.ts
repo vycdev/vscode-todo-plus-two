@@ -117,6 +117,17 @@ describe('Due utilities', () => {
     }
   });
 
+  it('rejects offsets beyond the supported civil timezone range', () => {
+    for (const offset of ['+14:01', '+15:00', '+23:59', '-14:01', '-15:00', '-2359']) {
+      for (const seconds of ['', ':13']) {
+        const value = `2026-07-02T09:00${seconds}${offset}`;
+        expect(Due.parse(value)).to.equal(undefined, value);
+      }
+    }
+    expect(Due.parse('2026-07-02T09:00+14:00')?.toISOString()).to.equal('2026-07-01T19:00:00.000Z');
+    expect(Due.parse('2026-07-02T09:00-12:00')?.toISOString()).to.equal('2026-07-02T21:00:00.000Z');
+  });
+
   it('still accepts unzoned dates near the end of a month', () => {
     for (const day of [24, 29, 30, 31]) {
       expect(Due.parse(`2026-07-${day}`)?.getDate()).to.equal(day);

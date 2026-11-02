@@ -46,10 +46,16 @@ const Due = {
     const parsed = moment(value, formats, true);
 
     if (parsed.isValid()) {
-      // Moment's strict mode does not validate timezone offset ranges.
+      // Moment's strict mode accepts offsets beyond the civil timezone range.
       // Require a clock component so date-only days are not mistaken for offsets.
       const offset = value.match(/:\d{2}[+-](\d{2})(?::?(\d{2}))?$/);
-      if (offset && (Number(offset[1]) > 23 || Number(offset[2]) > 59)) return;
+      if (
+        offset &&
+        (Number(offset[1]) > 14 ||
+          (Number(offset[1]) === 14 && Number(offset[2] || 0) > 0) ||
+          Number(offset[2]) > 59)
+      )
+        return;
 
       return parsed.toDate();
     }
