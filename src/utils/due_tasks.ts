@@ -1,6 +1,7 @@
 import Due from './due';
 import { maskInlineCode } from './todo-status';
 import { parseCodeBlocks } from './code-blocks';
+import { getTodoTaskTags } from './markdown-task-text';
 
 export interface DueTaskLine {
   date: Date;
@@ -39,14 +40,9 @@ export const getDueTaskLines = (
 
     if (!matches(maskedText, todoRegex) || matches(maskedText, finishedRegex)) return;
 
-    const tags: string[] = [],
-      duePattern = /@due\([^)]*\)/gi;
-    let match: RegExpExecArray;
-
-    while ((match = duePattern.exec(maskedText))) {
-      if (match.index && /[a-zA-Z0-9`]/.test(maskedText[match.index - 1])) continue;
-      tags.push(match[0]);
-    }
+    const tags = getTodoTaskTags(text)
+      .filter((tag) => /^@due\([^)]*\)$/i.test(tag.text))
+      .map((tag) => tag.text);
 
     for (const tag of tags) {
       const value = Due.extract(tag),
