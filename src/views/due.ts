@@ -10,7 +10,11 @@ import Item from './items/item';
 import Placeholder from './items/placeholder';
 import Todo from './items/todo';
 import View from './view';
-import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
+import {
+  getMarkdownTaskNodes,
+  getMarkdownTaskSettings,
+  isMarkdownTaskDocument,
+} from '../utils/task-source';
 import { getMarkdownTaskTags } from '../utils/markdown-task-text';
 
 class DueView extends View {
@@ -62,7 +66,8 @@ class DueView extends View {
       today = new Date(),
       todayKey = getDueDateKey(today),
       configuredSoonDays = Number(Config.getKey('due.soonDays')),
-      soonDays = Number.isFinite(configuredSoonDays) ? configuredSoonDays : 7;
+      soonDays = Number.isFinite(configuredSoonDays) ? configuredSoonDays : 7,
+      markdownSettings = getMarkdownTaskSettings();
     const signature = JSON.stringify([
       todayKey,
       soonDays,
@@ -79,7 +84,7 @@ class DueView extends View {
       if (!data || !data.textEditor) return;
 
       const document = data.textEditor as TextDocument;
-      const markdown = isMarkdownTaskDocument(document);
+      const markdown = isMarkdownTaskDocument(document, markdownSettings);
       const fileSignature = `${signature}:${markdown}`;
       let cached = this.dueTaskCache.get(document);
       if (
@@ -92,7 +97,9 @@ class DueView extends View {
         for (let lineNumber = 0; lineNumber < document.lineCount; lineNumber++) {
           lines.push(document.lineAt(lineNumber).text);
         }
-        const markdownNodes = markdown ? getMarkdownTaskNodes(document) : undefined;
+        const markdownNodes = markdown
+          ? getMarkdownTaskNodes(document, markdownSettings)
+          : undefined;
         const byLine = markdownNodes
           ? new Map(
               markdownNodes

@@ -12,10 +12,7 @@ const loadDependencyIndex = (vscodeStub) => {
       if (request === '../consts') {
         return { default: { languageId: 'todo', regexes: { todo: /^\s*☐/ } } };
       }
-      if (request === './document-loader') {
-        return { loadAvailableDocuments: async () => [] };
-      }
-      if (request === './files') return { default: { getFilePaths: async () => [] } };
+      if (request === './files') return { default: { getDocuments: async () => ({}) } };
       if (request === './folder') return { default: { getAllRootPaths: () => [] } };
       if (request === './regex') {
         return { default: { test: (regex: RegExp, text: string) => regex.test(text) } };

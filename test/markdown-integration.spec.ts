@@ -172,7 +172,12 @@ const loadMarkdown = (initial: string, settings = {}) => {
       dispose() {}
     },
   };
-  const files = { getFilePaths: async () => [], get: async () => ({}), filesData: {} };
+  const files = {
+    getFilePaths: async () => [],
+    getDocuments: async () => ({}),
+    get: async () => ({}),
+    filesData: {},
+  };
   const utils: any = {
     log: { debug() {} },
     file: { open: async () => editor },
@@ -663,10 +668,10 @@ describe('Markdown task integration', () => {
     };
     state.workspace.textDocuments.push(allowed);
     state.utils.folder.getAllRootPaths = () => [process.cwd()];
-    state.utils.files.getFilePaths = async () => [allowed.uri.fsPath];
+    state.utils.files.getDocuments = async () => ({ [allowed.uri.fsPath]: allowed });
     state.dependencyIndex.getTodoDocuments = state.getTodoDocuments;
     expect(Object.keys((await state.dependencyIndex.get()).targets)).to.deep.equal(['allowed']);
-    state.utils.files.getFilePaths = async () => [];
+    state.utils.files.getDocuments = async () => ({});
     expect(Object.keys((await state.dependencyIndex.get()).targets)).to.deep.equal([]);
     expect(Object.keys((await state.dependencyIndex.get(state.document)).targets)).to.deep.equal([
       'excluded',
