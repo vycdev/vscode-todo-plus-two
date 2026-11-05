@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
+import type { TextDocument } from 'vscode';
 import Config from '../config';
 import Consts from '../consts';
 import Utils from '../utils';
@@ -15,6 +16,15 @@ import { getMarkdownTaskTags } from '../utils/markdown-task-text';
 class DueView extends View {
   id = 'todo.views.3due';
   rolloverTimer;
+  private dueTaskCache = new WeakMap<
+    TextDocument,
+    {
+      version: number;
+      signature: string;
+      relative: boolean;
+      tasks: ReturnType<typeof getDueTaskLines>;
+    }
+  >();
   private dateChanges = new vscode.EventEmitter<void>();
   readonly onDidChangeDate = this.dateChanges.event;
 
@@ -53,45 +63,73 @@ class DueView extends View {
       todayKey = getDueDateKey(today),
       configuredSoonDays = Number(Config.getKey('due.soonDays')),
       soonDays = Number.isFinite(configuredSoonDays) ? configuredSoonDays : 7;
+    const signature = JSON.stringify([
+      todayKey,
+      soonDays,
+      Config.getKey('markdown'),
+      Config.getKey('symbols'),
+      Config.getKey('archive.name'),
+      String(Consts.regexes.todo),
+      String(Consts.regexes.todoFinished),
+    ]);
 
     Object.keys(filesData).forEach((filePath) => {
       const data = filesData[filePath];
 
       if (!data || !data.textEditor) return;
 
-      const lines = [];
-
-      for (let lineNumber = 0; lineNumber < data.textEditor.lineCount; lineNumber++) {
-        lines.push(data.textEditor.lineAt(lineNumber).text);
+      const document = data.textEditor as TextDocument;
+      const markdown = isMarkdownTaskDocument(document);
+      const fileSignature = `${signature}:${markdown}`;
+      let cached = this.dueTaskCache.get(document);
+      if (
+        !cached ||
+        cached.relative ||
+        cached.version !== document.version ||
+        cached.signature !== fileSignature
+      ) {
+        const lines = [];
+        for (let lineNumber = 0; lineNumber < document.lineCount; lineNumber++) {
+          lines.push(document.lineAt(lineNumber).text);
+        }
+        const markdownNodes = markdown ? getMarkdownTaskNodes(document) : undefined;
+        const byLine = markdownNodes
+          ? new Map(
+              markdownNodes
+                .filter((node) => node.kind === 'todo' && node.status === 'box' && !node.inArchive)
+                .map((node) => [node.lineNumber, node])
+            )
+          : undefined;
+        const dueLines = byLine
+          ? lines.map((_line, lineNumber) => {
+              const node = byLine.get(lineNumber);
+              return node
+                ? `☐ ${getMarkdownTaskTags(node.title)
+                    .filter((tag) => /^@due\(/i.test(tag.text))
+                    .map((tag) => tag.text)
+                    .join(' ')}`
+                : '';
+            })
+          : lines;
+        const tasks = getDueTaskLines(
+          dueLines,
+          Consts.regexes.todo,
+          Consts.regexes.todoFinished,
+          today,
+          soonDays
+        );
+        cached = {
+          version: document.version,
+          signature: fileSignature,
+          // Relative expressions depend on the clock even without document edits.
+          relative: tasks.some((task) =>
+            /@due\((?!\d{4}-\d{1,2}-\d{1,2}(?:\b|T))/i.test(task.text)
+          ),
+          tasks,
+        };
+        this.dueTaskCache.set(document, cached);
       }
-
-      const markdownNodes = isMarkdownTaskDocument(data.textEditor)
-        ? getMarkdownTaskNodes(data.textEditor)
-        : undefined;
-      const dueLines = markdownNodes
-        ? lines.map((line, lineNumber) => {
-            const node = markdownNodes.find(
-              (candidate) =>
-                candidate.kind === 'todo' &&
-                candidate.lineNumber === lineNumber &&
-                candidate.status === 'box' &&
-                !candidate.inArchive
-            );
-            return node
-              ? `☐ ${getMarkdownTaskTags(node.title)
-                  .filter((tag) => /^@due\(/i.test(tag.text))
-                  .map((tag) => tag.text)
-                  .join(' ')}`
-              : '';
-          })
-        : lines;
-      getDueTaskLines(
-        dueLines,
-        Consts.regexes.todo,
-        Consts.regexes.todoFinished,
-        today,
-        soonDays
-      ).forEach((task) => {
+      cached.tasks.forEach((task) => {
         const line = data.textEditor.lineAt(task.lineNumber),
           obj = {
             filePath,
@@ -101,9 +139,9 @@ class DueView extends View {
             textEditor: data.textEditor,
             documentVersion: data.textEditor.version,
           },
-          todo = new Todo(obj, _.trimStart(markdownNodes ? line.text : task.text));
+          todo = new Todo(obj, _.trimStart(markdown ? line.text : task.text));
 
-        todo.tooltip = `${markdownNodes ? line.text : task.text}\n${data.relativePath}`;
+        todo.tooltip = `${markdown ? line.text : task.text}\n${data.relativePath}`;
 
         if (!groups[task.dateKey]) groups[task.dateKey] = { date: task.date, todos: [] };
         groups[task.dateKey].todos.push(todo);
