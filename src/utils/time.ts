@@ -273,9 +273,11 @@ const Time = {
       if (/^\s*\d+\s*$/.test(to)) return 0;
 
       // Sugar normalizes impossible calendar dates (e.g. February 30) into another
-      // month; reject those explicitly rather than silently changing a deadline.
+      // month, even for zoned timestamps; reject those explicitly.
       const calendar =
-        /^(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(to);
+        /^(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?(?:Z|[+-]\d{2}:\d{2})?)?$/.exec(
+          to
+        );
       if (
         calendar &&
         !moment([
