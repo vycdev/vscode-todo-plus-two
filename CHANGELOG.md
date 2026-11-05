@@ -1,3 +1,9 @@
+### Version 5.4.1 (Unreleased)
+
+#### Fixes
+
+- Fixed constant CPU use and typing lag in workspaces with many Markdown notes. Dependency warnings now reuse the notes already loaded for the sidebars and rescan only edited files; reopening every note after each edit made VS Code close and reopen them in a loop. Unrelated setting changes no longer reload every task file, sidebar and badge refreshes reuse unchanged scans, and the new `todo.refreshDelay` setting controls how long these refreshes wait after an edit. [#306](https://github.com/vycdev/vscode-todo-plus-two/issues/306)
+
 ### Version 5.4.0
 
 Markdown task management, planned work windows, configurable tag styles, and richer Todo sidebars and notes. Read the compatibility notes before upgrading existing task files.
@@ -26,7 +32,6 @@ Markdown task management, planned work windows, configurable tag styles, and ric
 
 #### Fixes
 
-- Fixed constant CPU use and typing lag in workspaces with many Markdown notes. Dependency warnings now reuse the notes already loaded for the sidebars and rescan only edited files; reopening every note after each edit made VS Code close and reopen them in a loop. Unrelated setting changes no longer reload every task file, sidebar and badge refreshes reuse unchanged scans, and the new `todo.refreshDelay` setting controls how long these refreshes wait after an edit. [#306](https://github.com/vycdev/vscode-todo-plus-two/issues/306)
 - Updated file-discovery dependencies to remove vulnerable glob parsers, preserving filesystem casing and symlink rules, and modernized the build and test tooling while retaining VS Code 1.36 support. [#299](https://github.com/vycdev/vscode-todo-plus-two/issues/299)
 - Rejected impossible `@due` timestamps with seconds and invalid time-zone offsets instead of rolling them forward; valid timestamps, including loosely padded components, remain accepted.
 - Rejected impossible `@due` dates with minute-precision timezone offsets instead of silently moving them into the next month.
