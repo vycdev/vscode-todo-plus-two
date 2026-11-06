@@ -35,9 +35,9 @@ const loadDependencyIndex = () => {
   };
 
   NodeModule._load = (request: string, parent, isMain: boolean) => {
-    if (request === 'lodash') {
+    if (request === './refresh-delay') {
       return {
-        debounce: (callback) => {
+        debounceRefresh: (callback) => {
           callback.cancel = () => {
             cancelCount += 1;
           };
@@ -48,7 +48,6 @@ const loadDependencyIndex = () => {
     if (request === 'vscode') return vscode;
     if (request === '../consts') return { default: { languageId: 'todo' } };
     if (request === './dependencies') return {};
-    if (request === './document-loader') return {};
     if (request === './files') return { default: {} };
     if (request === './folder') return { default: {} };
     if (request === './regex') return { default: {} };

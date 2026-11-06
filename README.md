@@ -338,6 +338,7 @@ Open Settings and search for `@ext:vycdev.vscode-todo-plus-two` to see every opt
 | `todo.file.name`, `include`, `exclude`, `batchSize`           | New file name `TODO`; discovery globs/absolute files; batch size 50                      |
 | `todo.markdown.*`                                             | Enabled; discovers `**/*.md` and `**/*.markdown`; scope `all`                            |
 | `todo.followSymlinks`                                         | Disabled by default; applies to file discovery and attachment destinations               |
+| `todo.refreshDelay`                                           | 250 ms wait after edits before refreshing dependency warnings and sidebars               |
 | `todo.file.view.*`                                            | Hierarchy, comments, tags, icons, and finished-task visibility                           |
 | `todo.symbols.*`                                              | Pending `☐`, done `✔`, cancelled `✘`                                                     |
 | `todo.automaticSymbol`, `autoRenumber`, `autoCompleteParents` | Automatic box continuation off, plain list numbering on, parent completion off           |

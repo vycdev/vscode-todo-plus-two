@@ -16,7 +16,12 @@ import { getWorkspaceExcludeRules } from './workspace-excludes';
 import { getBatchSize } from './batch-size';
 import { getUniqueRootKeys } from './file-groups';
 import { isAllowedFilePath } from './file-discovery';
-import { getTaskFileIncludes, getMarkdownTaskNodes, isMarkdownTaskDocument } from './task-source';
+import {
+  getTaskFileIncludes,
+  getMarkdownTaskNodes,
+  getMarkdownTaskSettings,
+  isMarkdownTaskDocument,
+} from './task-source';
 import { discoverTodoFiles, getAbsoluteFilePaths, isTodoFileIncluded } from './todo-file-discovery';
 
 /* FILES */
@@ -37,13 +42,59 @@ class Files {
   private fileDataRevisions: { [filePath: string]: number } = {};
 
   get(rootPaths = Folder.getAllRootPaths(), filter: string | false = false) {
-    const next = this.dataRefreshQueue.then(() => this.getNow(rootPaths, filter));
+    return this.enqueue(() => this.getNow(rootPaths, filter));
+  }
+
+  // Discovered task documents, sharing discovery, watchers, and loaded buffers
+  // with the views. Callers must not reopen every file: VS Code keeps only a few
+  // extension-opened documents alive and closes the rest, firing close events.
+  getDocuments(
+    rootPaths = Folder.getAllRootPaths()
+  ): Promise<{ [filePath: string]: TextDocument }> {
+    return this.enqueue(async () => {
+      const documents: { [filePath: string]: TextDocument } = Object.create(null);
+
+      if (!(await this.sync(rootPaths))) return documents;
+
+      Object.keys(this.filesData).forEach((filePath) => {
+        const data = this.filesData[filePath];
+        if (data && data.textEditor) documents[filePath] = data.textEditor;
+      });
+
+      return documents;
+    });
+  }
+
+  // A closed buffer keeps its last text. Reload it from disk when that text
+  // included unsaved edits that may have been discarded.
+  invalidateDocument(document: TextDocument) {
+    if (!this.filesData || !document.uri || document.uri.scheme !== 'file') return;
+
+    const filePath = document.uri.fsPath.replace(/\\/g, '/'),
+      data = this.filesData[filePath];
+
+    if (!data || data.textEditor !== document) return;
+
+    this.fileDataRevisions[filePath] = (this.fileDataRevisions[filePath] || 0) + 1;
+    this.filesData[filePath] = undefined;
+  }
+
+  private enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const next = this.dataRefreshQueue.then(task);
     this.dataRefreshQueue = next.catch(() => undefined);
     return next;
   }
 
   private async getNow(rootPaths = Folder.getAllRootPaths(), filter: string | false = false) {
-    if (this.disposed) return;
+    if (!(await this.sync(rootPaths))) return;
+
+    this.updateContext();
+
+    return this.getTodos(filter);
+  }
+
+  private async sync(rootPaths = Folder.getAllRootPaths()): Promise<boolean> {
+    if (this.disposed) return false;
 
     rootPaths = _.castArray(rootPaths);
 
@@ -69,18 +120,14 @@ class Files {
       this.unwatchPaths();
       const generation = this.watcherGeneration;
       await this.initFilesData(rootPaths);
-      if (this.disposed || generation !== this.watcherGeneration) return;
+      if (this.disposed || generation !== this.watcherGeneration) return false;
       this.configSignature = configSignature;
       this.watchPaths();
     } else {
       await this.updateFilesData();
     }
 
-    if (this.disposed) return;
-
-    this.updateContext();
-
-    return this.getTodos(filter);
+    return !this.disposed;
   }
 
   async watchPaths() {
@@ -341,13 +388,14 @@ class Files {
     if (_.isEmpty(this.filesData)) return;
 
     const todos = Object.create(null), // { [ROOT] { { [FILEPATH] => [DATA] } }
-      filePaths = Object.keys(this.filesData);
+      filePaths = Object.keys(this.filesData),
+      markdown = getMarkdownTaskSettings();
     const visibleFiles = filePaths
       .map((filePath) => ({ filePath, data: this.filesData[filePath] }))
       .filter(({ filePath, data }) => {
         if (!data) return false;
-        if (isMarkdownTaskDocument(data.textEditor)) {
-          const nodes = getMarkdownTaskNodes(data.textEditor);
+        if (isMarkdownTaskDocument(data.textEditor, markdown)) {
+          const nodes = getMarkdownTaskNodes(data.textEditor, markdown);
           if (!nodes.some((node) => node.kind === 'todo')) return false;
           return (
             !filter ||

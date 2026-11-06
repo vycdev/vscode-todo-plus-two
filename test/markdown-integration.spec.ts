@@ -172,7 +172,12 @@ const loadMarkdown = (initial: string, settings = {}) => {
       dispose() {}
     },
   };
-  const files = { getFilePaths: async () => [], get: async () => ({}), filesData: {} };
+  const files = {
+    getFilePaths: async () => [],
+    getDocuments: async () => ({}),
+    get: async () => ({}),
+    filesData: {},
+  };
   const utils: any = {
     log: { debug() {} },
     file: { open: async () => editor },
@@ -663,10 +668,10 @@ describe('Markdown task integration', () => {
     };
     state.workspace.textDocuments.push(allowed);
     state.utils.folder.getAllRootPaths = () => [process.cwd()];
-    state.utils.files.getFilePaths = async () => [allowed.uri.fsPath];
+    state.utils.files.getDocuments = async () => ({ [allowed.uri.fsPath]: allowed });
     state.dependencyIndex.getTodoDocuments = state.getTodoDocuments;
     expect(Object.keys((await state.dependencyIndex.get()).targets)).to.deep.equal(['allowed']);
-    state.utils.files.getFilePaths = async () => [];
+    state.utils.files.getDocuments = async () => ({});
     expect(Object.keys((await state.dependencyIndex.get()).targets)).to.deep.equal([]);
     expect(Object.keys((await state.dependencyIndex.get(state.document)).targets)).to.deep.equal([
       'excluded',
@@ -960,6 +965,58 @@ describe('Markdown task integration', () => {
     state.filesView.treeView = { badge: undefined };
     state.filesView.updateActivityBarBadge();
     expect(state.filesView.treeView.badge.value).to.equal(1);
+  });
+
+  it('reuses unchanged Markdown due scans across sidebar refreshes', async () => {
+    const state = loadMarkdown('# Tasks\n- [ ] Due @due(2026-10-31)\n- [x] Done @due(2026-10-31)');
+    state.utils.files.filesData = {
+      'notes.md': { textEditor: state.document, relativePath: 'notes.md' },
+    };
+    let reads = 0;
+    const lineAt = state.document.lineAt;
+    state.document.lineAt = (line) => {
+      reads++;
+      return lineAt(line);
+    };
+
+    const first = await state.dueView.getChildren();
+    expect(first[0].obj[0].obj.lineNr).to.equal(1);
+    reads = 0;
+    const unchanged = await state.dueView.getChildren();
+    expect(unchanged[0].obj[0].obj.lineNr).to.equal(1);
+    expect(reads).to.equal(1); // Only the visible due task needs its live line.
+
+    state.setText('# Tasks\n- [ ] New @due(2026-10-31)\n- [ ] Another @due(2026-10-31)');
+    reads = 0;
+    const edited = await state.dueView.getChildren();
+    expect(edited[0].obj.map((todo) => todo.obj.lineNr)).to.deep.equal([1, 2]);
+    expect(reads).to.be.greaterThan(2); // The edited document is rescanned.
+
+    _.set(state.config, 'markdown.scope', 'sections');
+    _.set(state.config, 'markdown.sections', ['Other']);
+    reads = 0;
+    expect((await state.dueView.getChildren())[0].label).to.equal(
+      'No unfinished tasks with due dates found'
+    );
+    expect(reads).to.be.greaterThan(0); // Parser settings also invalidate the cache.
+  });
+
+  it('rescans relative due expressions even when the document is unchanged', async () => {
+    const state = loadMarkdown('- [ ] Soon @due(tomorrow)');
+    state.utils.files.filesData = {
+      'notes.md': { textEditor: state.document, relativePath: 'notes.md' },
+    };
+    let reads = 0;
+    const lineAt = state.document.lineAt;
+    state.document.lineAt = (line) => {
+      reads++;
+      return lineAt(line);
+    };
+    const first = await state.dueView.getChildren();
+    expect(first[0].obj).to.have.length(1);
+    reads = 0;
+    await state.dueView.getChildren();
+    expect(reads).to.be.greaterThan(1);
   });
 
   it('offers dependency completions on tasks and leaves Markdown prose and examples alone', async () => {
