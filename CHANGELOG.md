@@ -2,7 +2,7 @@
 
 #### Fixes
 
-- Kept literal `@due(...)` examples inside other tag arguments out of the Todo Due sidebar; a real due tag later on the same task still applies.
+- Kept literal `@due(...)` examples inside other tag arguments out of the Due sidebar and due-date colors in Todo files; a real due tag later on the same task still applies. Due examples in inline code are no longer colored either.
 
 ### Version 5.4.0
 
