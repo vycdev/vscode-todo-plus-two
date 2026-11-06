@@ -45,7 +45,9 @@ export const makeRelativeFileLink = (documentPath: string, targetPath: string): 
         (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`
       )
     )
-    .join('/');
+    .join('/')
+    // A literal terminal period is stripped as sentence punctuation when links are read.
+    .replace(/\.$/, '%2E');
   return `file://${encodedPath.startsWith('../') ? '' : './'}${encodedPath}`;
 };
 
