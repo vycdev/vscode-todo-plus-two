@@ -84,6 +84,7 @@ const loadFiles = (include: string[], getExcludes = (_filePath: string): any => 
     './task-source': {
       getTaskFileIncludes: (config) => config.file.include,
       isMarkdownTaskDocument: () => false,
+      getMarkdownTaskSettings: () => ({ enabled: false }),
     },
   };
   NodeModule._load = (request, parent, isMain) =>

@@ -82,3 +82,23 @@ describe('Fenced Todo document parsing', () => {
     });
   });
 });
+
+describe('Todo document due tags', () => {
+  it('ignores due examples inside other tag arguments and inline code', () => {
+    withDocument((Document) => {
+      const doc = new Document(
+        [
+          '☐ Example @id(release @due(2026-07-03))',
+          '☐ Release @note(@due(2026-07-01)) @due(2026-07-04)',
+          '☐ Code `@due(2026-07-02)` @due(2026-07-05)',
+          '@due(2026-07-06) ☐ Leading',
+        ].join('\n')
+      );
+      expect(doc.getTagsDue().map((tag) => tag.text)).to.deep.equal([
+        '@due(2026-07-04)',
+        '@due(2026-07-05)',
+        '@due(2026-07-06)',
+      ]);
+    });
+  });
+});
