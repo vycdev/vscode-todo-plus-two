@@ -1,4 +1,6 @@
-### Version 5.4.1 (Unreleased)
+### Version 5.4.1
+
+Fixes constant CPU use and typing lag in workspaces with many Markdown notes and adds `todo.refreshDelay`, plus fixes for due dates, time estimates, numbered lists, file links, and Markdown export.
 
 #### Fixes
 
