@@ -3,7 +3,7 @@
   "displayName": "Todo+2",
   "description": "Manage todo lists with ease. Powerful, easy to use and customizable.",
   "icon": "resources/logo/logo-128x128.png",
-  "version": "5.4.0",
+  "version": "5.4.1",
   "packageManager": "pnpm@10.33.4",
   "license": "MIT",
   "main": "out/extension.js",
@@ -1005,6 +1005,13 @@
           "type": "boolean",
           "description": "Follow symbolic links when enumerating files (can cause cycles). Disable to avoid infinite loops.",
           "default": false
+        },
+        "todo.refreshDelay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Milliseconds to wait after the last edit before refreshing dependency diagnostics and the Files, Due, and Embedded views. Increase it if typing lags in large workspaces.",
+          "default": 250
         },
         "todo.embedded.showComments": {
           "type": "boolean",

@@ -31,7 +31,7 @@ ext install vycdev.vscode-todo-plus-two
 
 The core extension supports VS Code 1.36+. Embedded drag-and-drop requires 1.66+, moving views into Explorer requires 1.46+, and image paste requires 1.97+. Older supported versions keep the remaining features and embedded Move Up/Down actions.
 
-This README documents Todo+2 5.4.0. See [CHANGELOG.md](CHANGELOG.md#version-540) for release and migration notes. In particular, task-text styles now follow literal tags, so existing symbol-only completed tasks use syntax-theme styling until tagged. Markdown task discovery and numbered-list continuation are enabled by default; planned work windows are opt-in. When upgrading from 5.2 or earlier, `Todo: Toggle Timer` pauses/resumes the selected task, while `Todo: Toggle Status Bar Timer` controls visibility, and statistics conditions use restricted expressions rather than arbitrary JavaScript.
+This README documents Todo+2 5.4.1. See [CHANGELOG.md](CHANGELOG.md#version-541) for release and migration notes. In particular, task-text styles now follow literal tags, so existing symbol-only completed tasks use syntax-theme styling until tagged. Markdown task discovery and numbered-list continuation are enabled by default; planned work windows are opt-in. When upgrading from 5.2 or earlier, `Todo: Toggle Timer` pauses/resumes the selected task, while `Todo: Toggle Status Bar Timer` controls visibility, and statistics conditions use restricted expressions rather than arbitrary JavaScript.
 
 ## Getting started
 
@@ -338,6 +338,7 @@ Open Settings and search for `@ext:vycdev.vscode-todo-plus-two` to see every opt
 | `todo.file.name`, `include`, `exclude`, `batchSize`           | New file name `TODO`; discovery globs/absolute files; batch size 50                      |
 | `todo.markdown.*`                                             | Enabled; discovers `**/*.md` and `**/*.markdown`; scope `all`                            |
 | `todo.followSymlinks`                                         | Disabled by default; applies to file discovery and attachment destinations               |
+| `todo.refreshDelay`                                           | 250 ms wait after edits before refreshing dependency warnings and sidebars               |
 | `todo.file.view.*`                                            | Hierarchy, comments, tags, icons, and finished-task visibility                           |
 | `todo.symbols.*`                                              | Pending `☐`, done `✔`, cancelled `✘`                                                     |
 | `todo.automaticSymbol`, `autoRenumber`, `autoCompleteParents` | Automatic box continuation off, plain list numbering on, parent completion off           |

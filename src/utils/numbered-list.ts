@@ -35,6 +35,12 @@ const getNumberedListEnterEdits = (
     const following = getLine(line);
     if (following === undefined) break;
 
+    // Deeper lines (nested items, tasks and notes) belong to the preceding item.
+    // Skip them and resume at the next sibling at our indentation.
+    const leading = /^[ \t]*/.exec(following)[0];
+    if (following.trim() && leading.startsWith(indentation) && leading.length > indentation.length)
+      continue;
+
     const sibling = numberedItem.exec(following);
     if (!sibling || sibling[1] !== indentation) break;
 

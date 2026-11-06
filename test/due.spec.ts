@@ -117,6 +117,27 @@ describe('Due utilities', () => {
     }
   });
 
+  it('validates timestamps with fractional seconds like other timestamps', () => {
+    for (const value of [
+      '2021-02-29T09:00:00.000Z',
+      '2021-02-30 09:00:00.5',
+      '2021-04-31T09:00:00.123+02:00',
+      '2021-02-28T25:00:00.000Z',
+      '2021-02-28T09:00:00.000+24:00',
+    ]) {
+      expect(Due.parse(value)).to.equal(undefined, value);
+    }
+    for (const [value, expected] of [
+      ['2021-02-28T09:00:00.000Z', '2021-02-28T09:00:00.000Z'],
+      ['2021-02-28T09:00:00.5Z', '2021-02-28T09:00:00.500Z'],
+      ['2021-02-28T09:00:00.123456z', '2021-02-28T09:00:00.123Z'],
+      ['2021-02-28T09:00:00.123+0200', '2021-02-28T07:00:00.123Z'],
+      ['2024/2/29 9:00:00.250-03', '2024-02-29T12:00:00.250Z'],
+    ]) {
+      expect(Due.parse(value)?.toISOString()).to.equal(expected, value);
+    }
+  });
+
   it('still accepts unzoned dates near the end of a month', () => {
     for (const day of [24, 29, 30, 31]) {
       expect(Due.parse(`2026-07-${day}`)?.getDate()).to.equal(day);
