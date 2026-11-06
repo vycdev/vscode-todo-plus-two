@@ -1,18 +1,24 @@
 /* IMPORT */
 
-import * as _ from 'lodash';
 import * as vscode from 'vscode';
 import Consts from '../consts';
 import { DependencyReference, DependencyTarget, getDependencies, getIds } from './dependencies';
-import { loadAvailableDocuments } from './document-loader';
 import Files from './files';
 import Folder from './folder';
 import Regex from './regex';
+import { debounceRefresh } from './refresh-delay';
 import { matchesTodoStatus } from './todo-status';
-import { getMarkdownTaskNodes, isMarkdownTaskDocument, isTaskDocument } from './task-source';
+import {
+  getMarkdownTaskNodes,
+  getMarkdownTaskSettings,
+  isMarkdownTaskDocument,
+  isTaskDocument,
+  MarkdownTaskSettings,
+} from './task-source';
 import { maskMarkdownTaskText } from './markdown-task-text';
 import { findClosestRootPath, getFilePathKey } from './file-globs';
 import { getCodeBlocks } from './code-blocks';
+import type { MarkdownTaskNode } from './markdown-tasks';
 
 /* TYPES */
 
@@ -20,6 +26,16 @@ interface DependencyIndex {
   targets: { [id: string]: DependencyTarget[] };
   dependencies: { [id: string]: DependencyTarget[] };
 }
+
+interface DocumentReferences {
+  version: number;
+  signature: string;
+  targets: DependencyTarget[];
+  dependencies: DependencyTarget[];
+}
+
+// References per buffer, so a refresh after an edit only rescans the edited file.
+const documentReferences = new WeakMap<vscode.TextDocument, DocumentReferences>();
 
 /* DEPENDENCY INDEX */
 
@@ -32,7 +48,7 @@ const DependencyIndex = {
 
     DependencyIndex.diagnostics = vscode.languages.createDiagnosticCollection('todo-dependencies');
 
-    const updateDiagnostics = _.debounce(() => DependencyIndex.updateDiagnostics(), 250);
+    const updateDiagnostics = debounceRefresh(() => DependencyIndex.updateDiagnostics());
 
     context.subscriptions.push(
       DependencyIndex.diagnostics,
@@ -50,7 +66,9 @@ const DependencyIndex = {
         if (isTaskDocument(document)) updateDiagnostics();
       }),
       vscode.workspace.onDidCloseTextDocument((document) => {
-        if (isTaskDocument(document)) updateDiagnostics();
+        if (!isTaskDocument(document)) return;
+        if (document.isDirty) Files.invalidateDocument(document);
+        updateDiagnostics();
       }),
       vscode.workspace.onDidChangeWorkspaceFolders(updateDiagnostics),
       vscode.workspace.onDidChangeConfiguration(updateDiagnostics)
@@ -60,51 +78,96 @@ const DependencyIndex = {
   },
 
   async get(document?: vscode.TextDocument): Promise<DependencyIndex> {
-    const documents = await DependencyIndex.getTodoDocuments(document);
+    const settings = getMarkdownTaskSettings();
+    const documents = await DependencyIndex.getTodoDocuments(document, settings);
     const targets: { [id: string]: DependencyTarget[] } = Object.create(null);
     const dependencies: { [id: string]: DependencyTarget[] } = Object.create(null);
 
     documents.forEach((candidate) => {
-      const markdownNodes = isMarkdownTaskDocument(candidate)
-        ? getMarkdownTaskNodes(candidate)
-        : undefined;
-      const code = markdownNodes ? undefined : getCodeBlocks(candidate);
-      for (let lineNumber = 0; lineNumber < candidate.lineCount; lineNumber++) {
-        if (code && code.byLine.has(lineNumber)) continue;
-        const text = candidate.lineAt(lineNumber).text;
-        const markdownTask =
-          markdownNodes &&
-          markdownNodes.find((node) => node.lineNumber === lineNumber && node.kind === 'todo');
-        if (markdownNodes ? !markdownTask : !Regex.test(Consts.regexes.todo, text)) continue;
+      const references = DependencyIndex.getDocumentReferences(candidate, settings);
 
-        const makeLocation = (reference: DependencyReference): DependencyTarget => ({
-          ...reference,
-          filePath: candidate.uri.fsPath,
-          lineNumber,
-          text,
-          status: markdownTask ? markdownTask.status : undefined,
-        });
+      references.dependencies.forEach((dependency) => {
+        if (!dependencies[dependency.id]) dependencies[dependency.id] = [];
 
-        const referenceText = markdownTask ? maskMarkdownTaskText(text) : text;
-        getDependencies(referenceText).forEach((reference) => {
-          const dependency = makeLocation(reference);
+        dependencies[dependency.id].push(dependency);
+      });
 
-          if (!dependencies[dependency.id]) dependencies[dependency.id] = [];
+      references.targets.forEach((target) => {
+        if (!targets[target.id]) targets[target.id] = [];
 
-          dependencies[dependency.id].push(dependency);
-        });
-
-        getIds(referenceText).forEach((reference) => {
-          const target = makeLocation(reference);
-
-          if (!targets[target.id]) targets[target.id] = [];
-
-          targets[target.id].push(target);
-        });
-      }
+        targets[target.id].push(target);
+      });
     });
 
     return { targets, dependencies };
+  },
+
+  getDocumentReferences(
+    candidate: vscode.TextDocument,
+    settings: MarkdownTaskSettings
+  ): DocumentReferences {
+    const markdown = isMarkdownTaskDocument(candidate, settings);
+    const signature = markdown
+      ? `markdown:${settings.signature}`
+      : `todo:${String(Consts.regexes.todo)}`;
+    const cached = documentReferences.get(candidate);
+
+    if (
+      cached &&
+      typeof candidate.version === 'number' &&
+      cached.version === candidate.version &&
+      cached.signature === signature
+    ) {
+      return cached;
+    }
+
+    const references: DocumentReferences = {
+      version: candidate.version,
+      signature,
+      targets: [],
+      dependencies: [],
+    };
+    let markdownTasks: Map<number, MarkdownTaskNode>;
+    if (markdown) {
+      markdownTasks = new Map();
+      getMarkdownTaskNodes(candidate, settings).forEach((node) => {
+        if (node.kind === 'todo' && !markdownTasks.has(node.lineNumber)) {
+          markdownTasks.set(node.lineNumber, node);
+        }
+      });
+    }
+    const code = markdownTasks ? undefined : getCodeBlocks(candidate);
+    const lineNumbers = markdownTasks
+      ? Array.from(markdownTasks.keys()).sort((a, b) => a - b)
+      : Array.from({ length: candidate.lineCount }, (_line, lineNumber) => lineNumber);
+
+    lineNumbers.forEach((lineNumber) => {
+      if (code && code.byLine.has(lineNumber)) return;
+      const text = candidate.lineAt(lineNumber).text;
+      const markdownTask = markdownTasks && markdownTasks.get(lineNumber);
+      if (!markdownTask && !Regex.test(Consts.regexes.todo, text)) return;
+
+      const makeLocation = (reference: DependencyReference): DependencyTarget => ({
+        ...reference,
+        filePath: candidate.uri.fsPath,
+        lineNumber,
+        text,
+        status: markdownTask ? markdownTask.status : undefined,
+      });
+
+      const referenceText = markdownTask ? maskMarkdownTaskText(text) : text;
+      getDependencies(referenceText).forEach((reference) => {
+        references.dependencies.push(makeLocation(reference));
+      });
+
+      getIds(referenceText).forEach((reference) => {
+        references.targets.push(makeLocation(reference));
+      });
+    });
+
+    documentReferences.set(candidate, references);
+
+    return references;
   },
 
   isFinished(target: DependencyTarget) {
@@ -155,45 +218,52 @@ const DependencyIndex = {
     });
   },
 
-  async getTodoDocuments(document?: vscode.TextDocument) {
-    let documents = vscode.workspace.textDocuments
-      .filter((candidate) => isTaskDocument(candidate))
-      .slice();
+  async getTodoDocuments(
+    document?: vscode.TextDocument,
+    settings: MarkdownTaskSettings = getMarkdownTaskSettings()
+  ) {
     const rootPaths = Folder.getAllRootPaths();
+    const documents: vscode.TextDocument[] = [];
+    const seen = new Set<string>();
+    const add = (candidate: vscode.TextDocument) => {
+      const key = candidate.uri.toString();
+
+      if (seen.has(key)) return;
+
+      seen.add(key);
+      documents.push(candidate);
+    };
+    let fileDocuments: { [filePath: string]: vscode.TextDocument } = Object.create(null);
+    let discovered: Set<string>;
 
     try {
-      const paths = await Files.getFilePaths(rootPaths);
-      const discovered = new Set(paths.map((filePath) => getFilePathKey(filePath)));
-      documents = documents.filter(
-        (candidate) =>
-          !isMarkdownTaskDocument(candidate) ||
-          candidate.uri.scheme !== 'file' ||
-          !findClosestRootPath(candidate.uri.fsPath, rootPaths) ||
-          discovered.has(getFilePathKey(candidate.uri.fsPath))
-      );
-      const fileDocuments = await loadAvailableDocuments(
-        paths,
-        (filePath) => vscode.workspace.openTextDocument(filePath),
-        (filePath, error) => {
-          console.warn(`Todo+: Could not open ${filePath}`, error);
-        }
-      );
-
-      fileDocuments.forEach((candidate) => {
-        if (!documents.some((existing) => existing.uri.toString() === candidate.uri.toString())) {
-          documents.push(candidate);
-        }
-      });
+      // Reuse the documents the Files service already loaded and watches.
+      // Reopening every file here made VS Code close older ones, and each
+      // close event started another full pass.
+      fileDocuments = await Files.getDocuments(rootPaths);
+      discovered = new Set(Object.keys(fileDocuments).map((filePath) => getFilePathKey(filePath)));
     } catch (error) {
       console.warn('Todo+: failed to scan workspace todo files', error);
     }
 
-    if (
-      document &&
-      !documents.some((candidate) => candidate.uri.toString() === document.uri.toString())
-    ) {
-      documents.push(document);
-    }
+    // Open buffers come first so unsaved edits win over a stale loaded copy.
+    vscode.workspace.textDocuments.forEach((candidate) => {
+      if (!isTaskDocument(candidate, settings)) return;
+      if (
+        discovered &&
+        isMarkdownTaskDocument(candidate, settings) &&
+        candidate.uri.scheme === 'file' &&
+        findClosestRootPath(candidate.uri.fsPath, rootPaths) &&
+        !discovered.has(getFilePathKey(candidate.uri.fsPath))
+      )
+        return;
+
+      add(candidate);
+    });
+
+    Object.keys(fileDocuments).forEach((filePath) => add(fileDocuments[filePath]));
+
+    if (document) add(document);
 
     return documents;
   },

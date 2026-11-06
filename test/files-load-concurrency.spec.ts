@@ -32,6 +32,7 @@ const loadFiles = () => {
         return {
           getTaskFileIncludes: (config) => config.file.include,
           isMarkdownTaskDocument: () => false,
+          getMarkdownTaskSettings: () => ({ enabled: false }),
         };
     }
     return originalLoad.call(this, request, parent, isMain);
@@ -97,6 +98,46 @@ describe('Todo file loading', () => {
 
     expect(files.filesData['/workspace/tasks.todo'].textEditor).to.equal(cached);
     expect(Object.keys(files.filesData)).to.deep.equal(['/workspace/tasks.todo']);
+  });
+
+  it('loads discovered documents once and reuses them for later document requests', async () => {
+    const { files } = loadFiles();
+    const opened: string[] = [];
+    files.getFilePaths = async () => ['/workspace/a.todo', '/workspace/b.todo'];
+    files.getFileData = async (filePath) => {
+      opened.push(filePath);
+      return {
+        filePath,
+        textEditor: { uri: { scheme: 'file', fsPath: filePath }, isDirty: false },
+      };
+    };
+
+    const first = await files.getDocuments();
+    const second = await files.getDocuments();
+
+    expect(Object.keys(first)).to.deep.equal(['/workspace/a.todo', '/workspace/b.todo']);
+    expect(second['/workspace/a.todo']).to.equal(first['/workspace/a.todo']);
+    expect(opened).to.deep.equal(['/workspace/a.todo', '/workspace/b.todo']);
+  });
+
+  it('reloads a closed buffer only when it was the cached copy', async () => {
+    const { files } = loadFiles();
+    const opened: string[] = [];
+    files.getFilePaths = async () => ['/workspace/a.todo'];
+    files.getFileData = async (filePath) => {
+      opened.push(filePath);
+      return { filePath, textEditor: { uri: { scheme: 'file', fsPath: filePath } } };
+    };
+    const loaded = (await files.getDocuments())['/workspace/a.todo'];
+
+    files.invalidateDocument({ uri: { scheme: 'file', fsPath: '/workspace/a.todo' } });
+    await files.getDocuments();
+    expect(opened).to.have.length(1);
+
+    files.invalidateDocument(loaded);
+    const reloaded = (await files.getDocuments())['/workspace/a.todo'];
+    expect(opened).to.have.length(2);
+    expect(reloaded).not.to.equal(loaded);
   });
 
   it('does not let a failed load poison a waiting refresh', async () => {
