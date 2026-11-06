@@ -123,7 +123,9 @@ async function numberedListEnter() {
       if (line >= document.lineCount) return;
       if (code.byLine.has(line)) return;
       const text = document.lineAt(line).text;
-      return Todo.is(text) || Project.is(text) ? undefined : text;
+      // Tasks and projects end the list, but nested ones belong to the preceding
+      // item. Expose only their indentation so they are skipped, never renumbered.
+      return Todo.is(text) || Project.is(text) ? `${/^[ \t]*/.exec(text)[0]}-` : text;
     },
     document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n'
   );

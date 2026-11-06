@@ -154,6 +154,22 @@ describe('Numbered list Enter command', () => {
     expect(loaded.state.text).to.equal('1. Parent\n2. \n  1. Child\n3. Sibling');
   });
 
+  ['  ☐ Subtask', '  Subproject:', '  ✔ Done @done(26-11-06 10:00)'].forEach((nested) => {
+    it(`renumbers later siblings past a nested ${JSON.stringify(nested)}`, async () => {
+      const loaded = loadCommand(`1. Parent\n${nested}\n2. Sibling`);
+      await loaded.numberedListEnter();
+      expect(loaded.state.text).to.equal(`1. Parent\n2. \n${nested}\n3. Sibling`);
+    });
+  });
+
+  it('still stops at a task or project at the same indentation', async () => {
+    for (const boundary of ['☐ Task', 'Project:']) {
+      const loaded = loadCommand(`1. First\n${boundary}\n2. Other`);
+      await loaded.numberedListEnter();
+      expect(loaded.state.text).to.equal(`1. First\n2. \n${boundary}\n2. Other`);
+    }
+  });
+
   it('uses the document line endings', async () => {
     const loaded = loadCommand('1. First\r\n2. Second', '\r\n');
     await loaded.numberedListEnter();
