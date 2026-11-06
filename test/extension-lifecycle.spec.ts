@@ -143,6 +143,7 @@ const loadExtension = (plannedEnabled = false) => {
     },
     './utils': { default: utils },
     './utils/dependency_index': { default: { initialize: initialize('index') } },
+    './utils/refresh-delay': { getRefreshDelay: () => 250 },
     './utils/task-source': {
       isMarkdownTaskDocument: (document) => document && document.languageId === 'markdown',
       getMarkdownTaskNodes: () => [],
@@ -287,26 +288,39 @@ describe('Extension lifecycle wiring', () => {
     state.activate(context);
     const filesData = state.files.filesData;
     const embeddedData = state.provider.filesData;
+    // VS Code reports a change to `todo.x.y` as affecting `todo` and `todo.x` too.
+    const changed = (setting: string) => ({
+      affectsConfiguration: (key: string) => setting === key || setting.startsWith(`${key}.`),
+    });
     state.events.length = 0;
 
     try {
-      state.configuration.fire({ affectsConfiguration: () => false });
+      state.configuration.fire(changed('editor.fontSize'));
+      expect(state.files.generation).to.equal(0);
+      expect(state.provider.generation).to.equal(0);
+      expect(state.events).to.deep.equal(['tokens', 'decorations', 'decorations']);
+
+      state.configuration.fire(changed('todo.markdown.include'));
       expect(state.files.generation).to.equal(1);
       expect(state.provider.generation).to.equal(1);
       expect(state.files.filesData).to.equal(filesData);
       expect(state.provider.filesData).to.equal(embeddedData);
-      expect(state.events).to.deep.equal(['tokens', 'decorations', 'decorations']);
+
+      state.configuration.fire(changed('files.exclude'));
+      state.configuration.fire(changed('files.associations'));
+      expect(state.files.generation).to.equal(3);
+      expect(state.provider.generation).to.equal(3);
 
       state.events.length = 0;
       state.dates.fire();
       expect(state.events).to.deep.equal(['decorations']);
 
       state.folders.fire();
-      expect(state.files.generation).to.equal(2);
-      expect(state.provider.generation).to.equal(2);
+      expect(state.files.generation).to.equal(4);
+      expect(state.provider.generation).to.equal(4);
 
-      state.configuration.fire({ affectsConfiguration: (key) => key === 'todo.embedded.provider' });
-      expect(state.files.generation).to.equal(3);
+      state.configuration.fire(changed('todo.embedded.provider'));
+      expect(state.files.generation).to.equal(5);
       expect(state.embedded.resets).to.equal(1);
       expect(state.embedded.provider).to.equal(undefined);
     } finally {

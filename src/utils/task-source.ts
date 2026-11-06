@@ -7,12 +7,6 @@ const snapshots = new WeakMap<
   { version: number; signature: string; nodes: MarkdownTaskNode[] }
 >();
 
-export const isMarkdownTaskDocument = (document: TextDocument): boolean =>
-  !!document && document.languageId === 'markdown' && Config.getKey('markdown.enabled') !== false;
-
-export const isTaskDocument = (document: TextDocument): boolean =>
-  !!document && (document.languageId === 'todo' || isMarkdownTaskDocument(document));
-
 export const getMarkdownTaskOptions = () => ({
   scope: Config.getKey('markdown.scope'),
   sections: Config.getKey('markdown.sections'),
@@ -20,9 +14,50 @@ export const getMarkdownTaskOptions = () => ({
   symbols: Config.getKey('symbols'),
 });
 
-export const getMarkdownTaskNodes = (document: TextDocument): MarkdownTaskNode[] => {
-  const options = getMarkdownTaskOptions();
-  const signature = JSON.stringify(options);
+export interface MarkdownTaskSettings {
+  enabled: boolean;
+  options: ReturnType<typeof getMarkdownTaskOptions>;
+  signature: string;
+}
+
+// Each setting read rebuilds VS Code's configuration object. Loops over every
+// workspace file share one snapshot, which reads each value on first use only.
+export const getMarkdownTaskSettings = (): MarkdownTaskSettings => {
+  let enabled: boolean, options: MarkdownTaskSettings['options'], signature: string;
+  return {
+    get enabled() {
+      if (enabled === undefined) enabled = Config.getKey('markdown.enabled') !== false;
+      return enabled;
+    },
+    get options() {
+      return options || (options = getMarkdownTaskOptions());
+    },
+    get signature() {
+      return signature || (signature = JSON.stringify(this.options));
+    },
+  };
+};
+
+export const isMarkdownTaskDocument = (
+  document: TextDocument,
+  settings?: Pick<MarkdownTaskSettings, 'enabled'>
+): boolean =>
+  !!document &&
+  document.languageId === 'markdown' &&
+  (settings ? settings.enabled : Config.getKey('markdown.enabled') !== false);
+
+export const isTaskDocument = (
+  document: TextDocument,
+  settings?: Pick<MarkdownTaskSettings, 'enabled'>
+): boolean =>
+  !!document && (document.languageId === 'todo' || isMarkdownTaskDocument(document, settings));
+
+export const getMarkdownTaskNodes = (
+  document: TextDocument,
+  settings?: MarkdownTaskSettings
+): MarkdownTaskNode[] => {
+  const options = settings ? settings.options : getMarkdownTaskOptions();
+  const signature = settings ? settings.signature : JSON.stringify(options);
   const cached = snapshots.get(document);
   if (cached && cached.version === document.version && cached.signature === signature)
     return cached.nodes;

@@ -19,7 +19,11 @@ import Group from './items/group';
 import Placeholder from './items/placeholder';
 import Todo from './items/todo';
 import View from './view';
-import { getMarkdownTaskNodes, isMarkdownTaskDocument } from '../utils/task-source';
+import {
+  getMarkdownTaskNodes,
+  getMarkdownTaskSettings,
+  isMarkdownTaskDocument,
+} from '../utils/task-source';
 import { transformMarkdownTaskText } from '../utils/markdown-task-text';
 import { getTaskTagNames, groupTasksByTags, normalizeTagGroupNames } from '../utils/tag-groups';
 
@@ -350,11 +354,14 @@ class Files extends View {
     if (!supportsActivityBarBadge(this.treeView)) return;
 
     const filesData = Utils.files.filesData || {};
+    const markdown = getMarkdownTaskSettings();
     const markdownFiles = Object.keys(filesData).filter(
-      (filePath) => filesData[filePath] && isMarkdownTaskDocument(filesData[filePath].textEditor)
+      (filePath) =>
+        filesData[filePath] && isMarkdownTaskDocument(filesData[filePath].textEditor, markdown)
     );
+    const markdownPaths = new Set(markdownFiles);
     const regular = Object.keys(filesData).reduce((result, filePath) => {
-      if (!markdownFiles.includes(filePath)) result[filePath] = filesData[filePath];
+      if (!markdownPaths.has(filePath)) result[filePath] = filesData[filePath];
       return result;
     }, {});
     const pending =
@@ -362,7 +369,7 @@ class Files extends View {
       markdownFiles.reduce(
         (count, filePath) =>
           count +
-          getMarkdownTaskNodes(filesData[filePath].textEditor).filter(
+          getMarkdownTaskNodes(filesData[filePath].textEditor, markdown).filter(
             (node) => node.kind === 'todo' && node.status === 'box' && !node.inArchive
           ).length,
         0

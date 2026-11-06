@@ -1006,6 +1006,13 @@
           "description": "Follow symbolic links when enumerating files (can cause cycles). Disable to avoid infinite loops.",
           "default": false
         },
+        "todo.refreshDelay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Milliseconds to wait after the last edit before refreshing dependency diagnostics and the Files, Due, and Embedded views. Increase it if typing lags in large workspaces.",
+          "default": 250
+        },
         "todo.embedded.showComments": {
           "type": "boolean",
           "description": "Show comment-only lines in the Embedded (side) view",

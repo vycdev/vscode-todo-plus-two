@@ -40,20 +40,20 @@ class DependencyLinkProvider implements vscode.DocumentLinkProvider {
 
   private getDependencies(document: vscode.TextDocument): DependencyReferenceAtLine[] {
     const dependencies: DependencyReferenceAtLine[] = [];
-    const markdownNodes = isMarkdownTaskDocument(document)
-      ? getMarkdownTaskNodes(document)
+    const markdownTaskLines = isMarkdownTaskDocument(document)
+      ? new Set(
+          getMarkdownTaskNodes(document)
+            .filter((node) => node.kind === 'todo')
+            .map((node) => node.lineNumber)
+        )
       : undefined;
 
-    const code = markdownNodes ? undefined : getCodeBlocks(document);
+    const code = markdownTaskLines ? undefined : getCodeBlocks(document);
     for (let lineNumber = 0; lineNumber < document.lineCount; lineNumber++) {
       if (code && code.byLine.has(lineNumber)) continue;
-      if (
-        markdownNodes &&
-        !markdownNodes.some((node) => node.kind === 'todo' && node.lineNumber === lineNumber)
-      )
-        continue;
+      if (markdownTaskLines && !markdownTaskLines.has(lineNumber)) continue;
       const raw = document.lineAt(lineNumber).text;
-      getDependencies(markdownNodes ? maskMarkdownTaskText(raw) : raw).forEach((dependency) => {
+      getDependencies(markdownTaskLines ? maskMarkdownTaskText(raw) : raw).forEach((dependency) => {
         dependencies.push({ ...dependency, lineNumber });
       });
     }
