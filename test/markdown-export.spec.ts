@@ -24,15 +24,37 @@ describe('Todo Markdown export', () => {
     expect(html).not.to.include('~~~~');
   });
 
-  it('does not turn a whitespace-only project title into a horizontal rule', () => {
-    const markdown = renderTodoMarkdown('Tasks', [
-        { kind: 'project', level: 0, text: '' },
-        { kind: 'todo', level: 1, text: 'Nested' },
-      ]),
-      tokens = new MarkdownIt({ html: true }).parse(markdown, {});
+  (
+    [
+      [[], '<li><strong></strong><ul><li>[ ] Nested</li></ul></li>'],
+      [
+        [{ kind: 'project', text: 'Parent' }],
+        '<li><strong>Parent</strong><ul><li><strong></strong><ul><li>[ ] Nested</li></ul></li></ul></li>',
+      ],
+      [
+        [{ kind: 'todo', text: 'Task' }],
+        '<li>[ ] Task<ul><li><strong></strong><ul><li>[ ] Nested</li></ul></li></ul></li>',
+      ],
+      [
+        [{ kind: 'comment', text: 'Note' }],
+        '<li>Note<ul><li><strong></strong><ul><li>[ ] Nested</li></ul></li></ul></li>',
+      ],
+    ] as const
+  ).forEach(([parents, expected]) => {
+    const context = parents.length ? `under a ${parents[0].kind}` : 'at the top level';
 
-    expect(tokens.some((token) => token.type === 'hr')).to.equal(false);
-    expect(tokens.filter((token) => token.type === 'list_item_open')).to.have.length(2);
+    it(`keeps a blank project title an empty list item ${context}`, () => {
+      const level = parents.length,
+        markdown = renderTodoMarkdown('Tasks', [
+          ...parents.map((parent) => ({ ...parent, level: 0 })),
+          { kind: 'project', level, text: ' ' },
+          { kind: 'todo', level: level + 1, text: 'Nested' },
+        ]),
+        html = new MarkdownIt({ html: true }).render(markdown).replace(/\n/g, '');
+
+      // A horizontal rule or a heading underline would change the structure.
+      expect(html).to.equal(`<h1>Tasks</h1><ul>${expected}</ul>`);
+    });
   });
 
   it('preserves project hierarchy and comment lines', () => {

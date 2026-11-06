@@ -7,6 +7,7 @@
 - Kept literal `@due(...)` examples inside other tag arguments out of the Due sidebar and due-date colors in Todo files; a real due tag later on the same task still applies. Due examples in inline code are no longer colored either.
 - Rejected impossible calendar dates in time estimates written with a timezone or fractional seconds, and in `@due` timestamps with fractional seconds, instead of silently rolling them into another month.
 - Kept renumbering numbered Todo list items on Enter past nested lines, such as sub-items, tasks, and notes, instead of leaving two items with the same number. Nested numbering is unchanged.
+- Kept projects with blank titles as empty list items when exporting Todo files to Markdown, instead of turning them into horizontal rules.
 
 ### Version 5.4.0
 
@@ -36,7 +37,6 @@ Markdown task management, planned work windows, configurable tag styles, and ric
 
 #### Fixes
 
-- Kept projects with blank titles as empty list items when exporting Todo files to Markdown, instead of turning them into horizontal rules.
 - Updated file-discovery dependencies to remove vulnerable glob parsers, preserving filesystem casing and symlink rules, and modernized the build and test tooling while retaining VS Code 1.36 support. [#299](https://github.com/vycdev/vscode-todo-plus-two/issues/299)
 - Rejected impossible `@due` timestamps with seconds and invalid time-zone offsets instead of rolling them forward; valid timestamps, including loosely padded components, remain accepted.
 - Rejected impossible `@due` dates with minute-precision timezone offsets instead of silently moving them into the next month.
