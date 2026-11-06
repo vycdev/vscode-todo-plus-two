@@ -119,6 +119,17 @@ describe('Relative file links', () => {
     expect(findRelativeFileLinks(text, documentPath)[0].targetPath).to.equal(target);
   });
 
+  it('round-trips generated links to filenames ending in a period', () => {
+    const target = path.join(workspacePath, 'todos', 'report.');
+    const text = makeRelativeFileLink(documentPath, target);
+    expect(text).to.equal('file://./report%2E');
+    expect(findRelativeFileLinks(text, documentPath)[0].targetPath).to.equal(target);
+    const archivePath = path.join(workspacePath, 'ARCHIVE.TODO');
+    const rebased = rebaseRelativeFileLinks(text, documentPath, archivePath);
+    expect(rebased).to.equal('file://./todos/report%2E');
+    expect(findRelativeFileLinks(rebased, archivePath)[0].targetPath).to.equal(target);
+  });
+
   it('keeps relative attachment targets when a task moves to a workspace-root archive', () => {
     const archivePath = path.join(workspacePath, 'ARCHIVE.TODO');
     const text =

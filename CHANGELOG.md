@@ -2,6 +2,9 @@
 
 #### Fixes
 
+- Fixed constant CPU use and typing lag in workspaces with many Markdown notes. Dependency warnings now reuse the notes already loaded for the sidebars and rescan only edited files; reopening every note after each edit made VS Code close and reopen them in a loop. Unrelated setting changes no longer reload every task file, sidebar and badge refreshes reuse unchanged scans, and the new `todo.refreshDelay` setting controls how long these refreshes wait after an edit. [#306](https://github.com/vycdev/vscode-todo-plus-two/issues/306)
+- Encoded terminal periods in generated relative file links so filenames ending in a period survive link parsing and archive moves.
+- Kept literal `@due(...)` examples inside other tag arguments out of the Due sidebar and due-date colors in Todo files; a real due tag later on the same task still applies. Due examples in inline code are no longer colored either.
 - Rejected impossible calendar dates in time estimates written with a timezone or fractional seconds, and in `@due` timestamps with fractional seconds, instead of silently rolling them into another month.
 
 ### Version 5.4.0

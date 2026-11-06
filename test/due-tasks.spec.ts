@@ -68,4 +68,19 @@ describe('Due task lines', () => {
 
     expect(tasks.map((task) => task.lineNumber)).to.deep.equal([1]);
   });
+
+  it('ignores literal due examples inside other tag arguments', () => {
+    const tasks = getDueTaskLines(
+      [
+        '☐ Example @id(release @due(2026-07-03))',
+        '☐ Release @note(@due(2026-07-01)) @due(2026-07-04)',
+      ],
+      todoRegex,
+      finishedRegex,
+      today
+    );
+
+    expect(tasks.map((task) => task.lineNumber)).to.deep.equal([1]);
+    expect(tasks[0].dateKey).to.equal('2026-07-04');
+  });
 });
