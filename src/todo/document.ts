@@ -20,6 +20,7 @@ import {
   findMarkdownTaskTag,
   getMarkdownCommentRanges,
   getMarkdownTaskTags,
+  getTodoTaskTags,
   maskMarkdownTaskText,
   transformMarkdownTaskText,
 } from '../utils/markdown-task-text';
@@ -80,10 +81,7 @@ class Document {
     regex: RegExp
   ) {
     if (this.isMarkdown()) return this.getMarkdownItems(Item, regex);
-    const matchText = _.isString(this.text)
-        ? parseCodeBlocks(this.text).maskedText
-        : getCodeBlocks(this.textDocument).maskedText,
-      matches = stringMatches(matchText, regex);
+    const matches = stringMatches(this.getMatchText(), regex);
 
     return matches.map((match) => {
       const item = new Item(this.textEditor, undefined, match);
@@ -92,6 +90,12 @@ class Document {
 
       return item;
     });
+  }
+
+  private getMatchText() {
+    return _.isString(this.text)
+      ? parseCodeBlocks(this.text).maskedText
+      : getCodeBlocks(this.textDocument).maskedText;
   }
 
   getItemAt(
@@ -168,7 +172,26 @@ class Document {
   }
 
   getTagsDue() {
-    return this.getItems(Tag, Consts.regexes.tagDue);
+    const tags = this.getItems(Tag, Consts.regexes.tagDue);
+    if (this.isMarkdown() || !tags.length) return tags;
+
+    // A due example inside another tag's argument is literal text, as in the Due view.
+    const text = this.getMatchText(),
+      outerStartsByLine = new Map<number, Set<number>>();
+
+    return tags.filter((tag) => {
+      const start = tag.matchRange.start,
+        lineStart = text.lastIndexOf('\n', start - 1) + 1;
+      if (!outerStartsByLine.has(lineStart)) {
+        const lineEnd = text.indexOf('\n', start),
+          line = text.slice(lineStart, lineEnd < 0 ? text.length : lineEnd);
+        outerStartsByLine.set(
+          lineStart,
+          new Set(getTodoTaskTags(line).map((outer) => lineStart + outer.start))
+        );
+      }
+      return outerStartsByLine.get(lineStart).has(start);
+    });
   }
 
   getTodos() {
