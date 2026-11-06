@@ -1,3 +1,9 @@
+### Version 5.4.1
+
+#### Fixes
+
+- Continue renumbering plain Todo list siblings after nested numbered items without changing their child numbering.
+
 ### Version 5.4.0
 
 Markdown task management, planned work windows, configurable tag styles, and richer Todo sidebars and notes. Read the compatibility notes before upgrading existing task files.

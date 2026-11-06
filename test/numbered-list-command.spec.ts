@@ -148,6 +148,12 @@ describe('Numbered list Enter command', () => {
     expect(loaded.calls).to.deep.equal([]);
   });
 
+  it('renumbers later siblings without changing nested numbered children', async () => {
+    const loaded = loadCommand('1. Parent\n  1. Child\n2. Sibling');
+    await loaded.numberedListEnter();
+    expect(loaded.state.text).to.equal('1. Parent\n2. \n  1. Child\n3. Sibling');
+  });
+
   it('uses the document line endings', async () => {
     const loaded = loadCommand('1. First\r\n2. Second', '\r\n');
     await loaded.numberedListEnter();

@@ -53,19 +53,23 @@ describe('Numbered list continuation', () => {
     expect(enter('\t1.\tFirst\n\t2.\tSecond', 0)).to.equal('\t1.\tFirst\n\t2.\t\n\t3.\tSecond');
   });
 
-  ['', 'Project:', 'Unnumbered note', '  1. Child', '\t1. Different indentation'].forEach(
-    (boundary) => {
-      it(`stops at the boundary ${JSON.stringify(boundary)}`, () => {
-        const ending = `\n${boundary}\n9. Unrelated`;
-        expect(enter('1. First\n2. Second' + ending, 0)).to.equal(
-          '1. First\n2. \n3. Second' + ending
-        );
-      });
-    }
-  );
+  ['', 'Project:', 'Unnumbered note'].forEach((boundary) => {
+    it(`stops at the boundary ${JSON.stringify(boundary)}`, () => {
+      const ending = `\n${boundary}\n9. Unrelated`;
+      expect(enter('1. First\n2. Second' + ending, 0)).to.equal(
+        '1. First\n2. \n3. Second' + ending
+      );
+    });
+  });
 
   it('stops at a dedent without renumbering a parent list', () => {
     expect(enter('  1. Child\n2. Parent', 0)).to.equal('  1. Child\n  2. \n2. Parent');
+  });
+
+  it('renumbers following siblings past nested numbered children', () => {
+    expect(enter('1. Parent\n  1. Child\n  2. Child\n2. Sibling\n3. Last', 0)).to.equal(
+      '1. Parent\n2. \n  1. Child\n  2. Child\n3. Sibling\n4. Last'
+    );
   });
 
   ['\n', '\r\n'].forEach((eol) => {

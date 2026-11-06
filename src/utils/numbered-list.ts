@@ -36,7 +36,11 @@ const getNumberedListEnterEdits = (
     if (following === undefined) break;
 
     const sibling = numberedItem.exec(following);
-    if (!sibling || sibling[1] !== indentation) break;
+    if (!sibling) break;
+    // Nested numbered items belong to the preceding item, not this sequence.
+    // Skip their numbering and resume at the next sibling at our indentation.
+    if (sibling[1].startsWith(indentation) && sibling[1].length > indentation.length) continue;
+    if (sibling[1] !== indentation) break;
 
     nextNumber++;
     if (!Number.isSafeInteger(nextNumber)) return;
