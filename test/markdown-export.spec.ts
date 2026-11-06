@@ -24,6 +24,17 @@ describe('Todo Markdown export', () => {
     expect(html).not.to.include('~~~~');
   });
 
+  it('does not turn a whitespace-only project title into a horizontal rule', () => {
+    const markdown = renderTodoMarkdown('Tasks', [
+        { kind: 'project', level: 0, text: '' },
+        { kind: 'todo', level: 1, text: 'Nested' },
+      ]),
+      tokens = new MarkdownIt({ html: true }).parse(markdown, {});
+
+    expect(tokens.some((token) => token.type === 'hr')).to.equal(false);
+    expect(tokens.filter((token) => token.type === 'list_item_open')).to.have.length(2);
+  });
+
   it('preserves project hierarchy and comment lines', () => {
     const markdown = renderTodoMarkdown('Tasks', [
       { kind: 'project', level: 0, text: 'Project' },

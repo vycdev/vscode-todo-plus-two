@@ -64,7 +64,8 @@ const renderLine = (line: MarkdownExportLine, depth: number): string => {
   const indentation = '  '.repeat(depth),
     text = renderFormattedText(line.text);
 
-  if (line.kind === 'project') return `${indentation}- **${text}**`;
+  if (line.kind === 'project')
+    return text.trim() ? `${indentation}- **${text}**` : `${indentation}-`;
   if (line.kind === 'comment') return `${indentation}- ${text}`;
 
   const status = line.status || 'pending';

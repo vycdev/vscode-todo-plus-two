@@ -26,6 +26,7 @@ Markdown task management, planned work windows, configurable tag styles, and ric
 
 #### Fixes
 
+- Kept projects with blank titles as empty list items when exporting Todo files to Markdown, instead of turning them into horizontal rules.
 - Updated file-discovery dependencies to remove vulnerable glob parsers, preserving filesystem casing and symlink rules, and modernized the build and test tooling while retaining VS Code 1.36 support. [#299](https://github.com/vycdev/vscode-todo-plus-two/issues/299)
 - Rejected impossible `@due` timestamps with seconds and invalid time-zone offsets instead of rolling them forward; valid timestamps, including loosely padded components, remain accepted.
 - Rejected impossible `@due` dates with minute-precision timezone offsets instead of silently moving them into the next month.
