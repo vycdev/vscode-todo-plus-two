@@ -72,6 +72,20 @@ describe('Numbered list continuation', () => {
     );
   });
 
+  ['  ☐ Subtask', '  Some note', '  - Detail', '  1. Child\n    Child note'].forEach((nested) => {
+    it(`renumbers following siblings past nested ${JSON.stringify(nested)}`, () => {
+      expect(enter(`1. Parent\n${nested}\n2. Sibling`, 0)).to.equal(
+        `1. Parent\n2. \n${nested}\n3. Sibling`
+      );
+    });
+  });
+
+  it('does not treat a differently indented line as nested', () => {
+    expect(enter('  1. Parent\n\tTab note\n  2. Sibling', 0)).to.equal(
+      '  1. Parent\n  2. \n\tTab note\n  2. Sibling'
+    );
+  });
+
   ['\n', '\r\n'].forEach((eol) => {
     it(`preserves ${JSON.stringify(eol)} line endings when continuing the last item`, () => {
       expect(enter(`Project:${eol}  5. Last item`, 1, eol)).to.equal(
