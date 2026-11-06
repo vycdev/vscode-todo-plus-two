@@ -1,3 +1,9 @@
+### Version 5.4.1 (Unreleased)
+
+#### Fixes
+
+- Fixed constant CPU use and typing lag in workspaces with many Markdown notes. Dependency warnings now reuse the notes already loaded for the sidebars and rescan only edited files; reopening every note after each edit made VS Code close and reopen them in a loop. Unrelated setting changes no longer reload every task file, sidebar and badge refreshes reuse unchanged scans, and the new `todo.refreshDelay` setting controls how long these refreshes wait after an edit. [#306](https://github.com/vycdev/vscode-todo-plus-two/issues/306)
+
 ### Version 5.4.0
 
 Markdown task management, planned work windows, configurable tag styles, and richer Todo sidebars and notes. Read the compatibility notes before upgrading existing task files.

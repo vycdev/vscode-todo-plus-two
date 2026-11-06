@@ -17,6 +17,7 @@ import { disposeTaskTagDocument, disposeTaskTagStyles } from './todo/decorators/
 import Utils from './utils';
 import DependencyIndex from './utils/dependency_index';
 import { createPlannedRefresh } from './utils/planned-refresh';
+import { getRefreshDelay } from './utils/refresh-delay';
 import ViewEmbedded from './views/embedded';
 import ViewFiles from './views/files';
 import { Due } from './views/due';
@@ -94,7 +95,7 @@ const activate = function (context: vscode.ExtensionContext) {
     dueRefreshTimer = setTimeout(() => {
       Due.refresh();
       ViewFiles.refresh();
-    }, 250);
+    }, getRefreshDelay());
   };
   const refreshDueDocument = (document: vscode.TextDocument) => {
     if (document.uri.scheme !== 'file') return;
@@ -127,9 +128,18 @@ const activate = function (context: vscode.ExtensionContext) {
       const filePath = provider.updateDocumentData(document);
 
       if (filePath) ViewEmbedded.refreshFile(filePath);
-    }, 250);
+    }, getRefreshDelay());
   };
   const updateFileCaches = (event: vscode.ConfigurationChangeEvent) => {
+    // Unrelated settings change often, including several times during startup.
+    // Resetting would reload every task file in the workspace each time.
+    if (
+      !event.affectsConfiguration('todo') &&
+      !event.affectsConfiguration('files.exclude') &&
+      !event.affectsConfiguration('files.associations')
+    )
+      return;
+
     Utils.files.unwatchPaths();
 
     if (event.affectsConfiguration('todo.embedded.provider')) {
