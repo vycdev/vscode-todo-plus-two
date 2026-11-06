@@ -43,6 +43,17 @@ const Due = {
       'MM/DD/YY',
     ];
 
+    // The formats have no fractional seconds. Validate the rest of the timestamp the
+    // same way rather than letting natural-date parsing roll impossible days over.
+    const fraction =
+      /^(\d{4}[-/]\d{1,2}[-/]\d{1,2}[ T]\d{1,2}:\d{2}:\d{2})\.(\d+)((?:[Zz]|[+-]\d{2}(?::?\d{2})?)?)$/.exec(
+        value
+      );
+    if (fraction) {
+      const date = Due.parse(fraction[1] + fraction[3]);
+      return date && new Date(date.getTime() + Math.floor(Number(`0.${fraction[2]}`) * 1000));
+    }
+
     const parsed = moment(value, formats, true);
 
     if (parsed.isValid()) {

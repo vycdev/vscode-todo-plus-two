@@ -85,6 +85,20 @@ describe('Time utilities', () => {
     expect(Time.durationSeconds('2020/02/29', from)).to.equal(59 * 24 * 3600);
   });
 
+  it('rejects impossible zoned calendar estimates instead of rolling them into March', () => {
+    const from = new Date('2020-01-01T00:00:00Z');
+
+    expect(Time.durationSeconds('2020-02-30T09:00:00Z', from)).to.equal(0);
+    expect(Time.diffSeconds('2021-02-29T09:00:00+02:00', from)).to.equal(0);
+    expect(Time.durationSeconds('2020-02-29T09:00:00Z', from)).to.equal(5130000);
+    expect(Time.durationSeconds('2020-02-29T09:00:00+02:00', from)).to.equal(5122800);
+
+    for (const zone of ['.000Z', 'z', '+0200', '+02', '.5+02:00']) {
+      expect(Time.durationSeconds(`2020-02-30T09:00:00${zone}`, from)).to.equal(0, zone);
+      expect(Time.durationSeconds(`2020-02-29T09:00:00${zone}`, from)).to.be.above(5000000, zone);
+    }
+  });
+
   it('validates unpadded calendar estimates without rejecting valid leap dates', () => {
     const from = new Date(2020, 0, 1);
 
