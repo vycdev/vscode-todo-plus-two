@@ -2,7 +2,7 @@
 
 #### Fixes
 
-- Rejected impossible zoned calendar dates in time estimates instead of silently rolling them into another month.
+- Rejected impossible calendar dates in time estimates written with a timezone or fractional seconds, and in `@due` timestamps with fractional seconds, instead of silently rolling them into another month.
 
 ### Version 5.4.0
 
