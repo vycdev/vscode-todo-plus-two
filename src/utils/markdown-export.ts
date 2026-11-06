@@ -64,7 +64,10 @@ const renderLine = (line: MarkdownExportLine, depth: number): string => {
   const indentation = '  '.repeat(depth),
     text = renderFormattedText(line.text);
 
-  if (line.kind === 'project') return `${indentation}- **${text}**`;
+  // `****` is a horizontal rule, and a bare `-` under another line underlines
+  // it as a heading. Inline HTML keeps a blank title an empty list item.
+  if (line.kind === 'project')
+    return `${indentation}- ${text.trim() ? `**${text}**` : '<strong></strong>'}`;
   if (line.kind === 'comment') return `${indentation}- ${text}`;
 
   const status = line.status || 'pending';
