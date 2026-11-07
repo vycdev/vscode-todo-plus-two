@@ -1,3 +1,9 @@
+### Version 5.4.2
+
+#### Fixes
+
+- Ignore Markdown front matter in UTF-8 BOM-prefixed notes so example checkboxes in metadata are not treated as tasks.
+
 ### Version 5.4.1
 
 Fixes constant CPU use and typing lag in workspaces with many Markdown notes and adds `todo.refreshDelay`, plus fixes for due dates, time estimates, numbered lists, file links, and Markdown export.
