@@ -202,6 +202,15 @@ describe('Markdown task sources', () => {
     expect(parseMarkdownTasks(content)[1].parent).to.equal(0);
   });
 
+  it('excludes front matter after a UTF-8 byte-order mark', () => {
+    const content = '\uFEFF---\nexample: |\n  [ ] Metadata example\n---\n[ ] Real';
+    expect(
+      parseMarkdownTasks(content)
+        .filter((node) => node.kind === 'todo')
+        .map((node) => node.title)
+    ).to.deep.equal(['Real']);
+  });
+
   it('excludes examples in fences, indented code, quotes, front matter, and comments', () => {
     const content = [
       '---',
