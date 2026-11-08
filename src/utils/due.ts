@@ -51,7 +51,10 @@ const Due = {
       );
     if (fraction) {
       const date = Due.parse(fraction[1] + fraction[3]);
-      return date && new Date(date.getTime() + Math.floor(Number(`0.${fraction[2]}`) * 1000));
+      // Read the millisecond digits directly: converting a long fraction to a
+      // floating-point number can round .999... up to the next second.
+      const milliseconds = Number((fraction[2] + '00').slice(0, 3));
+      return date && new Date(date.getTime() + milliseconds);
     }
 
     const parsed = moment(value, formats, true);
