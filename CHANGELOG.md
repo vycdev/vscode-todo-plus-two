@@ -1,3 +1,9 @@
+### Version 5.4.2
+
+#### Fixes
+
+- Keep high-precision fractional `@due` timestamps within their stated second instead of rounding long fractions into the next second.
+
 ### Version 5.4.1
 
 Fixes constant CPU use and typing lag in workspaces with many Markdown notes and adds `todo.refreshDelay`, plus fixes for due dates, time estimates, numbered lists, file links, and Markdown export.
