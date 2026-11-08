@@ -138,6 +138,15 @@ describe('Due utilities', () => {
     }
   });
 
+  it('truncates long fractional seconds without rounding into the next second', () => {
+    for (const [value, expected] of [
+      ['2026-11-08T12:34:56.99999999999999999999Z', '2026-11-08T12:34:56.999Z'],
+      ['2026-11-08T12:34:56.99999999999999999999+02:00', '2026-11-08T10:34:56.999Z'],
+    ]) {
+      expect(Due.parse(value)?.toISOString()).to.equal(expected, value);
+    }
+  });
+
   it('still accepts unzoned dates near the end of a month', () => {
     for (const day of [24, 29, 30, 31]) {
       expect(Due.parse(`2026-07-${day}`)?.getDate()).to.equal(day);
