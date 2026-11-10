@@ -67,7 +67,8 @@ export const parseMarkdownTasks = (
   let comment = false;
   let commentStart = 0;
   let frontMatter =
-    lines[0] === '---' && lines.slice(1).some((line) => /^(---|\.\.\.)\s*$/.test(line));
+    /^\uFEFF?---[ \t]*$/.test(lines[0]) &&
+    lines.slice(1).some((line) => /^(---|\.\.\.)\s*$/.test(line));
 
   for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
     const raw = lines[lineNumber];
