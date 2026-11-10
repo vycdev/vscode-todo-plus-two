@@ -211,6 +211,18 @@ describe('Markdown task sources', () => {
     ).to.deep.equal(['Real']);
   });
 
+  it('excludes front matter with trailing whitespace on its opening delimiter', () => {
+    for (const opening of ['--- ', '---\t', '\uFEFF--- ']) {
+      const content = `${opening}\nexample: |\n  [ ] Metadata example\n---\n[ ] Real`;
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title),
+        JSON.stringify(opening)
+      ).to.deep.equal(['Real']);
+    }
+  });
+
   it('excludes examples in fences, indented code, quotes, front matter, and comments', () => {
     const content = [
       '---',

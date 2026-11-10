@@ -2,7 +2,7 @@
 
 #### Fixes
 
-- Ignore Markdown front matter in UTF-8 BOM-prefixed notes so example checkboxes in metadata are not treated as tasks.
+- Ignore Markdown front matter in UTF-8 BOM-prefixed notes and notes with trailing whitespace on the opening delimiter so example checkboxes in metadata are not treated as tasks.
 
 ### Version 5.4.1
 
