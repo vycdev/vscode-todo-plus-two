@@ -34,7 +34,14 @@ const indentWidth = (line: string) =>
 const projectTitle = (text: string) =>
   /^\*\*[\s\S]*\*\*$/.test(text) ? text.slice(2, -2).replace(/\\([!-/:-@[-`{-~])/g, '$1') : text;
 const headingTitle = (text: string) => {
-  const title = text.replace(/[ \t]+#+[ \t]*$/, '').trim();
+  const heading = text.replace(/[ \t]+#+[ \t]*$/, '');
+  let visible = heading;
+  getMarkdownCommentRanges(heading)
+    .reverse()
+    .forEach(({ start, end }) => {
+      visible = visible.slice(0, start) + ' ' + visible.slice(end);
+    });
+  const title = visible.trim();
   // Decode the escaped literal labels emitted by the archive serializer.
   return /\\[!-/:-@[-`{-~]/.test(title) ? projectTitle(title) : title;
 };
