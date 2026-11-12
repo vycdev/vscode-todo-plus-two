@@ -249,6 +249,21 @@ describe('Markdown task sources', () => {
     expect(tasks.map((node) => node.title)).to.deep.equal(['Inside', 'Nested task']);
   });
 
+  it('uses visible heading text when selecting task sections with HTML comments', () => {
+    const content =
+      '# Note\n## Tasks <!-- private label -->\n- [ ] Included\n## Notes\n- [ ] Excluded';
+    const nodes = parseMarkdownTasks(content, { scope: 'sections' });
+    expect(nodes.filter((node) => node.kind === 'todo').map((node) => node.title)).to.deep.equal([
+      'Included',
+    ]);
+    expect(nodes.find((node) => node.lineNumber === 1).title).to.equal('Tasks');
+    expect(
+      parseMarkdownTasks('## Tasks `<!-- literal -->`\n- [ ] Outside', {
+        scope: 'sections',
+      }).filter((node) => node.kind === 'todo')
+    ).to.deep.equal([]);
+  });
+
   it('keeps repeated heading names and sibling project paths distinct', () => {
     const nodes = parseMarkdownTasks('# A\n## Tasks\n- [ ] First\n# B\n## Tasks\n- [ ] Second');
     expect(nodes.filter((node) => node.kind === 'todo').map((node) => node.parent)).to.deep.equal([
