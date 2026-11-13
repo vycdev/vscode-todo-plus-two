@@ -2,6 +2,7 @@
 
 import * as path from 'path';
 import { parseCodeBlocks } from './code-blocks';
+import { maskInlineCode } from './todo-status';
 
 /* RELATIVE FILE LINKS */
 
@@ -57,7 +58,11 @@ export const rebaseRelativeFileLinks = (
   destinationPath: string
 ): string => {
   if (!path.relative(path.dirname(sourcePath), path.dirname(destinationPath))) return text;
-  const links = findRelativeFileLinks(parseCodeBlocks(text).maskedText, sourcePath);
+  // Keep inline code examples literal without moving the link offsets.
+  const links = findRelativeFileLinks(
+    maskInlineCode(parseCodeBlocks(text).maskedText, true),
+    sourcePath
+  );
   // Replace from the end so earlier link ranges stay valid.
   for (const link of links.reverse()) {
     text =
