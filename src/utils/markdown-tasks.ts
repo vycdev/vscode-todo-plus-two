@@ -221,7 +221,7 @@ export const parseMarkdownTasks = (
       const markerStart = raw.indexOf(task[2], task[1].length);
       const marker = task[2];
       const tagged = (name: string) =>
-        !!findMarkdownTaskTag(task[4], new RegExp(`@${name}(?:\\([^)]*\\)|(?![a-zA-Z0-9]))`));
+        !!findMarkdownTaskTag(task[4], new RegExp(`@${name}(?:\\([^)]*\\))?$`));
       const status =
         tagged('cancelled') ||
         marker === '✘' ||

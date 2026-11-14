@@ -2,6 +2,7 @@
 
 #### Fixes
 
+- Kept Markdown tasks pending when a longer tag such as `@done-later` or `@cancelled-later` begins with a status tag name.
 - Kept high-precision fractional `@due` timestamps within their stated second instead of rounding long fractions into the next second.
 - Kept tag focus matching real task tags after backticks inside tag arguments, instead of hiding them as inline code.
 - Kept backticks inside tag arguments from hiding later task IDs and dependencies.
