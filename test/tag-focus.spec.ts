@@ -80,6 +80,13 @@ describe('Tag focus ranges', () => {
     expect(getVisible(lines)).to.deep.equal([lines[0], lines[7]]);
   });
 
+  it('keeps real tags after backticks in literal tag arguments', () => {
+    const lines = ['(folded)', '☐ task @id(`example) @critical `trailer'];
+
+    expect(getVisible(lines)).to.deep.equal(lines);
+    expect(getFocusTagNames(lines, isTodo, tagPattern)).to.deep.equal(['@critical', '@id']);
+  });
+
   it('does not inherit tags from parent tasks or retain their untagged children', () => {
     const lines = ['(folded)', '☐ parent @critical', '  ☐ untagged child'];
 
