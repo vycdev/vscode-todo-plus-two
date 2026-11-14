@@ -9,7 +9,7 @@ export const isTagFocusHeader = (line: string): boolean =>
 
 const getLineTagNames = (text: string, tagPattern: RegExp): string[] => {
   const regex = new RegExp(tagPattern.source, 'g');
-  const masked = maskInlineCode(text);
+  const masked = maskInlineCode(text, true);
   const tags: string[] = [];
   let match: RegExpExecArray;
 

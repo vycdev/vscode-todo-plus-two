@@ -4,6 +4,7 @@ Fixes constant CPU use and typing lag in workspaces with many Markdown notes and
 
 #### Fixes
 
+- Kept tag focus matching real task tags after backticks inside tag arguments, instead of hiding them as inline code.
 - Fixed constant CPU use and typing lag in workspaces with many Markdown notes. Dependency warnings now reuse the notes already loaded for the sidebars and rescan only edited files; reopening every note after each edit made VS Code close and reopen them in a loop. Unrelated setting changes no longer reload every task file, sidebar and badge refreshes reuse unchanged scans, and the new `todo.refreshDelay` setting controls how long these refreshes wait after an edit. [#306](https://github.com/vycdev/vscode-todo-plus-two/issues/306)
 - Encoded terminal periods in generated relative file links so filenames ending in a period survive link parsing and archive moves.
 - Kept literal `@due(...)` examples inside other tag arguments out of the Due sidebar and due-date colors in Todo files; a real due tag later on the same task still applies. Due examples in inline code are no longer colored either.
