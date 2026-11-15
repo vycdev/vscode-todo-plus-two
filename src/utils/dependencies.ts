@@ -25,6 +25,16 @@ function getInlineCodeRanges(text: string): Array<{ start: number; end: number }
   const ranges: Array<{ start: number; end: number }> = [];
 
   for (let start = 0; start < text.length; start++) {
+    // A tag argument is portable plain text, even when it contains backticks.
+    // Skip it before looking for code spans, just as the task-tag scanner does.
+    if (text[start] === '@' && (start === 0 || !/[a-zA-Z0-9`]/.test(text[start - 1]))) {
+      const tag = /^@[^\s*~(`]+\(/.exec(text.slice(start));
+      const closing = tag ? text.indexOf(')', start + tag[0].length) : -1;
+      if (closing >= 0 && !/[\r\n]/.test(text.slice(start, closing))) {
+        start = closing;
+        continue;
+      }
+    }
     if (text[start] !== '`' || (start > 0 && text[start - 1] === '`')) continue;
 
     let openingEnd = start + 1;
