@@ -9,6 +9,7 @@
 - Kept backticks inside tag arguments from hiding later task IDs and dependencies.
 - Ignored Markdown front matter in notes that start with a UTF-8 byte-order mark or have trailing whitespace after the opening `---`, so example checkboxes in metadata are no longer treated as tasks.
 - Kept status-like text inside Todo tag arguments, such as `@id(@done)`, from marking tasks finished in the Files view and other Todo status checks. Unfinishing a task no longer removes that text from the argument.
+- Ignored Markdown task and heading examples inside preformatted HTML blocks (`<pre>...</pre>`), including unfinished blocks.
 
 ### Version 5.4.1
 
