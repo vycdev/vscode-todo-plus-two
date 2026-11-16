@@ -14,6 +14,14 @@ describe('Todo status matching', () => {
     expect(matchesTodoStatus('☐ Explain `code` @cancelled(reason)', finishedTag)).to.equal(true);
   });
 
+  it('treats status-like text in tag arguments as literal', () => {
+    expect(matchesTodoStatus('☐ Task @id(@done)', finishedTag)).to.equal(false);
+    expect(matchesTodoStatus('☐ Task @depends(@cancelled)', finishedTag)).to.equal(false);
+    expect(matchesTodoStatus('☐ Task @id(@done) @cancelled', finishedTag)).to.equal(true);
+    expect(matchesTodoStatus('☐ Task @id(`literal) @done', finishedTag)).to.equal(true);
+    expect(matchesTodoStatus('☐ Task @done(reason)', finishedTag)).to.equal(true);
+  });
+
   it('matches inline code delimiters by backtick run length', () => {
     const text = '☐ Explain ``a `literal` @done value`` @cancelled(reason)';
     const masked = maskInlineCode(text);

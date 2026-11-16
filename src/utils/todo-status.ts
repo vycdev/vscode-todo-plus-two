@@ -1,3 +1,5 @@
+import { getTodoTaskTags } from './markdown-task-text';
+
 /* INLINE CODE */
 
 export const getInlineCodeRanges = (
@@ -70,7 +72,17 @@ export const maskInlineCode = (text: string, literalTagArguments: boolean = fals
 export const matchesTodoStatus = (text: string, pattern: RegExp): boolean => {
   pattern.lastIndex = 0;
 
-  return pattern.test(maskInlineCode(text));
+  // Tag arguments are plain text. Mask them before scanning backticks so a
+  // literal backtick inside an argument cannot hide a later real status tag.
+  const masked = text.split('');
+  getTodoTaskTags(text).forEach(({ start, text: tag }) => {
+    const open = tag.indexOf('(');
+    if (open < 0 || !tag.endsWith(')')) return;
+    for (let index = start + open + 1; index < start + tag.length - 1; index++) {
+      masked[index] = ' ';
+    }
+  });
+  return pattern.test(maskInlineCode(masked.join('')));
 };
 
 export const removeTodoStatusTag = (

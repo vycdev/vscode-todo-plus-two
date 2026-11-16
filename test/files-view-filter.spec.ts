@@ -55,4 +55,15 @@ describe('Files view filter', () => {
       false
     );
   });
+
+  it('keeps a pending descendant whose ID contains a literal status tag', () => {
+    const todoPattern = /^\s*[☐✔]\s/;
+    const finishedTodoPattern = /^\s*(?:✔\s|☐\s.*@done)/;
+    expect(hasUnfinishedTodo(['  ☐ Task @id(@done)'], todoPattern, finishedTodoPattern)).to.equal(
+      true
+    );
+    expect(
+      hasUnfinishedTodo(['  ☐ Task @id(@done) @done'], todoPattern, finishedTodoPattern)
+    ).to.equal(false);
+  });
 });
