@@ -50,6 +50,22 @@ describe('Markdown task sources', () => {
     expect(parseMarkdownTasks('[ ] Real \\<!-- @done')[0].status).to.equal('done');
   });
 
+  it('does not mark tasks finished for longer status tag names', () => {
+    const content = [
+      '[ ] Pending @done-later',
+      '[ ] Pending too @done_extra',
+      '[ ] Still pending @cancelled-later',
+      '[ ] Completed @done(2026-11-14)',
+      '[ ] Cancelled @cancelled',
+    ].join('\n');
+    expect(parseMarkdownTasks(content).map((node) => node.status)).to.deep.equal([
+      'box',
+      'box',
+      'box',
+      'done',
+      'cancelled',
+    ]);
+  });
   it('does not treat escaped backticks as code delimiters', () => {
     expect(parseMarkdownTasks('[ ] Real \\`@done\\`')[0].status).to.equal('done');
   });
