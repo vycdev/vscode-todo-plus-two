@@ -154,6 +154,22 @@ describe('Relative file links', () => {
     ).to.equal(text);
   });
 
+  it('leaves inline code examples literal while rebasing surrounding attachments', () => {
+    const archivePath = path.join(workspacePath, 'ARCHIVE.TODO');
+    const text = '✔ Done `file://./example.png` and file://./attachment.png';
+    expect(rebaseRelativeFileLinks(text, documentPath, archivePath)).to.equal(
+      '✔ Done `file://./example.png` and file://./todos/attachment.png'
+    );
+  });
+
+  it('preserves links inside matching multi-backtick code spans', () => {
+    const archivePath = path.join(workspacePath, 'ARCHIVE.TODO');
+    const text = '✔ Done ``file://./example`image.png`` and file://./attachment.png';
+    expect(rebaseRelativeFileLinks(text, documentPath, archivePath)).to.equal(
+      '✔ Done ``file://./example`image.png`` and file://./todos/attachment.png'
+    );
+  });
+
   it('keeps fenced code examples literal while rebasing surrounding attachments', () => {
     const archivePath = path.join(workspacePath, 'ARCHIVE.TODO');
     const text = [
