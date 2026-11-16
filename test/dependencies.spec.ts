@@ -118,6 +118,17 @@ describe('Task dependencies', () => {
     ).to.deep.equal(['real']);
   });
 
+  it('does not treat backticks inside tag arguments as inline-code delimiters', () => {
+    const text = '☐ Ship @note(`) @depends(real) @note(`) @id(target)';
+    expect(getDependencies(text).map((reference) => reference.id)).to.deep.equal(['real']);
+    expect(getIds(text).map((reference) => reference.id)).to.deep.equal(['target']);
+    expect(
+      getDependencies('☐ Ship `@depends(fake)` @note(`) @depends(real) @note(`)').map(
+        (reference) => reference.id
+      )
+    ).to.deep.equal(['real']);
+  });
+
   it('finds every dependency on a task and ignores empty references', () => {
     const dependencies = getDependencies(
       '☐ Ship @depends(api contract) @depends(release/v2) @depends()'
