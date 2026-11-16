@@ -69,9 +69,8 @@ export const maskInlineCode = (text: string, literalTagArguments: boolean = fals
 
 /* TODO STATUS */
 
-export const matchesTodoStatus = (text: string, pattern: RegExp): boolean => {
-  pattern.lastIndex = 0;
-
+/** Hide inline code and Todo tag arguments, keeping original offsets. */
+export const maskTodoStatusText = (text: string): string => {
   // Tag arguments are plain text. Mask them before scanning backticks so a
   // literal backtick inside an argument cannot hide a later real status tag.
   const masked = text.split('');
@@ -82,13 +81,19 @@ export const matchesTodoStatus = (text: string, pattern: RegExp): boolean => {
       masked[index] = ' ';
     }
   });
-  return pattern.test(maskInlineCode(masked.join('')));
+  return maskInlineCode(masked.join(''));
+};
+
+export const matchesTodoStatus = (text: string, pattern: RegExp): boolean => {
+  pattern.lastIndex = 0;
+
+  return pattern.test(maskTodoStatusText(text));
 };
 
 export const removeTodoStatusTag = (
   text: string,
   pattern: RegExp,
-  mask = maskInlineCode
+  mask = maskTodoStatusText
 ): string => {
   pattern.lastIndex = 0;
 

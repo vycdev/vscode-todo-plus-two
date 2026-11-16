@@ -48,6 +48,17 @@ describe('Todo status matching', () => {
     expect(removeTodoStatusTag('☐ Explain `@done`', tagFinished)).to.equal('☐ Explain `@done`');
   });
 
+  it('removes real status tags without changing tag arguments', () => {
+    const tagFinished = /(?:^|[^a-zA-Z0-9])@(?:done|cancelled)(?:\([^)]*\))?/;
+
+    expect(removeTodoStatusTag('☐ Task @id(@done) @done(26-11-16)', tagFinished)).to.equal(
+      '☐ Task @id(@done)'
+    );
+    expect(removeTodoStatusTag('☐ Task @id(@cancelled)', tagFinished)).to.equal(
+      '☐ Task @id(@cancelled)'
+    );
+  });
+
   it('preserves punctuation before status tags when unfinishing tasks', () => {
     const tagFinished = /(?:^|[^a-zA-Z0-9])@(?:done|cancelled)(?:\([^)]*\))?/;
     const tagElapsed = /(?:^|[^a-zA-Z0-9])@(?:lasted|wasted)(?:\([^)]*\))?/;
