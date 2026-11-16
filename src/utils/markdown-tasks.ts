@@ -70,6 +70,7 @@ export const parseMarkdownTasks = (
     `^([ \\t]*)(?:(?:[-+*]|\\d+[.)])[ \\t]+)?(\\[[ xX]\\]|${symbolNames.map(escapeRegex).join('|')})(?=[ \\t]|$)([ \\t]*)(.*)$`
   );
   let fence: { marker: string; length: number; start: number; baseIndent: number } | undefined;
+  let htmlPreStart: number | undefined;
   const ignoredEnds = new Map<number, number>();
   let comment = false;
   let commentStart = 0;
@@ -94,6 +95,13 @@ export const parseMarkdownTasks = (
       ) {
         ignoredEnds.set(fence.start, lineNumber + 1);
         fence = undefined;
+      }
+      continue;
+    }
+    if (htmlPreStart !== undefined) {
+      if (/<\/pre[ \t]*>/i.test(raw)) {
+        ignoredEnds.set(htmlPreStart, lineNumber + 1);
+        htmlPreStart = undefined;
       }
       continue;
     }
@@ -134,6 +142,11 @@ export const parseMarkdownTasks = (
       indent >= fenceBase + 4
     )
       continue;
+    // Markdown treats preformatted HTML blocks as literal code examples.
+    if (!wasComment && indent <= fenceBase + 3 && /^[ \t]*<pre(?:[ \t>]|$)/i.test(raw)) {
+      if (!/<\/pre[ \t]*>/i.test(raw)) htmlPreStart = lineNumber;
+      continue;
+    }
     const openingFence = raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)(`{3,}|~{3,})(.*)$/);
     if (
       !wasComment &&
@@ -289,6 +302,7 @@ export const parseMarkdownTasks = (
     }
   }
   if (fence) ignoredEnds.set(fence.start, lines.length);
+  if (htmlPreStart !== undefined) ignoredEnds.set(htmlPreStart, lines.length);
   if (comment) ignoredEnds.set(commentStart, lines.length);
 
   // Block ranges include indented notes and children, but leave separating

@@ -239,6 +239,39 @@ describe('Markdown task sources', () => {
     }
   });
 
+  it('does not treat HTML preformatted code examples as tasks or headings', () => {
+    const content = [
+      '# Tasks',
+      '<pre class="language-markdown">',
+      '# Archive',
+      '- [x] Example',
+      '</pre>',
+      '- [ ] Real',
+    ].join('\n');
+    const nodes = parseMarkdownTasks(content);
+    expect(nodes.filter((node) => node.kind === 'todo').map((node) => node.title)).to.deep.equal([
+      'Real',
+    ]);
+    expect(nodes.filter((node) => node.archiveRoot)).to.deep.equal([]);
+    expect(
+      parseMarkdownTasks('- [ ] Parent\n  <pre>\n  - [ ] Example\n  </pre>\n  - [ ] Child')
+        .filter((node) => node.kind === 'todo')
+        .map((node) => node.title)
+    ).to.deep.equal(['Parent', 'Child']);
+    expect(
+      parseMarkdownTasks('<pre>\n- [ ] Example\n</pre>\n- [ ] Real')
+        .filter((node) => node.kind === 'todo')
+        .map((node) => node.title)
+    ).to.deep.equal(['Real']);
+    expect(
+      parseMarkdownTasks('<pre>\n- [ ] Example').filter((node) => node.kind === 'todo')
+    ).to.deep.equal([]);
+    const attached = '- [x] Finished\n  <pre>\n  - [ ] Example\n  </pre>\n- [ ] Pending';
+    expect(collectMarkdownArchiveBlocks(attached, {})[0].lines).to.deep.equal(
+      attached.split('\n').slice(0, 4)
+    );
+  });
+
   it('excludes examples in fences, indented code, quotes, front matter, and comments', () => {
     const content = [
       '---',
