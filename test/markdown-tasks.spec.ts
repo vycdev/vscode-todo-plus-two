@@ -239,6 +239,18 @@ describe('Markdown task sources', () => {
     }
   });
 
+  it('ignores preformatted HTML examples opened inside Markdown list items', () => {
+    for (const opener of ['- <pre>', '1. <pre class="example">']) {
+      const content = `${opener}\n  - [ ] Example\n  </pre>\n- [ ] Real`;
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title),
+        opener
+      ).to.deep.equal(['Real']);
+    }
+  });
+
   it('does not treat HTML preformatted code examples as tasks or headings', () => {
     const content = [
       '# Tasks',

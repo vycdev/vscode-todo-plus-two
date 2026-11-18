@@ -143,7 +143,11 @@ export const parseMarkdownTasks = (
     )
       continue;
     // Markdown treats preformatted HTML blocks as literal code examples.
-    if (!wasComment && indent <= fenceBase + 3 && /^[ \t]*<pre(?:[ \t>]|$)/i.test(raw)) {
+    if (
+      !wasComment &&
+      indent <= fenceBase + 3 &&
+      /^[ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?<pre(?:[ \t>]|$)/i.test(raw)
+    ) {
       if (!/<\/pre[ \t]*>/i.test(raw)) htmlPreStart = lineNumber;
       continue;
     }
