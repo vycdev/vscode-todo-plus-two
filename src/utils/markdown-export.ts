@@ -73,7 +73,8 @@ const renderLine = (line: MarkdownExportLine, depth: number): string => {
   const status = line.status || 'pending';
 
   if (status === 'done') return `${indentation}- [x] ${text}`;
-  if (status === 'cancelled') return `${indentation}- [ ] ${text ? `~~${text}~~` : '<s></s>'}`;
+  if (status === 'cancelled')
+    return `${indentation}- [ ] ${!text || /^\s|\s$/.test(line.text) ? `<s>${text}</s>` : `~~${text}~~`}`;
 
   return `${indentation}- [ ] ${text}`;
 };
