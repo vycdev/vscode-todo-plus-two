@@ -14,6 +14,18 @@ describe('Todo Markdown export', () => {
     expect(markdown).to.equal('# Tasks\n\n- [ ] First\n- [x] Second\n- [ ] ~~Third~~\n');
   });
 
+  it('strikes through cancelled tasks whose text starts or ends with spaces', () => {
+    for (const text of [' leading', 'trailing ', ' leading ']) {
+      const markdown = renderTodoMarkdown('Tasks', [
+          { kind: 'todo', level: 0, status: 'cancelled', text },
+        ]),
+        html = new MarkdownIt({ html: true }).render(markdown);
+
+      expect(html).to.include(`<li>[ ] <s>${text}</s></li>`);
+      expect(html).not.to.include('~~');
+    }
+  });
+
   it('exports an empty cancelled task without displaying literal strikethrough markers', () => {
     const markdown = renderTodoMarkdown('Tasks', [
         { kind: 'todo', level: 0, status: 'cancelled', text: '' },
