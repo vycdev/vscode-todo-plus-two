@@ -2,6 +2,7 @@
 
 #### Fixes
 
+- Kept tag-argument completion available after a literal backtick inside an earlier Todo tag argument.
 - Recognized Markdown task sections whose headings have trailing HTML comments, without treating comment-like text in inline code as hidden.
 - Kept Markdown tasks pending when a longer tag such as `@done-later` or `@cancelled-later` begins with a status tag name.
 - Kept high-precision fractional `@due` timestamps within their stated second instead of rounding long fractions into the next second.
