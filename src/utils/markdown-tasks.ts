@@ -72,8 +72,8 @@ export const parseMarkdownTasks = (
     `^([ \\t]*)(?:(?:[-+*]|\\d+[.)])[ \\t]+)?(\\[[ xX]\\]|${symbolNames.map(escapeRegex).join('|')})(?=[ \\t]|$)([ \\t]*)(.*)$`
   );
   let fence: { marker: string; length: number; start: number; baseIndent: number } | undefined;
-  let htmlPreStart: number | undefined;
-  let htmlPreListIndent: number | undefined;
+  let htmlBlockStart: number | undefined;
+  let htmlBlockListIndent: number | undefined;
   const ignoredEnds = new Map<number, number>();
   let comment = false;
   let commentStart = 0;
@@ -101,15 +101,15 @@ export const parseMarkdownTasks = (
       }
       continue;
     }
-    if (htmlPreStart !== undefined) {
+    if (htmlBlockStart !== undefined) {
       const endsList =
-        htmlPreListIndent !== undefined &&
+        htmlBlockListIndent !== undefined &&
         !!raw.trim() &&
-        markdownColumns((raw.match(/^[ \t]*/) || [''])[0]) < htmlPreListIndent;
-      if (endsList || /<\/pre[ \t]*>/i.test(raw)) {
-        ignoredEnds.set(htmlPreStart, lineNumber + (endsList ? 0 : 1));
-        htmlPreStart = undefined;
-        htmlPreListIndent = undefined;
+        markdownColumns((raw.match(/^[ \t]*/) || [''])[0]) < htmlBlockListIndent;
+      if (endsList || /<\/(?:pre|script|style|textarea)[ \t]*>/i.test(raw)) {
+        ignoredEnds.set(htmlBlockStart, lineNumber + (endsList ? 0 : 1));
+        htmlBlockStart = undefined;
+        htmlBlockListIndent = undefined;
       }
       if (!endsList) continue;
     }
@@ -150,18 +150,18 @@ export const parseMarkdownTasks = (
       indent >= fenceBase + 4
     )
       continue;
-    // Markdown treats preformatted HTML blocks as literal code examples.
-    const openingPre =
+    // Markdown treats these raw HTML blocks as literal content, not task lists.
+    const openingHtml =
       !wasComment &&
       indent <= fenceBase + 3 &&
-      raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)<pre(?:[ \t>]|$)/i);
-    if (openingPre) {
-      if (!/<\/pre[ \t]*>/i.test(raw)) {
-        htmlPreStart = lineNumber;
-        htmlPreListIndent = openingPre[1].trim() ? markdownColumns(openingPre[1]) : undefined;
+      raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)<(?:pre|script|style|textarea)(?:[ \t>]|$)/i);
+    if (openingHtml) {
+      if (!/<\/(?:pre|script|style|textarea)[ \t]*>/i.test(raw)) {
+        htmlBlockStart = lineNumber;
+        htmlBlockListIndent = openingHtml[1].trim() ? markdownColumns(openingHtml[1]) : undefined;
       }
       // Keep the list container for real tasks after the closing tag.
-      if (!openingPre[1].trim()) continue;
+      if (!openingHtml[1].trim()) continue;
     }
     const openingFence = raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)(`{3,}|~{3,})(.*)$/);
     if (
@@ -181,7 +181,7 @@ export const parseMarkdownTasks = (
       continue;
     }
     if (!wasComment && /^[ \t]*>/.test(raw)) continue;
-    const comments = openingPre ? [] : getMarkdownCommentRanges(raw.slice(cursor));
+    const comments = openingHtml ? [] : getMarkdownCommentRanges(raw.slice(cursor));
     comments.forEach((range) => {
       if (!range.closed) {
         comment = true;
@@ -318,7 +318,7 @@ export const parseMarkdownTasks = (
     }
   }
   if (fence) ignoredEnds.set(fence.start, lines.length);
-  if (htmlPreStart !== undefined) ignoredEnds.set(htmlPreStart, lines.length);
+  if (htmlBlockStart !== undefined) ignoredEnds.set(htmlBlockStart, lines.length);
   if (comment) ignoredEnds.set(commentStart, lines.length);
 
   // Block ranges include indented notes and children, but leave separating
