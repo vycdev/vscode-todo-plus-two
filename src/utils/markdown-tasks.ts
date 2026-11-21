@@ -45,6 +45,7 @@ const headingTitle = (text: string) => {
   // Decode the escaped literal labels emitted by the archive serializer.
   return /\\[!-/:-@[-`{-~]/.test(title) ? projectTitle(title) : title;
 };
+const rawHtmlClosing = /<\/(pre|script|style|textarea)[ \t]*>/i;
 
 /** Literal project labels remain readable even when their text resembles syntax. */
 export const quoteMarkdownProjectTitle = (title: string): string =>
@@ -70,7 +71,7 @@ export const parseMarkdownTasks = (
     `^([ \\t]*)(?:(?:[-+*]|\\d+[.)])[ \\t]+)?(\\[[ xX]\\]|${symbolNames.map(escapeRegex).join('|')})(?=[ \\t]|$)([ \\t]*)(.*)$`
   );
   let fence: { marker: string; length: number; start: number; baseIndent: number } | undefined;
-  let htmlPreStart: number | undefined;
+  let htmlBlock: { start: number; tag: string } | undefined;
   const ignoredEnds = new Map<number, number>();
   let comment = false;
   let commentStart = 0;
@@ -98,10 +99,10 @@ export const parseMarkdownTasks = (
       }
       continue;
     }
-    if (htmlPreStart !== undefined) {
-      if (/<\/pre[ \t]*>/i.test(raw)) {
-        ignoredEnds.set(htmlPreStart, lineNumber + 1);
-        htmlPreStart = undefined;
+    if (htmlBlock) {
+      if (rawHtmlClosing.exec(raw)?.[1].toLowerCase() === htmlBlock.tag) {
+        ignoredEnds.set(htmlBlock.start, lineNumber + 1);
+        htmlBlock = undefined;
       }
       continue;
     }
@@ -142,9 +143,12 @@ export const parseMarkdownTasks = (
       indent >= fenceBase + 4
     )
       continue;
-    // Markdown treats preformatted HTML blocks as literal code examples.
-    if (!wasComment && indent <= fenceBase + 3 && /^[ \t]*<pre(?:[ \t>]|$)/i.test(raw)) {
-      if (!/<\/pre[ \t]*>/i.test(raw)) htmlPreStart = lineNumber;
+    // Markdown treats these raw HTML blocks as literal content, not task lists.
+    const rawHtmlOpening = raw.match(/^[ \t]*<(pre|script|style|textarea)(?=[ \t>]|$)/i);
+    if (!wasComment && indent <= fenceBase + 3 && rawHtmlOpening) {
+      const tag = rawHtmlOpening[1].toLowerCase();
+      if (rawHtmlClosing.exec(raw)?.[1].toLowerCase() !== tag)
+        htmlBlock = { start: lineNumber, tag };
       continue;
     }
     const openingFence = raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)(`{3,}|~{3,})(.*)$/);
@@ -302,7 +306,7 @@ export const parseMarkdownTasks = (
     }
   }
   if (fence) ignoredEnds.set(fence.start, lines.length);
-  if (htmlPreStart !== undefined) ignoredEnds.set(htmlPreStart, lines.length);
+  if (htmlBlock) ignoredEnds.set(htmlBlock.start, lines.length);
   if (comment) ignoredEnds.set(commentStart, lines.length);
 
   // Block ranges include indented notes and children, but leave separating

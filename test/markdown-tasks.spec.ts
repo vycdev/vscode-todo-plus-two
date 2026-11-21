@@ -272,6 +272,28 @@ describe('Markdown task sources', () => {
     );
   });
 
+  it('ignores task and heading examples in raw HTML script, style, and textarea blocks', () => {
+    for (const opening of ['<script>', '<style type="text/css">', '<textarea>']) {
+      const closing = `</${opening.slice(1).split(/[ >]/)[0]}>`;
+      const content = `# Tasks\n${opening}\n# Archive\n- [ ] Example\n${closing}\n- [ ] Real`;
+      const nodes = parseMarkdownTasks(content);
+      expect(
+        nodes.filter((node) => node.kind === 'todo').map((node) => node.title),
+        opening
+      ).to.deep.equal(['Real']);
+      expect(
+        nodes.filter((node) => node.archiveRoot),
+        opening
+      ).to.deep.equal([]);
+    }
+    expect(parseMarkdownTasks('<script>\n- [ ] Example')).to.deep.equal([]);
+    expect(
+      parseMarkdownTasks('<style></style>\n- [ ] Real')
+        .filter((node) => node.kind === 'todo')
+        .map((node) => node.title)
+    ).to.deep.equal(['Real']);
+  });
+
   it('excludes examples in fences, indented code, quotes, front matter, and comments', () => {
     const content = [
       '---',
