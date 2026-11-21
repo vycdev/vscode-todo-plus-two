@@ -1,3 +1,5 @@
+import { getTodoTaskTags } from './markdown-task-text';
+
 export interface TagArgumentPrefix {
   text: string;
   name: string;
@@ -9,11 +11,21 @@ const getTagName = (tag: string): string => tag.replace(/\([^)]*\)$/, '');
 
 const isInsideInlineCode = (line: string, character: number): boolean => {
   const markerRuns = /`+/g,
-    prefix = line.slice(0, character);
+    prefix = line.slice(0, character).split('');
+  // Tag arguments are plaintext: a backtick inside one cannot start a code span
+  // that hides a later completion candidate.
+  getTodoTaskTags(prefix.join('')).forEach(({ start, text }) => {
+    const open = text.indexOf('(');
+    if (open < 0 || !text.endsWith(')')) return;
+    for (let index = start + open + 1; index < start + text.length - 1; index++) {
+      prefix[index] = ' ';
+    }
+  });
+  const visiblePrefix = prefix.join('');
   let delimiterLength = 0;
   let marker: RegExpExecArray | null;
 
-  while ((marker = markerRuns.exec(prefix))) {
+  while ((marker = markerRuns.exec(visiblePrefix))) {
     const runLength = marker[0].length;
 
     if (!delimiterLength) delimiterLength = runLength;
