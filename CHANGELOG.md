@@ -13,6 +13,7 @@
 - Ignored Markdown front matter in notes that start with a UTF-8 byte-order mark or have trailing whitespace after the opening `---`, so example checkboxes in metadata are no longer treated as tasks.
 - Kept status-like text inside Todo tag arguments, such as `@id(@done)`, from marking tasks finished in the Files view and other Todo status checks. Unfinishing a task no longer removes that text from the argument.
 - Ignored Markdown task and heading examples inside preformatted HTML blocks (`<pre>...</pre>`), including unfinished blocks.
+- Kept `@started`, `@created`, and `@est` examples in inline code or inside another tag's argument, such as `` `@started` `` or `@note(@started)`, from being treated as real tags in Todo files. Toggle Start now starts these tasks instead of deleting the example, and the status bar timer uses the task's real estimate.
 
 ### Version 5.4.1
 
