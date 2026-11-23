@@ -13,6 +13,7 @@ Thumbs.db
 dist
 node_modules
 .vscode-test
+/.vscode-dev/
 
 out
 
