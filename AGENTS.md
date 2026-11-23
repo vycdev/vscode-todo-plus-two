@@ -29,7 +29,7 @@ User-visible changes go in `CHANGELOG.md`, newest version at top. Each version h
 
 ## Branching & PRs
 
-- `master` = stable (v5.2.0 latest published)
+- `master` = stable release branch. See [GitHub Releases](https://github.com/vycdev/vscode-todo-plus-two/releases) for the latest published version.
 - `develop` = next release. **All PRs target develop.**
 - Branch naming: `feat/` (feature), `fix/` (bug)
 - Keep PRs small and focused. Squash merge.
