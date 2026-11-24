@@ -17,6 +17,16 @@ corepack enable pnpm
 pnpm --version
 ```
 
+If Corepack cannot write shims beside Node.js, as with a read-only Nix store,
+install the shims in a writable directory and put it on your `PATH`. In a POSIX shell, run:
+
+```sh
+mkdir -p "$HOME/.local/bin"
+corepack enable --install-directory "$HOME/.local/bin" pnpm
+export PATH="$HOME/.local/bin:$PATH"
+pnpm --version
+```
+
 ## Install dependencies
 
 From the repository root run:
