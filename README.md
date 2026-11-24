@@ -134,9 +134,9 @@ Archiving moves finished task blocks with their indented notes and finished chil
 
 Press Enter at the end of a plain numbered item such as `1. First item` to insert the next number and renumber the following items. For example, inserting after the first item in `1, 2, 3` produces `1, 2 (new), 3, 4`. This is enabled by default; set `todo.autoRenumber` to `false` to disable it.
 
-Numbering preserves the current item's number, indentation, and spacing after the dot. It updates only consecutive numbered lines with the same indentation, stopping at blank lines, headings, other text, or indentation changes. Enter on an empty item removes its marker. Use one cursor at the end of an item; other cursor positions, selections, and multiple cursors keep normal Enter behavior.
+Numbering preserves the current item's number, indentation, and spacing after the dot. It renumbers following items at the same indentation, skipping more deeply indented list items, tasks, and notes. It stops at a blank line, a fenced code block, a dedent, or an unnumbered line at the same indentation. Enter on an empty item removes its marker. Place a single cursor at the end of the item with no text selected.
 
-These numbered entries remain notes rather than checkbox todos. Configured Todo symbols take precedence: numbering falls back to normal Enter if it would create a Todo using one of those symbols. Use the usual Todo symbols for status, statistics, dependencies, and archiving. Numbering is updated only by Enter, not on open, save, deletion, paste, or reordering. Markdown-language documents and nested list numbering are outside this feature's scope.
+These numbered entries remain notes rather than checkbox todos. Configured Todo symbols take precedence: numbering falls back to normal Enter if it would create a Todo using one of those symbols. Use the usual Todo symbols for status, statistics, dependencies, and archiving. Numbering is updated only by Enter, not on open, save, deletion, paste, or reordering. The feature applies to Todo files.
 
 ### Folding regions
 
