@@ -393,11 +393,13 @@ Inserting source lines or changing label/context display settings preserves an u
 
 ## Embedded Todos Providers
 
-This extension supports various providers for searching for embedded todos, it'll use the one you set via the `todo.embedded.provider` setting or the first one available between:
+Leave `todo.embedded.provider` empty (the default) to try these providers in order:
 
 1. **[ag / The Silver Searcher](https://github.com/ggreer/the_silver_searcher)**: Uses the regex defined under `todo.embedded.providers.ag.regex`. It must be installed in your system.
 2. **[rg / ripgrep](https://github.com/BurntSushi/ripgrep)**: Uses the regex defined under `todo.embedded.providers.rg.regex`. It doesn't support lookaheads and lookbehinds. It must be installed in your system, or Visual Studio Code must include it.
 3. **javascript**: Needs no external search tool. This is the fallback provider.
+
+Set `todo.embedded.provider` to `ag`, `rg`, or `javascript` to choose a provider explicitly. If the selected external provider is unavailable, Todo+2 uses JavaScript. For example, if you select `ag` and it is missing, Todo+2 uses JavaScript even when ripgrep is installed.
 
 `ag` and `rg` will use their specific regexes for finding the lines containing embedded todos, then those lines will be searched in using the regex defined under `todo.embedded.regex`.
 
