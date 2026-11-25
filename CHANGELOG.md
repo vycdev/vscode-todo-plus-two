@@ -2,6 +2,7 @@
 
 #### Fixes
 
+- Kept colons in trailing tag arguments from changing Todo project names in the VS Code Outline. [#332](https://github.com/vycdev/vscode-todo-plus-two/issues/332)
 - Kept tag-argument completion available after a literal backtick inside an earlier Todo tag argument.
 - Kept cancelled tasks struck through in Markdown exports when their text starts or ends with spaces.
 - Recognized Markdown task sections whose headings have trailing HTML comments, without treating comment-like text in inline code as hidden.

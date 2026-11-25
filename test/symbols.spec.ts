@@ -1,11 +1,15 @@
 import { expect } from 'chai';
+import stringMatches from 'string-matches';
 import { parseCodeBlocks } from '../src/utils/code-blocks';
 
 const loadSymbols = () => {
   const NodeModule = require('module'),
     originalLoad = NodeModule._load,
     subjectPath = require.resolve('../src/providers/symbols'),
-    previous = require.cache[subjectPath];
+    previous = require.cache[subjectPath],
+    constsPath = require.resolve('../src/consts'),
+    previousConsts = require.cache[constsPath];
+  let projectPattern: RegExp;
   class Range {
     start;
     end;
@@ -27,24 +31,23 @@ const loadSymbols = () => {
   class Document {
     constructor(public textDocument) {}
     getProjects() {
-      return this.textDocument.lines
-        .map((text, lineNumber) => ({
-          line: { text },
-          range: new Range(lineNumber, 0, lineNumber, text.length),
-        }))
-        .filter(
-          (project) =>
-            !parseCodeBlocks(this.textDocument.lines.join('\n')).byLine.has(
-              project.range.start.line
-            ) && /:$/.test(project.line.text)
-        );
+      const { maskedText } = parseCodeBlocks(this.textDocument.getText());
+      return stringMatches(maskedText, projectPattern).map((match) => {
+        const lineNumber = maskedText.slice(0, match.index).split('\n').length - 1;
+        return {
+          line: this.textDocument.lineAt(lineNumber),
+          range: new Range(lineNumber, 0, lineNumber, match[0].length),
+          text: match[1],
+        };
+      });
     }
   }
   const level = (text) => text.length - text.trimStart().length;
   NodeModule._load = (request, parent, isMain) => {
     if (request === 'vscode') return { Range, DocumentSymbol, SymbolKind: { Field: 1 } };
     if (request === '../todo/document') return { default: Document };
-    if (request === '../consts') return { default: { regexes: { projectParts: /^(\s*)(.*):$/ } } };
+    if (request === './config' && parent.filename === constsPath)
+      return { default: { get: () => ({}) } };
     if (request === '../utils')
       return {
         default: {
@@ -69,11 +72,15 @@ const loadSymbols = () => {
   };
   try {
     delete require.cache[subjectPath];
+    delete require.cache[constsPath];
+    projectPattern = require(constsPath).default.regexes.project;
     return require(subjectPath).default;
   } finally {
     NodeModule._load = originalLoad;
     delete require.cache[subjectPath];
     if (previous) require.cache[subjectPath] = previous;
+    delete require.cache[constsPath];
+    if (previousConsts) require.cache[constsPath] = previousConsts;
   }
 };
 
@@ -95,6 +102,16 @@ describe('Project document symbols', () => {
     );
     expect(symbols.map((symbol) => symbol.name)).to.deep.equal(['Work', 'Next']);
     expect(symbols[0].range.end.line).to.equal(3);
+  });
+  it('keeps colons in trailing tag arguments out of project symbol names', () => {
+    const Symbols = loadSymbols();
+    const symbols = new Symbols().provideDocumentSymbols(
+      documentFromLines(['Release: API: @note(Review at 14:30)', '  Checklist:', 'Next:'])
+    );
+
+    expect(symbols.map((symbol) => symbol.name)).to.deep.equal(['Release: API', 'Next']);
+    expect(symbols[0].children.map((symbol) => symbol.name)).to.deep.equal(['Checklist']);
+    expect(symbols[0].selectionRange.end).to.deep.equal({ line: 0, character: 14 });
   });
   it('does not parent projects under a previous project whose scope has ended', () => {
     const Symbols = loadSymbols();

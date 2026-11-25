@@ -2,7 +2,6 @@
 
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
-import Consts from '../consts';
 import Utils from '../utils';
 import Document from '../todo/document';
 import { getCodeBlocks } from '../utils/code-blocks';
@@ -20,9 +19,8 @@ class Symbols implements vscode.DocumentSymbolProvider {
     projects.forEach((project) => {
       /* SYMBOL */
 
-      const parts = project.line.text.match(Consts.regexes.projectParts),
-        level = Utils.ast.getLevel(textDocument, parts[1]),
-        name = _.trim(parts[2]),
+      const level = Utils.ast.getLevel(textDocument, project.line.text),
+        name = project.text.slice(0, -1).trim(),
         selectionRange = project.range,
         startLine = selectionRange.start.line,
         startCharacter = selectionRange.start.character;
