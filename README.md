@@ -353,6 +353,8 @@ Open Settings and search for `@ext:vycdev.vscode-todo-plus-two` to see every opt
 
 Symbols, colors, view settings, and embedded provider settings refresh when changed.
 
+`todo.refreshDelay` controls how long Todo+2 waits after the last edit before updating dependency warnings and the Files, Due, and Embedded views. The default is 250 ms. If typing lags in a large workspace, try setting it to 750 ms so consecutive keystrokes can share one refresh. A higher value means the views and warnings take longer to catch up after typing stops. The setting accepts 0 to 10,000 ms.
+
 Statistics visibility conditions read `global` and `project` tokens, such as `global.all > 0 && project.pending > 0`. They support numeric/string/boolean literals, comparisons, arithmetic, logical operators, parentheses, and ternary expressions. Use bracket notation for hyphenated names, such as `project['est-total']`. Function calls, assignments, and arbitrary JavaScript execution are not supported; unsupported conditions evaluate to false.
 
 An actual regex will be generated from the value of the `todo.embedded.regex` setting. It uses 2 capturing groups, the first one captures the type of the todo (`TODO`, `FIXME` etc.) and the second one captures an optional description (`TODO: description`).
