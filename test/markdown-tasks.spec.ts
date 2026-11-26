@@ -239,6 +239,78 @@ describe('Markdown task sources', () => {
     }
   });
 
+  it('ignores preformatted HTML examples opened inside Markdown list items', () => {
+    for (const opener of ['- <pre>', '1. <pre class="example">']) {
+      const indent = ' '.repeat(opener.indexOf('<pre'));
+      const content = `${opener}\n${indent}- [ ] Example\n${indent}</pre>\n- [ ] Real`;
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title),
+        opener
+      ).to.deep.equal(['Real']);
+    }
+  });
+
+  it('ends unfinished list preformatted examples at the next sibling task', () => {
+    for (const opener of ['- <pre>', '10. <pre>']) {
+      const indent = ' '.repeat(opener.indexOf('<pre'));
+      const content = `${opener}\n${indent}- [ ] Example\n\n- [ ] Real`;
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title),
+        opener
+      ).to.deep.equal(['Real']);
+    }
+  });
+
+  it('uses tab stops for preformatted list block boundaries', () => {
+    for (const opener of ['-\t<pre>', '1.\t<pre>', '10.\t<pre>']) {
+      const content = `${opener}\n\t- [ ] Example\n\t</pre>\n- [ ] Real`;
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title),
+        opener
+      ).to.deep.equal(['Real']);
+    }
+  });
+
+  it('keeps real tasks in the same list item after preformatted examples', () => {
+    const content = [
+      '# Tasks',
+      '10. <pre class="example">',
+      '    - [ ] Example',
+      '    </pre>',
+      '',
+      '    - [ ] Real',
+      '11. [ ] Sibling',
+    ].join('\n');
+    const tasks = parseMarkdownTasks(content).filter((node) => node.kind === 'todo');
+    expect(
+      tasks.map((node) => [
+        node.title,
+        node.lineNumber,
+        node.markerStart,
+        node.markerEnd,
+        node.parent,
+      ])
+    ).to.deep.equal([
+      ['Real', 5, 6, 9, 1],
+      ['Sibling', 6, 4, 7, 0],
+    ]);
+  });
+
+  it('does not let comments in list preformatted examples hide later tasks', () => {
+    const content = '- <pre><!--\n  - [ ] Example\n  --></pre>\n- [ ] Real';
+    expect(
+      parseMarkdownTasks(content)
+        .filter((node) => node.kind === 'todo')
+        .map((node) => node.title)
+    ).to.deep.equal(['Real']);
+  });
+
   it('does not treat HTML preformatted code examples as tasks or headings', () => {
     const content = [
       '# Tasks',

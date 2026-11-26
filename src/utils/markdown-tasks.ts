@@ -31,6 +31,8 @@ export interface MarkdownTaskNode {
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const indentWidth = (line: string) =>
   (line.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '    ').length;
+const markdownColumns = (text: string) =>
+  Array.from(text).reduce((column, char) => column + (char === '\t' ? 4 - (column % 4) : 1), 0);
 const projectTitle = (text: string) =>
   /^\*\*[\s\S]*\*\*$/.test(text) ? text.slice(2, -2).replace(/\\([!-/:-@[-`{-~])/g, '$1') : text;
 const headingTitle = (text: string) => {
@@ -71,6 +73,7 @@ export const parseMarkdownTasks = (
   );
   let fence: { marker: string; length: number; start: number; baseIndent: number } | undefined;
   let htmlPreStart: number | undefined;
+  let htmlPreListIndent: number | undefined;
   const ignoredEnds = new Map<number, number>();
   let comment = false;
   let commentStart = 0;
@@ -99,11 +102,16 @@ export const parseMarkdownTasks = (
       continue;
     }
     if (htmlPreStart !== undefined) {
-      if (/<\/pre[ \t]*>/i.test(raw)) {
-        ignoredEnds.set(htmlPreStart, lineNumber + 1);
+      const endsList =
+        htmlPreListIndent !== undefined &&
+        !!raw.trim() &&
+        markdownColumns((raw.match(/^[ \t]*/) || [''])[0]) < htmlPreListIndent;
+      if (endsList || /<\/pre[ \t]*>/i.test(raw)) {
+        ignoredEnds.set(htmlPreStart, lineNumber + (endsList ? 0 : 1));
         htmlPreStart = undefined;
+        htmlPreListIndent = undefined;
       }
-      continue;
+      if (!endsList) continue;
     }
     const wasComment = comment;
     let cursor = 0;
@@ -143,9 +151,17 @@ export const parseMarkdownTasks = (
     )
       continue;
     // Markdown treats preformatted HTML blocks as literal code examples.
-    if (!wasComment && indent <= fenceBase + 3 && /^[ \t]*<pre(?:[ \t>]|$)/i.test(raw)) {
-      if (!/<\/pre[ \t]*>/i.test(raw)) htmlPreStart = lineNumber;
-      continue;
+    const openingPre =
+      !wasComment &&
+      indent <= fenceBase + 3 &&
+      raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)<pre(?:[ \t>]|$)/i);
+    if (openingPre) {
+      if (!/<\/pre[ \t]*>/i.test(raw)) {
+        htmlPreStart = lineNumber;
+        htmlPreListIndent = openingPre[1].trim() ? markdownColumns(openingPre[1]) : undefined;
+      }
+      // Keep the list container for real tasks after the closing tag.
+      if (!openingPre[1].trim()) continue;
     }
     const openingFence = raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)(`{3,}|~{3,})(.*)$/);
     if (
@@ -165,7 +181,7 @@ export const parseMarkdownTasks = (
       continue;
     }
     if (!wasComment && /^[ \t]*>/.test(raw)) continue;
-    const comments = getMarkdownCommentRanges(raw.slice(cursor));
+    const comments = openingPre ? [] : getMarkdownCommentRanges(raw.slice(cursor));
     comments.forEach((range) => {
       if (!range.closed) {
         comment = true;
