@@ -386,7 +386,7 @@ export const getMarkdownTaskCreation = (
     ) ||
     // A thematic break is not prose or a list item, even when its dashes
     // resemble a list marker. Do not turn one into a checkbox.
-    /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(raw)
+    /^[ \t]*(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(raw)
   )
     return;
   const headings = parseMarkdownTasks(content, { ...options, includeEmptyProjects: true }).filter(
