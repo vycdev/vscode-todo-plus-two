@@ -143,13 +143,11 @@ export const parseMarkdownTasks = (
     )
       continue;
     // Markdown treats preformatted HTML blocks as literal code examples.
-    if (
-      !wasComment &&
-      indent <= fenceBase + 3 &&
-      /^[ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?<pre(?:[ \t>]|$)/i.test(raw)
-    ) {
+    const openingPre = raw.match(/^[ \t]*((?:[-+*]|\d+[.)])[ \t]+)?<pre(?:[ \t>]|$)/i);
+    if (!wasComment && indent <= fenceBase + 3 && openingPre) {
       if (!/<\/pre[ \t]*>/i.test(raw)) htmlPreStart = lineNumber;
-      continue;
+      // Keep the list container for real tasks after the closing tag.
+      if (!openingPre[1]) continue;
     }
     const openingFence = raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)(`{3,}|~{3,})(.*)$/);
     if (

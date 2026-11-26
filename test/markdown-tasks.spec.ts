@@ -251,6 +251,31 @@ describe('Markdown task sources', () => {
     }
   });
 
+  it('keeps real tasks in the same list item after preformatted examples', () => {
+    const content = [
+      '# Tasks',
+      '10. <pre class="example">',
+      '    - [ ] Example',
+      '    </pre>',
+      '',
+      '    - [ ] Real',
+      '11. [ ] Sibling',
+    ].join('\n');
+    const tasks = parseMarkdownTasks(content).filter((node) => node.kind === 'todo');
+    expect(
+      tasks.map((node) => [
+        node.title,
+        node.lineNumber,
+        node.markerStart,
+        node.markerEnd,
+        node.parent,
+      ])
+    ).to.deep.equal([
+      ['Real', 5, 6, 9, 1],
+      ['Sibling', 6, 4, 7, 0],
+    ]);
+  });
+
   it('does not treat HTML preformatted code examples as tasks or headings', () => {
     const content = [
       '# Tasks',
