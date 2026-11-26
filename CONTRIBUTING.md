@@ -40,6 +40,8 @@ install pnpm once with `npm install --global pnpm@10.33.4`.
 If Corepack reports outdated signatures after enabling it, run `corepack disable pnpm`
 before using that bootstrap command. This removes Corepack's `pnpm`/`pnpx` shims
 so npm can install the pinned CLI without an `EEXIST` conflict.
+If you used a custom shim directory, pass the same `--install-directory` option
+to `corepack disable`.
 
 This installs the runtime and development dependencies, including pinned TypeScript and VS Code API definitions. Use `pnpm install --frozen-lockfile` for a reproducible installation from `pnpm-lock.yaml`; CI always uses this mode. When intentionally changing dependencies, use `pnpm add`/`pnpm remove` and commit the updated lockfile. Do not generate a `package-lock.json`.
 
