@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import stringMatches from 'string-matches';
 import { parseCodeBlocks } from '../src/utils/code-blocks';
+import Regex from '../src/utils/regex';
 
 const loadSymbols = () => {
   const NodeModule = require('module'),
@@ -33,10 +34,12 @@ const loadSymbols = () => {
     getProjects() {
       const { maskedText } = parseCodeBlocks(this.textDocument.getText());
       return stringMatches(maskedText, projectPattern).map((match) => {
-        const lineNumber = maskedText.slice(0, match.index).split('\n').length - 1;
+        const { start, end } = Regex.match2range(match),
+          lineStart = maskedText.lastIndexOf('\n', start - 1) + 1,
+          lineNumber = maskedText.slice(0, start).split('\n').length - 1;
         return {
           line: this.textDocument.lineAt(lineNumber),
-          range: new Range(lineNumber, 0, lineNumber, match[0].length),
+          range: new Range(lineNumber, start - lineStart, lineNumber, end - lineStart),
           text: match[1],
         };
       });
@@ -51,6 +54,7 @@ const loadSymbols = () => {
     if (request === '../utils')
       return {
         default: {
+          regex: Regex,
           ast: {
             getLevel: (_document, text) => level(text),
             walkDown: (document, start, _skipStart, _ignoreEmpty, callback) => {
@@ -111,7 +115,29 @@ describe('Project document symbols', () => {
 
     expect(symbols.map((symbol) => symbol.name)).to.deep.equal(['Release: API', 'Next']);
     expect(symbols[0].children.map((symbol) => symbol.name)).to.deep.equal(['Checklist']);
-    expect(symbols[0].selectionRange.end).to.deep.equal({ line: 0, character: 14 });
+    expect(symbols[0].selectionRange.end).to.deep.equal({ line: 0, character: 13 });
+  });
+  it('keeps tag-like values after argument colons out of project symbol names', () => {
+    const Symbols = loadSymbols();
+    const symbols = new Symbols().provideDocumentSymbols(
+      documentFromLines([
+        'Release: API: @high @note(Reviewer: @alice) @note(Owner: @bob)',
+        '  Checklist @note(Owner: @alice):',
+        'Next:',
+      ])
+    );
+
+    expect(symbols.map((symbol) => symbol.name)).to.deep.equal(['Release: API', 'Next']);
+    expect(symbols[0].children.map((symbol) => symbol.name)).to.deep.equal([
+      'Checklist @note(Owner: @alice)',
+    ]);
+    expect(symbols[0].selectionRange.end).to.deep.equal({ line: 0, character: 56 });
+  });
+  it('preserves project titles with colons in bare tags', () => {
+    const Symbols = loadSymbols();
+    const symbols = new Symbols().provideDocumentSymbols(documentFromLines(['Release: @foo:@bar']));
+
+    expect(symbols.map((symbol) => symbol.name)).to.deep.equal(['Release: @foo']);
   });
   it('does not parent projects under a previous project whose scope has ended', () => {
     const Symbols = loadSymbols();
