@@ -95,4 +95,30 @@ describe('Tag completion utilities', () => {
       end: 33,
     });
   });
+
+  it('keeps completion active after a literal backtick in a preceding tag argument', () => {
+    const line = 'Task @note(`literal) @label(con';
+    expect(getTagArgumentPrefix(line, line.length)).to.deep.equal({
+      text: '@label(con',
+      name: '@label',
+      start: line.indexOf('@label'),
+      end: line.length,
+    });
+
+    const code = 'Task @note(`literal) `example @label(con`';
+    expect(getTagArgumentPrefix(code, code.length - 1)).to.equal(undefined);
+  });
+
+  it('keeps completion active after argument backticks adjacent to inline code', () => {
+    const line = 'Task `cmd`@note(`literal) `example` @label(con';
+    expect(getTagArgumentPrefix(line, line.length)).to.deep.equal({
+      text: '@label(con',
+      name: '@label',
+      start: line.indexOf('@label'),
+      end: line.length,
+    });
+
+    const code = 'Task `cmd`@note(`literal) `example @label(con`';
+    expect(getTagArgumentPrefix(code, code.length - 1)).to.equal(undefined);
+  });
 });
