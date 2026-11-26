@@ -191,13 +191,24 @@ async function callDocumentTodosMethod(
   const version = textDocument.version;
 
   const todos = _.filter(
-    lines.map(
-      (line) =>
+    lines.map((line) => {
+      // A configured task symbol can also match a thematic break. Protect
+      // these lines before looking up existing tasks or creating a checkbox.
+      if (
+        options.method === 'toggleBox' &&
+        isMarkdownTaskDocument(textDocument) &&
+        /^[ \t]*(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(
+          textDocument.lineAt(line).text
+        )
+      )
+        return;
+      return (
         doc.getTodoAt(line, options.checkValidity) ||
         (textEditor && options.method === 'toggleBox' && isMarkdownTaskDocument(textDocument)
           ? doc.getTodoForCreationAt(line)
           : undefined)
-    )
+      );
+    })
   ) as Todo[];
 
   if (todos.length !== lines.length) vscode.window.showErrorMessage(options.errors.invalid);

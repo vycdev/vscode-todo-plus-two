@@ -613,15 +613,20 @@ describe('Markdown task integration', () => {
 
   it('does not turn Markdown thematic breaks into tasks through Toggle Box', async () => {
     const original = '# Tasks\n***\n_ _ _\n- - -\n---\n- Parent\n\n    ***\nSome prose';
-    const state = loadMarkdown(original, { 'timekeeping.created.enabled': false });
-    for (const line of [1, 2, 3, 4, 7]) {
-      state.select(line);
+    for (const box of ['☐', '-']) {
+      const state = loadMarkdown(original, {
+        'timekeeping.created.enabled': false,
+        'symbols.box': box,
+      });
+      for (const line of [1, 2, 3, 4, 7]) {
+        state.select(line);
+        await state.commands.toggleBox();
+        expect(state.document.getText(), `line ${line}, symbol ${box}`).to.equal(original);
+      }
+      state.select(8);
       await state.commands.toggleBox();
-      expect(state.document.getText(), `line ${line}`).to.equal(original);
+      expect(state.document.lineAt(8).text).to.equal('- [ ] Some prose');
     }
-    state.select(8);
-    await state.commands.toggleBox();
-    expect(state.document.lineAt(8).text).to.equal('- [ ] Some prose');
   }).timeout(10000);
 
   it('keeps dependency IDs containing Markdown escape characters portable', async () => {
