@@ -6,8 +6,27 @@ import Consts from '../consts';
 import Utils from '../utils';
 import Document from '../todo/document';
 import { getCodeBlocks } from '../utils/code-blocks';
+import { getTodoTaskTags } from '../utils/markdown-task-text';
 
 /* SYMBOLS */
+
+const getProjectName = (line: string, parsedHeading: string) => {
+  const masked = line.split('');
+  // Locate the heading delimiter without interpreting colons inside tag arguments.
+  for (const tag of getTodoTaskTags(line)) {
+    const argument = tag.text.indexOf('(');
+    if (argument < 0) continue;
+    for (let index = tag.start + argument + 1; index < tag.end - 1; index++) {
+      if (masked[index] === ':') masked[index] = ' ';
+    }
+  }
+
+  const heading = new RegExp(Consts.regexes.project.source).exec(masked.join('')),
+    range = heading && Utils.regex.match2range(heading),
+    text = range ? line.slice(range.start, range.end) : parsedHeading;
+
+  return text.slice(0, -1).trim();
+};
 
 class Symbols implements vscode.DocumentSymbolProvider {
   provideDocumentSymbols(textDocument: vscode.TextDocument) {
@@ -20,10 +39,9 @@ class Symbols implements vscode.DocumentSymbolProvider {
     projects.forEach((project) => {
       /* SYMBOL */
 
-      const parts = project.line.text.match(Consts.regexes.projectParts),
-        level = Utils.ast.getLevel(textDocument, parts[1]),
-        name = _.trim(parts[2]),
+      const level = Utils.ast.getLevel(textDocument, project.line.text),
         selectionRange = project.range,
+        name = getProjectName(project.line.text, project.text),
         startLine = selectionRange.start.line,
         startCharacter = selectionRange.start.character;
 
