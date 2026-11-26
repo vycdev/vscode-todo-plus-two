@@ -136,7 +136,7 @@ export const parseMarkdownTasks = (
         // Raw HTML respects list content indentation, including when it ends.
         const outdentedList = indented.findIndex(
           (node) =>
-            node.contentIndent > indent &&
+            node.contentIndent > htmlIndent &&
             (htmlListItems.has(node.lineNumber) ||
               (!!rawHtmlOpening && markdownListMarker.test(lines[node.lineNumber])))
         );
@@ -173,7 +173,8 @@ export const parseMarkdownTasks = (
     let openingHtmlList = false;
     if (!wasComment && rawHtmlOpening) {
       const listContainers = indented.filter(
-        (node) => node.contentIndent <= indent && markdownListMarker.test(lines[node.lineNumber])
+        (node) =>
+          node.contentIndent <= htmlIndent && markdownListMarker.test(lines[node.lineNumber])
       );
       const listContainer = listContainers[listContainers.length - 1];
       const htmlBase = listContainer ? listContainer.contentIndent : 0;
@@ -313,10 +314,7 @@ export const parseMarkdownTasks = (
         markerEnd: markerStart + marker.length,
         style: /^\[[ xX]\]$/.test(marker) ? 'checkbox' : 'symbol',
         indent,
-        contentIndent: Math.max(
-          indent + 2,
-          raw.slice(0, markerStart).replace(/\t/g, '    ').length
-        ),
+        contentIndent: Math.max(indent + 2, markdownColumns(raw.slice(0, markerStart))),
         inArchive,
       };
       nodes.push(node);
@@ -340,7 +338,7 @@ export const parseMarkdownTasks = (
         contentIndent: openingHtmlList
           ? markdownColumns(rawHtmlOpening[1])
           : list
-            ? raw.slice(0, raw.length - list[1].length).replace(/\t/g, '    ').length
+            ? markdownColumns(raw.slice(0, raw.length - list[1].length))
             : undefined,
         inArchive,
       };
@@ -370,7 +368,7 @@ export const parseMarkdownTasks = (
         containsHtmlBlock &&
         !!lines[end].trim() &&
         node.contentIndent !== undefined &&
-        indentWidth(lines[end]) < node.contentIndent
+        markdownColumns((lines[end].match(/^[ \t]*/) || [''])[0]) < node.contentIndent
       )
         break;
       if (ignoredEnds.has(end)) end = ignoredEnds.get(end) - 1;

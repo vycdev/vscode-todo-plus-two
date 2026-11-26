@@ -501,6 +501,17 @@ describe('Markdown task sources', () => {
     expect(parseMarkdownTasks(content).map((node) => node.title)).to.deep.equal(['Real']);
   });
 
+  it('archives HTML attached to tab-delimited list tasks using Markdown tab stops', () => {
+    for (const prefix of ['-\t', '1.\t', '10.\t']) {
+      for (const tag of ['pre', 'script', 'style', 'textarea']) {
+        const content = `${prefix}[x] Finished\n\t<${tag}>\n\t- [ ] Example\n\t</${tag}>\n\n- [ ] Real`;
+        const blocks = collectMarkdownArchiveBlocks(content, {}, [0]);
+        expect(blocks[0].lines, content).to.deep.equal(content.split('\n').slice(0, 4));
+        expect(removeMarkdownArchiveBlocks(content, blocks), content).to.equal('\n- [ ] Real');
+      }
+    }
+  });
+
   it('excludes examples in fences, indented code, quotes, front matter, and comments', () => {
     const content = [
       '---',
