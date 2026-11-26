@@ -1,4 +1,4 @@
-import { getTodoTaskTags } from './markdown-task-text';
+import { getTagArgumentRanges } from './tags';
 
 export interface TagArgumentPrefix {
   text: string;
@@ -14,10 +14,8 @@ const isInsideInlineCode = (line: string, character: number): boolean => {
     prefix = line.slice(0, character).split('');
   // Tag arguments are plaintext: a backtick inside one cannot start a code span
   // that hides a later completion candidate.
-  getTodoTaskTags(prefix.join('')).forEach(({ start, text }) => {
-    const open = text.indexOf('(');
-    if (open < 0 || !text.endsWith(')')) return;
-    for (let index = start + open + 1; index < start + text.length - 1; index++) {
+  getTagArgumentRanges(prefix.join('')).forEach(({ start, end }) => {
+    for (let index = start; index < end; index++) {
       prefix[index] = ' ';
     }
   });
