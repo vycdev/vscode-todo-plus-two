@@ -366,6 +366,141 @@ describe('Markdown task sources', () => {
     ).to.deep.equal(['Real']);
   });
 
+  it('ends raw HTML blocks at any raw HTML closing tag', () => {
+    for (const content of [
+      '<script>\n</style>\n- [ ] Real',
+      '<script>\n</style></script>\n- [ ] Real',
+      '<pre>\n</script>\n- [ ] Real',
+      '<textarea></style>\n- [ ] Real',
+    ]) {
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title),
+        content
+      ).to.deep.equal(['Real']);
+    }
+  });
+
+  it('bounds raw HTML examples by their list item when archiving', () => {
+    for (const tag of ['script', 'style', 'textarea']) {
+      const content = `- [x] Finished\n  <${tag}>\n  - [ ] Example\n\n- [ ] Real`;
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title),
+        tag
+      ).to.deep.equal(['Finished', 'Real']);
+      const blocks = collectMarkdownArchiveBlocks(content, {});
+      expect(blocks[0].lines, tag).to.deep.equal(content.split('\n').slice(0, 3));
+      expect(removeMarkdownArchiveBlocks(content, blocks), tag).to.equal('\n- [ ] Real');
+    }
+  });
+
+  it('ignores raw HTML examples opened immediately after list markers', () => {
+    for (const marker of ['- ', '10) ']) {
+      for (const tag of ['script', 'style', 'textarea']) {
+        const indent = ' '.repeat(marker.length);
+        const content = `${marker}<${tag}>\n${indent}# Archive\n${indent}- [ ] Example\n${indent}</${tag}>\n- [ ] Real`;
+        const nodes = parseMarkdownTasks(content);
+        expect(
+          nodes.map((node) => node.title),
+          content
+        ).to.deep.equal(['Real']);
+      }
+    }
+  });
+
+  it('leaves top-level raw HTML blocks in the source when archiving the preceding task', () => {
+    for (const tag of ['script', 'style', 'textarea']) {
+      const html = ` <${tag}>\nExample\n</${tag}>`;
+      const content = `- [x] Finished\n${html}\n- [ ] Real`;
+      const blocks = collectMarkdownArchiveBlocks(content, {});
+      expect(blocks[0].lines, tag).to.deep.equal(['- [x] Finished']);
+      expect(removeMarkdownArchiveBlocks(content, blocks), tag).to.equal(`${html}\n- [ ] Real`);
+    }
+  });
+
+  it('bounds raw HTML by the enclosing list item after dedenting out of a nested task', () => {
+    const content = '- [x] Finished\n  - [x] Child\n   <script>\n  - [ ] Example\n\n- [ ] Real';
+    expect(parseMarkdownTasks(content).map((node) => node.title)).to.deep.equal([
+      'Finished',
+      'Child',
+      'Real',
+    ]);
+    const blocks = collectMarkdownArchiveBlocks(content, {});
+    expect(removeMarkdownArchiveBlocks(content, blocks)).to.equal('\n- [ ] Real');
+  });
+
+  it('does not use Todo+ project labels as Markdown list boundaries for raw HTML', () => {
+    const content = 'Project:\n\n  <pre>\n# Archive\n- [ ] Example\n</pre>\n- [ ] Real';
+    expect(parseMarkdownTasks(content).map((node) => node.title)).to.deep.equal(['Real']);
+  });
+
+  it('preserves prose that dedents out of a list-contained raw HTML block when archiving', () => {
+    const content = '- [x] Finished\n  <script>\n  - [ ] Example\n\n Outside text\n- [ ] Real';
+    const blocks = collectMarkdownArchiveBlocks(content, {});
+    expect(blocks[0].lines).to.deep.equal(content.split('\n').slice(0, 3));
+    expect(removeMarkdownArchiveBlocks(content, blocks)).to.equal('\n Outside text\n- [ ] Real');
+  });
+
+  it('closes child headings before a raw HTML block owned by the parent list item', () => {
+    const content =
+      '- [ ] Parent\n  - [ ] Child\n    ## Archive\n   <script>\n  - [ ] Example\n  </script>\n    - [ ] Real';
+    const nodes = parseMarkdownTasks(content);
+    const real = nodes.find((node) => node.title === 'Real');
+    expect(real.inArchive).to.equal(false);
+    expect(real.parent).to.equal(0);
+  });
+
+  it('keeps raw HTML after bare Todo+ tasks outside Markdown list boundaries', () => {
+    const content = '[ ] Parent\n\n  <pre>\n# Archive\n- [ ] Example\n</pre>\n- [ ] Real';
+    const nodes = parseMarkdownTasks(content);
+    expect(nodes.map((node) => node.title)).to.deep.equal(['Parent', 'Real']);
+    expect(nodes.every((node) => !node.inArchive)).to.equal(true);
+  });
+
+  it('preserves a sibling task after a closed raw HTML block when only its predecessor is archived', () => {
+    const content = '- [x] Finished\n  <script>\n  - [ ] Example\n  </script>\n\n - [x] Real';
+    expect(parseMarkdownTasks(content).find((node) => node.title === 'Real').parent).to.equal(
+      undefined
+    );
+    const blocks = collectMarkdownArchiveBlocks(content, {}, [0]);
+    expect(blocks[0].lines).to.deep.equal(content.split('\n').slice(0, 4));
+    expect(removeMarkdownArchiveBlocks(content, blocks)).to.equal('\n - [x] Real');
+  });
+
+  it('does not start a raw HTML block from indented code after a bare task', () => {
+    const content = '[x] Finished\n\n    <script>\n\n- [ ] Real';
+    expect(parseMarkdownTasks(content).map((node) => node.title)).to.deep.equal([
+      'Finished',
+      'Real',
+    ]);
+    const blocks = collectMarkdownArchiveBlocks(content, {}, [0]);
+    expect(removeMarkdownArchiveBlocks(content, blocks)).to.include('- [ ] Real');
+  });
+
+  it('keeps sibling ownership after notes attached to a closed raw HTML block', () => {
+    const content =
+      '- [x] Finished\n  <script>\n  - [ ] Example\n  </script>\n  Attached note\n\n - [x] Real';
+    expect(parseMarkdownTasks(content).find((node) => node.title === 'Real').parent).to.equal(
+      undefined
+    );
+    expect(collectMarkdownArchiveBlocks(content, {}, [6])[0].path).to.deep.equal([]);
+  });
+
+  it('keeps top-level raw HTML after a bare archived task outside its selected restore range', () => {
+    const content = '# Archive\n[x] Finished\n\n  <script>\n</script>\n\n  - [x] Real';
+    const blocks = collectMarkdownArchiveBlocks(content, {}, [1], true);
+    expect(blocks[0].lines).to.deep.equal(['[x] Finished']);
+    expect(removeMarkdownArchiveBlocks(content, blocks)).to.include('  - [x] Real');
+  });
+
+  it('uses the list marker width when the list label repeats the marker number', () => {
+    const content = '1. 1\n   <script>\n   - [ ] Example\n\n- [x] Real';
+    expect(parseMarkdownTasks(content).map((node) => node.title)).to.deep.equal(['Real']);
+  });
+
   it('excludes examples in fences, indented code, quotes, front matter, and comments', () => {
     const content = [
       '---',

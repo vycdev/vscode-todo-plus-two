@@ -47,6 +47,8 @@ const headingTitle = (text: string) => {
   // Decode the escaped literal labels emitted by the archive serializer.
   return /\\[!-/:-@[-`{-~]/.test(title) ? projectTitle(title) : title;
 };
+const markdownListMarker = /^[ \t]*(?:[-+*]|\d+[.)])[ \t]+/;
+const rawHtmlClosing = /<\/(?:pre|script|style|textarea)[ \t]*>/i;
 
 /** Literal project labels remain readable even when their text resembles syntax. */
 export const quoteMarkdownProjectTitle = (title: string): string =>
@@ -72,8 +74,9 @@ export const parseMarkdownTasks = (
     `^([ \\t]*)(?:(?:[-+*]|\\d+[.)])[ \\t]+)?(\\[[ xX]\\]|${symbolNames.map(escapeRegex).join('|')})(?=[ \\t]|$)([ \\t]*)(.*)$`
   );
   let fence: { marker: string; length: number; start: number; baseIndent: number } | undefined;
-  let htmlBlockStart: number | undefined;
-  let htmlBlockListIndent: number | undefined;
+  let htmlBlock: { start: number; baseIndent: number } | undefined;
+  const htmlListItems = new Set<number>();
+  const htmlBlockBoundaries = new Set<number>();
   const ignoredEnds = new Map<number, number>();
   let comment = false;
   let commentStart = 0;
@@ -84,6 +87,7 @@ export const parseMarkdownTasks = (
   for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
     const raw = lines[lineNumber];
     const indent = indentWidth(raw);
+    const htmlIndent = markdownColumns((raw.match(/^[ \t]*/) || [''])[0]);
     if (frontMatter) {
       if (lineNumber > 0 && /^(---|\.\.\.)\s*$/.test(raw)) frontMatter = false;
       continue;
@@ -101,17 +105,18 @@ export const parseMarkdownTasks = (
       }
       continue;
     }
-    if (htmlBlockStart !== undefined) {
-      const endsList =
-        htmlBlockListIndent !== undefined &&
-        !!raw.trim() &&
-        markdownColumns((raw.match(/^[ \t]*/) || [''])[0]) < htmlBlockListIndent;
-      if (endsList || /<\/(?:pre|script|style|textarea)[ \t]*>/i.test(raw)) {
-        ignoredEnds.set(htmlBlockStart, lineNumber + (endsList ? 0 : 1));
-        htmlBlockStart = undefined;
-        htmlBlockListIndent = undefined;
+    if (htmlBlock) {
+      if (raw.trim() && htmlIndent < htmlBlock.baseIndent) {
+        ignoredEnds.set(htmlBlock.start, lineNumber);
+        htmlBlockBoundaries.add(lineNumber);
+        htmlBlock = undefined;
+      } else {
+        if (rawHtmlClosing.test(raw)) {
+          ignoredEnds.set(htmlBlock.start, lineNumber + 1);
+          htmlBlock = undefined;
+        }
+        continue;
       }
-      if (!endsList) continue;
     }
     const wasComment = comment;
     let cursor = 0;
@@ -123,7 +128,21 @@ export const parseMarkdownTasks = (
       cursor = closing + 3;
     }
     if (!wasComment && !raw.trim()) continue;
+    const rawHtmlOpening = raw.match(
+      /^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)<(?:pre|script|style|textarea)(?=[ \t>]|$)/i
+    );
     if (!wasComment) {
+      if (rawHtmlOpening || htmlListItems.size) {
+        // Raw HTML respects list content indentation, including when it ends.
+        const outdentedList = indented.findIndex(
+          (node) =>
+            node.contentIndent > indent &&
+            (htmlListItems.has(node.lineNumber) ||
+              (!!rawHtmlOpening && markdownListMarker.test(lines[node.lineNumber])))
+        );
+        if (outdentedList >= 0)
+          indented.splice(outdentedList).forEach((node) => (node.endLine = lineNumber));
+      }
       while (indented.length && indent <= indented[indented.length - 1].indent) {
         indented.pop().endLine = lineNumber;
       }
@@ -150,18 +169,28 @@ export const parseMarkdownTasks = (
       indent >= fenceBase + 4
     )
       continue;
-    // Markdown treats these raw HTML blocks as literal content, not task lists.
-    const openingHtml =
-      !wasComment &&
-      indent <= fenceBase + 3 &&
-      raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)<(?:pre|script|style|textarea)(?:[ \t>]|$)/i);
-    if (openingHtml) {
-      if (!/<\/(?:pre|script|style|textarea)[ \t]*>/i.test(raw)) {
-        htmlBlockStart = lineNumber;
-        htmlBlockListIndent = openingHtml[1].trim() ? markdownColumns(openingHtml[1]) : undefined;
+    // Raw HTML uses Markdown list indentation, rather than Todo+ project/task indentation.
+    let openingHtmlList = false;
+    if (!wasComment && rawHtmlOpening) {
+      const listContainers = indented.filter(
+        (node) => node.contentIndent <= indent && markdownListMarker.test(lines[node.lineNumber])
+      );
+      const listContainer = listContainers[listContainers.length - 1];
+      const htmlBase = listContainer ? listContainer.contentIndent : 0;
+      if (htmlIndent <= htmlBase + 3) {
+        htmlBlockBoundaries.add(lineNumber);
+        listContainers.forEach((node) => htmlListItems.add(node.lineNumber));
+        if (!rawHtmlClosing.test(raw)) {
+          htmlBlock = {
+            start: lineNumber,
+            baseIndent: rawHtmlOpening[1].trim() ? markdownColumns(rawHtmlOpening[1]) : htmlBase,
+          };
+        }
+        // Preserve a list container for real tasks following its raw HTML example.
+        if (!rawHtmlOpening[1].trim()) continue;
+        openingHtmlList = true;
+        htmlListItems.add(lineNumber);
       }
-      // Keep the list container for real tasks after the closing tag.
-      if (!openingHtml[1].trim()) continue;
     }
     const openingFence = raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)(`{3,}|~{3,})(.*)$/);
     if (
@@ -181,7 +210,7 @@ export const parseMarkdownTasks = (
       continue;
     }
     if (!wasComment && /^[ \t]*>/.test(raw)) continue;
-    const comments = openingHtml ? [] : getMarkdownCommentRanges(raw.slice(cursor));
+    const comments = openingHtmlList ? [] : getMarkdownCommentRanges(raw.slice(cursor));
     comments.forEach((range) => {
       if (!range.closed) {
         comment = true;
@@ -308,9 +337,11 @@ export const parseMarkdownTasks = (
         parent: parent && parent.lineNumber,
         title: project ? projectTitle(project[1]) : list[1],
         indent,
-        contentIndent: list
-          ? raw.slice(0, raw.indexOf(list[1])).replace(/\t/g, '    ').length
-          : undefined,
+        contentIndent: openingHtmlList
+          ? markdownColumns(rawHtmlOpening[1])
+          : list
+            ? raw.slice(0, raw.length - list[1].length).replace(/\t/g, '    ').length
+            : undefined,
         inArchive,
       };
       nodes.push(node);
@@ -318,7 +349,7 @@ export const parseMarkdownTasks = (
     }
   }
   if (fence) ignoredEnds.set(fence.start, lines.length);
-  if (htmlBlockStart !== undefined) ignoredEnds.set(htmlBlockStart, lines.length);
+  if (htmlBlock) ignoredEnds.set(htmlBlock.start, lines.length);
   if (comment) ignoredEnds.set(commentStart, lines.length);
 
   // Block ranges include indented notes and children, but leave separating
@@ -326,8 +357,22 @@ export const parseMarkdownTasks = (
   nodes.forEach((node) => {
     if (node.heading) return;
     let end = ignoredEnds.get(node.lineNumber) || node.lineNumber + 1;
+    let containsHtmlBlock = false;
     for (; end < node.endLine; end++) {
       if (lines[end].trim() && indentWidth(lines[end]) <= node.indent) break;
+      if (htmlBlockBoundaries.has(end)) {
+        // Bare Todo+ tasks cannot own a top-level Markdown HTML block.
+        if (node.markerStart !== undefined && !markdownListMarker.test(lines[node.lineNumber]))
+          break;
+        containsHtmlBlock = true;
+      }
+      if (
+        containsHtmlBlock &&
+        !!lines[end].trim() &&
+        node.contentIndent !== undefined &&
+        indentWidth(lines[end]) < node.contentIndent
+      )
+        break;
       if (ignoredEnds.has(end)) end = ignoredEnds.get(end) - 1;
     }
     while (end > node.lineNumber + 1 && !lines[end - 1].trim()) end--;
