@@ -18,8 +18,9 @@ const loadTodo = (configValues) => {
         tagCreated: new RegExp(
           `(?:^|[^a-zA-Z0-9])@created${capturedReservedTagArgumentOrBoundary}`
         ),
-        tagStarted: /@started(?:\([^)]*\))?/,
-        tagEstimate: tagEstimateRegex,
+        tagStarted: new RegExp(
+          `(?:^|[^a-zA-Z0-9])@started${capturedReservedTagArgumentOrBoundary}`
+        ),
         tagFinished: /@(?:done|cancelled)(?:\([^)]*\))?/,
         tagElapsed: /@(?:lasted|wasted)(?:\([^)]*\))?/,
         todoFinished: /^(?:✔|✘)\s|@(?:done|cancelled)(?:\([^)]*\))?(?![a-zA-Z0-9])/,
@@ -211,6 +212,10 @@ describe('Todo timer completion', () => {
       todo.toggleStart();
       expect(todo.lineNextText, text).to.equal(text);
     }
+
+    const adjacent = new Todo(null, { text: '☐ Explain `@started`@started' });
+    adjacent.toggleStart();
+    expect(adjacent.lineNextText).to.equal('☐ Explain `@started`');
 
     const created = new Todo(null, { text: '☐ Explain `@created` @created(2026-08-02)' });
     created.uncreate();

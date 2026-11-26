@@ -102,8 +102,9 @@ export const removeTodoStatusTag = (
   if (!match) return text;
 
   // The tag-boundary regex includes the character before @. Keep punctuation,
-  // but consume the separating whitespace as before.
-  const boundary = match[0][0];
+  // but consume the separating whitespace as before. Read the original boundary
+  // because masking may have replaced an inline-code delimiter with whitespace.
+  const boundary = text[match.index];
   const prefix = boundary !== '@' && !/\s/.test(boundary) ? boundary : '';
   return text.slice(0, match.index) + prefix + text.slice(match.index + match[0].length);
 };
