@@ -134,7 +134,7 @@ Archiving moves finished task blocks with their indented notes and finished chil
 
 Press Enter at the end of a plain numbered item such as `1. First item` to insert the next number and renumber the following items. For example, inserting after the first item in `1, 2, 3` produces `1, 2 (new), 3, 4`. This is enabled by default; set `todo.autoRenumber` to `false` to disable it.
 
-Numbering preserves the current item's number, indentation, and spacing after the dot. It renumbers following items at the same indentation, skipping more deeply indented list items, tasks, and notes. It stops at a blank line, a fenced code block, a dedent, or an unnumbered line at the same indentation. Enter on an empty item removes its marker. Place a single cursor at the end of the item with no text selected.
+Numbering preserves the current item's number, indentation, and spacing after the dot. It renumbers following items at the same indentation, skipping nested list items, tasks, and notes whose indentation begins with the current item's exact whitespace. It stops at a blank line, a fenced code block, a dedent, or a line at the same indentation outside the plain numbered list, including tasks and project headings. Enter on an empty item removes its marker. Place a single cursor at the end of the item with no text selected.
 
 These numbered entries remain notes rather than checkbox todos. Configured Todo symbols take precedence: numbering falls back to normal Enter if it would create a Todo using one of those symbols. Use the usual Todo symbols for status, statistics, dependencies, and archiving. Numbering is updated only by Enter, not on open, save, deletion, paste, or reordering. The feature applies to Todo files.
 
