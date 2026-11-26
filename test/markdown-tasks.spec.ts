@@ -276,6 +276,15 @@ describe('Markdown task sources', () => {
     ]);
   });
 
+  it('does not let comments in list preformatted examples hide later tasks', () => {
+    const content = '- <pre><!--\n  - [ ] Example\n  --></pre>\n- [ ] Real';
+    expect(
+      parseMarkdownTasks(content)
+        .filter((node) => node.kind === 'todo')
+        .map((node) => node.title)
+    ).to.deep.equal(['Real']);
+  });
+
   it('does not treat HTML preformatted code examples as tasks or headings', () => {
     const content = [
       '# Tasks',

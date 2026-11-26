@@ -143,8 +143,11 @@ export const parseMarkdownTasks = (
     )
       continue;
     // Markdown treats preformatted HTML blocks as literal code examples.
-    const openingPre = raw.match(/^[ \t]*((?:[-+*]|\d+[.)])[ \t]+)?<pre(?:[ \t>]|$)/i);
-    if (!wasComment && indent <= fenceBase + 3 && openingPre) {
+    const openingPre =
+      !wasComment &&
+      indent <= fenceBase + 3 &&
+      raw.match(/^[ \t]*((?:[-+*]|\d+[.)])[ \t]+)?<pre(?:[ \t>]|$)/i);
+    if (openingPre) {
       if (!/<\/pre[ \t]*>/i.test(raw)) htmlPreStart = lineNumber;
       // Keep the list container for real tasks after the closing tag.
       if (!openingPre[1]) continue;
@@ -167,7 +170,7 @@ export const parseMarkdownTasks = (
       continue;
     }
     if (!wasComment && /^[ \t]*>/.test(raw)) continue;
-    const comments = getMarkdownCommentRanges(raw.slice(cursor));
+    const comments = openingPre ? [] : getMarkdownCommentRanges(raw.slice(cursor));
     comments.forEach((range) => {
       if (!range.closed) {
         comment = true;
