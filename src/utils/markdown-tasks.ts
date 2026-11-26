@@ -71,6 +71,7 @@ export const parseMarkdownTasks = (
   );
   let fence: { marker: string; length: number; start: number; baseIndent: number } | undefined;
   let htmlPreStart: number | undefined;
+  let htmlPreListIndent: number | undefined;
   const ignoredEnds = new Map<number, number>();
   let comment = false;
   let commentStart = 0;
@@ -99,11 +100,14 @@ export const parseMarkdownTasks = (
       continue;
     }
     if (htmlPreStart !== undefined) {
-      if (/<\/pre[ \t]*>/i.test(raw)) {
-        ignoredEnds.set(htmlPreStart, lineNumber + 1);
+      const endsList =
+        htmlPreListIndent !== undefined && !!raw.trim() && indent < htmlPreListIndent;
+      if (endsList || /<\/pre[ \t]*>/i.test(raw)) {
+        ignoredEnds.set(htmlPreStart, lineNumber + (endsList ? 0 : 1));
         htmlPreStart = undefined;
+        htmlPreListIndent = undefined;
       }
-      continue;
+      if (!endsList) continue;
     }
     const wasComment = comment;
     let cursor = 0;
@@ -148,7 +152,12 @@ export const parseMarkdownTasks = (
       indent <= fenceBase + 3 &&
       raw.match(/^[ \t]*((?:[-+*]|\d+[.)])[ \t]+)?<pre(?:[ \t>]|$)/i);
     if (openingPre) {
-      if (!/<\/pre[ \t]*>/i.test(raw)) htmlPreStart = lineNumber;
+      if (!/<\/pre[ \t]*>/i.test(raw)) {
+        htmlPreStart = lineNumber;
+        htmlPreListIndent = openingPre[1]
+          ? indent + openingPre[1].replace(/\t/g, '    ').length
+          : undefined;
+      }
       // Keep the list container for real tasks after the closing tag.
       if (!openingPre[1]) continue;
     }

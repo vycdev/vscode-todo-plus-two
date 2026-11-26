@@ -241,7 +241,21 @@ describe('Markdown task sources', () => {
 
   it('ignores preformatted HTML examples opened inside Markdown list items', () => {
     for (const opener of ['- <pre>', '1. <pre class="example">']) {
-      const content = `${opener}\n  - [ ] Example\n  </pre>\n- [ ] Real`;
+      const indent = ' '.repeat(opener.indexOf('<pre'));
+      const content = `${opener}\n${indent}- [ ] Example\n${indent}</pre>\n- [ ] Real`;
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title),
+        opener
+      ).to.deep.equal(['Real']);
+    }
+  });
+
+  it('ends unfinished list preformatted examples at the next sibling task', () => {
+    for (const opener of ['- <pre>', '10. <pre>']) {
+      const indent = ' '.repeat(opener.indexOf('<pre'));
+      const content = `${opener}\n${indent}- [ ] Example\n\n- [ ] Real`;
       expect(
         parseMarkdownTasks(content)
           .filter((node) => node.kind === 'todo')
