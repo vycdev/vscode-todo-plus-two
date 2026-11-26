@@ -2,6 +2,7 @@
 
 #### Fixes
 
+- Kept Markdown thematic breaks (`***`, `_ _ _`, and `- - -`) unchanged when using Toggle Box, while still allowing checkboxes on prose and list items.
 - Kept colons in trailing tag arguments from changing Todo project names in the VS Code Outline. [#332](https://github.com/vycdev/vscode-todo-plus-two/issues/332)
 - Kept tag-argument completion available after a literal backtick inside an earlier Todo tag argument.
 - Kept cancelled tasks struck through in Markdown exports when their text starts or ends with spaces.
