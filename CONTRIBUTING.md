@@ -17,6 +17,16 @@ corepack enable pnpm
 pnpm --version
 ```
 
+If Corepack cannot write shims beside Node.js, as with a read-only Nix store,
+install the shims in a writable directory and put it on your `PATH`. In a POSIX shell, run:
+
+```sh
+mkdir -p "$HOME/.local/bin"
+corepack enable --install-directory "$HOME/.local/bin" pnpm
+export PATH="$HOME/.local/bin:$PATH"
+pnpm --version
+```
+
 ## Install dependencies
 
 From the repository root run:
@@ -30,6 +40,8 @@ install pnpm once with `npm install --global pnpm@10.33.4`.
 If Corepack reports outdated signatures after enabling it, run `corepack disable pnpm`
 before using that bootstrap command. This removes Corepack's `pnpm`/`pnpx` shims
 so npm can install the pinned CLI without an `EEXIST` conflict.
+If you used a custom shim directory, pass the same `--install-directory` option
+to `corepack disable`.
 
 This installs the runtime and development dependencies, including pinned TypeScript and VS Code API definitions. Use `pnpm install --frozen-lockfile` for a reproducible installation from `pnpm-lock.yaml`; CI always uses this mode. When intentionally changing dependencies, use `pnpm add`/`pnpm remove` and commit the updated lockfile. Do not generate a `package-lock.json`.
 
