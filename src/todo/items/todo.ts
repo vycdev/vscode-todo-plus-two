@@ -7,7 +7,11 @@ import Config from '../../config';
 import Consts from '../../consts';
 import Utils from '../../utils';
 import { formatElapsedDuration, getTimerState, getToggleTag } from '../../utils/timekeeping';
-import { matchesTodoStatus, removeTodoStatusTag } from '../../utils/todo-status';
+import {
+  maskTodoStatusText,
+  matchesTodoStatus,
+  removeTodoStatusTag,
+} from '../../utils/todo-status';
 import Item from './item';
 
 /* TODO */
@@ -84,10 +88,16 @@ class Todo extends Item {
 
   /* TAGS */
 
+  // Tags shown as examples in inline code or inside another tag's argument
+  // are plain text, so only real tags are read, replaced, or removed.
   getTag(re: RegExp) {
-    const match = this.lineNextText.match(re);
+    re.lastIndex = 0;
 
-    return match && match[0];
+    const match = re.exec(maskTodoStatusText(this.lineNextText));
+
+    re.lastIndex = 0;
+
+    return match && this.lineNextText.slice(match.index, match.index + match[0].length);
   }
 
   addTag(tag: string) {
@@ -97,7 +107,7 @@ class Todo extends Item {
   removeTag(tagRegex: RegExp) {
     if (!this.hasTag(tagRegex)) return;
 
-    this.lineNextText = _.trimEnd(this.lineNextText.replace(tagRegex, ''));
+    this.lineNextText = _.trimEnd(removeTodoStatusTag(this.lineNextText, tagRegex));
   }
 
   removeTags(tags: string[]) {
@@ -110,7 +120,7 @@ class Todo extends Item {
   }
 
   hasTag(tagRegex: RegExp) {
-    return Item.is(this.lineNextText, tagRegex);
+    return matchesTodoStatus(this.lineNextText, tagRegex);
   }
 
   /* TIMEKEEPING */

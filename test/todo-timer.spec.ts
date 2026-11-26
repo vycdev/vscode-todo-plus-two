@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import { tagEstimateRegex } from '../src/utils/estimate';
+import { capturedReservedTagArgumentOrBoundary } from '../src/utils/tag-regexes';
 import Tags from '../src/utils/tags';
 
 const loadTodo = (configValues) => {
@@ -13,7 +15,12 @@ const loadTodo = (configValues) => {
     },
     consts = {
       regexes: {
-        tagStarted: /@started(?:\([^)]*\))?/,
+        tagCreated: new RegExp(
+          `(?:^|[^a-zA-Z0-9])@created${capturedReservedTagArgumentOrBoundary}`
+        ),
+        tagStarted: new RegExp(
+          `(?:^|[^a-zA-Z0-9])@started${capturedReservedTagArgumentOrBoundary}`
+        ),
         tagFinished: /@(?:done|cancelled)(?:\([^)]*\))?/,
         tagElapsed: /@(?:lasted|wasted)(?:\([^)]*\))?/,
         todoFinished: /^(?:✔|✘)\s|@(?:done|cancelled)(?:\([^)]*\))?(?![a-zA-Z0-9])/,
@@ -190,5 +197,34 @@ describe('Todo timer completion', () => {
       expect(todo.lineNextText, action).to.include(metadata);
       expect(todo.lineNextText, action).not.to.match(/\s@paused(?:\s|$)/);
     }
+  });
+
+  it('ignores timekeeping tag examples in inline code and tag arguments', () => {
+    const Todo = loadTodo({
+      'timekeeping.started.time': false,
+      'timekeeping.started.format': 'YYYY-MM-DD HH:mm:ss',
+    });
+    for (const text of ['☐ Document the `@started` tag', '☐ Task @note(@started)']) {
+      const todo = new Todo(null, { text });
+      expect(todo.hasTag(/@started(?:\([^)]*\))?/), text).to.equal(false);
+      todo.toggleStart();
+      expect(todo.lineNextText, text).to.equal(`${text} @started`);
+      todo.toggleStart();
+      expect(todo.lineNextText, text).to.equal(text);
+    }
+
+    const adjacent = new Todo(null, { text: '☐ Explain `@started`@started' });
+    adjacent.toggleStart();
+    expect(adjacent.lineNextText).to.equal('☐ Explain `@started`');
+
+    const created = new Todo(null, { text: '☐ Explain `@created` @created(2026-08-02)' });
+    created.uncreate();
+    expect(created.lineNextText).to.equal('☐ Explain `@created`');
+
+    const estimated = new Todo(null, { text: '☐ Write `@est(5h)` docs @note(@est(3h)) @est(1h)' });
+    expect(estimated.getTag(tagEstimateRegex)).to.equal(' @est(1h)');
+    expect(new Todo(null, { text: '☐ Write `@est(5h)` docs' }).getTag(tagEstimateRegex)).to.equal(
+      null
+    );
   });
 });
