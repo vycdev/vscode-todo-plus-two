@@ -31,6 +31,8 @@ export interface MarkdownTaskNode {
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const indentWidth = (line: string) =>
   (line.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '    ').length;
+const markdownColumns = (text: string) =>
+  Array.from(text).reduce((column, char) => column + (char === '\t' ? 4 - (column % 4) : 1), 0);
 const projectTitle = (text: string) =>
   /^\*\*[\s\S]*\*\*$/.test(text) ? text.slice(2, -2).replace(/\\([!-/:-@[-`{-~])/g, '$1') : text;
 const headingTitle = (text: string) => {
@@ -101,7 +103,9 @@ export const parseMarkdownTasks = (
     }
     if (htmlPreStart !== undefined) {
       const endsList =
-        htmlPreListIndent !== undefined && !!raw.trim() && indent < htmlPreListIndent;
+        htmlPreListIndent !== undefined &&
+        !!raw.trim() &&
+        markdownColumns((raw.match(/^[ \t]*/) || [''])[0]) < htmlPreListIndent;
       if (endsList || /<\/pre[ \t]*>/i.test(raw)) {
         ignoredEnds.set(htmlPreStart, lineNumber + (endsList ? 0 : 1));
         htmlPreStart = undefined;
@@ -150,16 +154,14 @@ export const parseMarkdownTasks = (
     const openingPre =
       !wasComment &&
       indent <= fenceBase + 3 &&
-      raw.match(/^[ \t]*((?:[-+*]|\d+[.)])[ \t]+)?<pre(?:[ \t>]|$)/i);
+      raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)<pre(?:[ \t>]|$)/i);
     if (openingPre) {
       if (!/<\/pre[ \t]*>/i.test(raw)) {
         htmlPreStart = lineNumber;
-        htmlPreListIndent = openingPre[1]
-          ? indent + openingPre[1].replace(/\t/g, '    ').length
-          : undefined;
+        htmlPreListIndent = openingPre[1].trim() ? markdownColumns(openingPre[1]) : undefined;
       }
       // Keep the list container for real tasks after the closing tag.
-      if (!openingPre[1]) continue;
+      if (!openingPre[1].trim()) continue;
     }
     const openingFence = raw.match(/^([ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)(`{3,}|~{3,})(.*)$/);
     if (

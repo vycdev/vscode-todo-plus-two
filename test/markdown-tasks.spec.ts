@@ -265,6 +265,18 @@ describe('Markdown task sources', () => {
     }
   });
 
+  it('uses tab stops for preformatted list block boundaries', () => {
+    for (const opener of ['-\t<pre>', '1.\t<pre>', '10.\t<pre>']) {
+      const content = `${opener}\n\t- [ ] Example\n\t</pre>\n- [ ] Real`;
+      expect(
+        parseMarkdownTasks(content)
+          .filter((node) => node.kind === 'todo')
+          .map((node) => node.title),
+        opener
+      ).to.deep.equal(['Real']);
+    }
+  });
+
   it('keeps real tasks in the same list item after preformatted examples', () => {
     const content = [
       '# Tasks',
